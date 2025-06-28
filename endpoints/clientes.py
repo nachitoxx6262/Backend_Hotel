@@ -143,6 +143,35 @@ def quitar_cliente_blacklist(cliente_id: int, db: Session = Depends(conexion.get
 #           ---  E N D P O I N T S   D E   CLIENTES  ---           #
 #
 # ════════════════════════════════════════════════════════════════ #
+# --- Resumen administrativo de clientes ---
+@router.get("/clientes/resumen", tags=["Clientes"])
+def resumen_clientes(db: Session = Depends(conexion.get_db)):
+    total = db.query(Cliente).count()
+    activos = db.query(Cliente).filter(Cliente.deleted == False).count()
+    eliminados = db.query(Cliente).filter(Cliente.deleted == True).count()
+    blacklist = db.query(Cliente).filter(Cliente.blacklist == True).count()
+    return {
+        "total": total,
+        "activos": activos,
+        "eliminados": eliminados,
+        "blacklist": blacklist
+    }
+
+# --- Verificar existencia de cliente ---
+@router.get("/clientes/existe", tags=["Clientes"])
+def verificar_existencia_cliente(tipo_documento: str, numero_documento: str, db: Session = Depends(conexion.get_db)):
+    existe = db.query(Cliente).filter(
+        Cliente.tipo_documento == tipo_documento,
+        Cliente.numero_documento == numero_documento,
+        Cliente.deleted == False
+    ).first()
+    return {"existe": existe is not None}
+# --- Listar clientes sin empresa ---
+@router.get("/clientes/sin-empresa", tags=["Clientes"], response_model=List[ClienteRead])
+def listar_clientes_sin_empresa(db: Session = Depends(conexion.get_db)):
+    clientes = db.query(Cliente).filter(Cliente.empresa_id == None, Cliente.deleted == False).all()
+    return clientes
+
 
 # --- Listar clientes no eliminados ---
 @router.get("/clientes",tags=["Clientes"], response_model=List[ClienteRead])
