@@ -7,6 +7,8 @@ class EmpresaBase(BaseModel):
     email: EmailStr
     telefono: constr(strip_whitespace=True, min_length=3, max_length=30)
     direccion: Optional[constr(strip_whitespace=True, max_length=200)] = None
+    deleted: bool = False
+    blacklist: bool = False
 
 class EmpresaCreate(EmpresaBase):
     pass

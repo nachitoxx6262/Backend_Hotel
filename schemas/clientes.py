@@ -11,6 +11,7 @@ class ClienteBase(BaseModel):
     email: EmailStr
     telefono: constr(strip_whitespace=True, min_length=3, max_length=30)
     empresa_id: Optional[int] = None
+    
 
 class ClienteCreate(ClienteBase):
     pass
@@ -20,6 +21,8 @@ class ClienteUpdate(ClienteBase):
 
 class ClienteRead(ClienteBase):
     id: int
+    deleted: bool
+    blacklist: bool
     empresa: Optional[EmpresaRead]
 
     class Config:

@@ -17,16 +17,165 @@ def log_accion(usuario, accion, detalle=""):
     log_entry = f"CLIENTE [{datetime.datetime.now()}] Usuario: {usuario} | Acción: {accion} | Detalle: {detalle}\n"
     with open("hotel_logs.txt", "a", encoding="utf-8") as f:
         f.write(log_entry)
+# ═════════════════════════════════════════════════════════════ #
+#
+# ║███████╗██╗     ██╗███╗   ███╗██╗███╗   ██╗ █████╗ ██████╗ ║ #
+# ║██╔════╝██║     ██║████╗ ████║██║████╗  ██║██╔══██╗██╔══██╗║ #
+# ║█████╗  ██║     ██║██╔████╔██║██║██╔██╗ ██║███████║██████╔╝║ #
+# ║██╔══╝  ██║     ██║██║╚██╔╝██║██║██║╚██╗██║██╔══██║██╔══██╗║ #
+# ║███████╗███████╗██║██║ ╚═╝ ██║██║██║ ╚████║██║  ██║██║  ██║║ #
+# ║╚══════╝╚══════╝╚═╝╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝╚═╝  ╚═╝║ #
+#
+#          ---  E N D P O I N T S   D E   ELIMINAR  ---         #
+#
+# ═════════════════════════════════════════════════════════════ #
+# listar clientes eliminados
+@router.get("/clientes/eliminados", tags=["Eliminar clientes"], response_model=List[ClienteRead])
+def listar_clientes_eliminados(db: Session = Depends(conexion.get_db)):
+    log_accion("admin", "Listar clientes eliminados")
+    clientes = db.query(Cliente).filter(Cliente.deleted.is_(True)).all()
+    return clientes
 
+
+# --- Baja lógica  DELETE LOGICO   ---
+@router.delete("/clientes/{cliente_id}",tags=["Eliminar clientes"], status_code=204)
+def eliminar_cliente_logico(cliente_id: int, db: Session = Depends(conexion.get_db)):
+    cliente = db.query(Cliente).filter(Cliente.id == cliente_id, Cliente.deleted == False).first()
+    if not cliente:
+        log_accion("admin", "Intento eliminar cliente inexistente", f"id={cliente_id}")
+        raise HTTPException(status_code=404, detail="Cliente no encontrado")
+    reservas_activas = db.query(Reserva).filter(
+        Reserva.cliente_id == cliente_id,
+        Reserva.estado.in_(["reservada", "ocupada"])
+    ).count()
+    if reservas_activas > 0:
+        log_accion("admin", "Intento eliminar cliente con reservas activas", f"id={cliente_id}")
+        raise HTTPException(
+            status_code=409,
+            detail="No se puede eliminar un cliente con reservas activas."
+        )
+    cliente.deleted = True
+    db.commit()
+    log_accion("admin", "Baja lógica cliente", f"id={cliente_id}")
+    return
+
+# --- Restaurar cliente (baja lógica inversa) ---
+@router.put("/clientes/{cliente_id}/restaurar",tags=["Eliminar clientes"], response_model=ClienteRead)
+def restaurar_cliente(cliente_id: int, db: Session = Depends(conexion.get_db)):
+    cliente = db.query(Cliente).filter(Cliente.id == cliente_id, Cliente.deleted == True).first()
+    if not cliente:
+        log_accion("admin", "Intento restaurar cliente inexistente/no eliminado", f"id={cliente_id}")
+        raise HTTPException(status_code=404, detail="Cliente no encontrado o no está eliminado")
+    cliente.deleted = False
+    db.commit()
+    db.refresh(cliente)
+    log_accion("admin", "Restaurar cliente", f"id={cliente_id}")
+    return cliente
+
+# --- Eliminar físico (sólo superadmin) ---
+@router.delete("/clientes/{cliente_id}/eliminar-definitivo",tags=["Eliminar clientes"],  status_code=204)
+def eliminar_fisico_cliente(cliente_id: int, db: Session = Depends(conexion.get_db), superadmin: bool = Query(False, description="¿Es superadmin?")):
+    if not superadmin:
+        log_accion("admin", "Intento eliminar físico sin permisos", f"id={cliente_id}")
+        raise HTTPException(status_code=403, detail="Solo superadmin puede eliminar físicamente un cliente")
+    cliente = db.query(Cliente).filter(Cliente.id == cliente_id).first()
+    if not cliente:
+        log_accion("superadmin", "Intento eliminar físico cliente inexistente", f"id={cliente_id}")
+        raise HTTPException(status_code=404, detail="Cliente no encontrado")
+    db.delete(cliente)
+    db.commit()
+    log_accion("superadmin", "Eliminación física cliente", f"id={cliente_id}")
+    return
+# ══════════════════════════════════════════════════════════════════════ #
+#
+# ║██████╗ ██╗      █████╗  ██████╗██╗  ██╗██╗     ██╗███████╗████████╗║ #
+# ║██╔══██╗██║     ██╔══██╗██╔════╝██║ ██╔╝██║     ██║██╔════╝╚══██╔══╝║ #
+# ║██████╔╝██║     ███████║██║     █████╔╝ ██║     ██║███████╗   ██║   ║ #
+# ║██╔══██╗██║     ██╔══██║██║     ██╔═██╗ ██║     ██║╚════██║   ██║   ║ #
+# ║██████╔╝███████╗██║  ██║╚██████╗██║  ██╗███████╗██║███████║   ██║   ║ #
+# ║╚═════╝ ╚══════╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝╚══════╝╚═╝╚══════╝   ╚═╝   ║ #
+#
+#             ---  E N D P O I N T S   D E   BLACKLIST  ---              #
+#
+# ══════════════════════════════════════════════════════════════════════ #
+# listar clientes en blacklist
+@router.get("/clientes/blacklist",tags=["Blacklist clientes"], response_model=List[ClienteRead])
+def listar_clientes_blacklist(db: Session = Depends(conexion.get_db)):
+    log_accion("admin", "Listar clientes en blacklist")
+    clientes = db.query(Cliente).filter(Cliente.blacklist.is_(True)).all()
+    return clientes 
+# Poner cliente en blacklist
+@router.put("/clientes/{cliente_id}/blacklist",tags=["Blacklist clientes"], response_model=ClienteRead)
+def poner_cliente_blacklist(cliente_id: int, db: Session = Depends(conexion.get_db)):
+    cliente = db.query(Cliente).filter(Cliente.id == cliente_id, Cliente.deleted == False).first()
+    if not cliente:
+        log_accion("admin", "Intento poner en blacklist cliente inexistente", f"id={cliente_id}")
+        raise HTTPException(status_code=404, detail="Cliente no encontrado")
+    cliente.blacklist = True
+    db.commit()
+    db.refresh(cliente)
+    log_accion("admin", "Poner cliente en blacklist", f"id={cliente_id}")
+    return cliente
+# Quitar cliente de blacklist
+@router.put("/clientes/{cliente_id}/quitar-blacklist",tags=["Blacklist clientes"], response_model=ClienteRead)
+def quitar_cliente_blacklist(cliente_id: int, db: Session = Depends(conexion.get_db)):
+    cliente = db.query(Cliente).filter(Cliente.id == cliente_id, Cliente.deleted == False).first()
+    if not cliente:
+        log_accion("admin", "Intento quitar de blacklist cliente inexistente", f"id={cliente_id}")
+        raise HTTPException(status_code=404, detail="Cliente no encontrado")
+    cliente.blacklist = False
+    db.commit()
+    db.refresh(cliente)
+    log_accion("admin", "Quitar cliente de blacklist", f"id={cliente_id}")
+    return cliente
+
+
+
+# ════════════════════════════════════════════════════════════════ #
+#
+# ║ ██████╗██╗     ██╗███████╗███╗   ██╗████████╗███████╗███████╗║ #
+# ║██╔════╝██║     ██║██╔════╝████╗  ██║╚══██╔══╝██╔════╝██╔════╝║ #
+# ║██║     ██║     ██║█████╗  ██╔██╗ ██║   ██║   █████╗  ███████╗║ #
+# ║██║     ██║     ██║██╔══╝  ██║╚██╗██║   ██║   ██╔══╝  ╚════██║║ #
+# ║╚██████╗███████╗██║███████╗██║ ╚████║   ██║   ███████╗███████║║ #
+# ║ ╚═════╝╚══════╝╚═╝╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚══════╝╚══════╝║ #
+#
+#           ---  E N D P O I N T S   D E   CLIENTES  ---           #
+#
+# ════════════════════════════════════════════════════════════════ #
 
 # --- Listar clientes no eliminados ---
-@router.get("/clientes", response_model=List[ClienteRead])
+@router.get("/clientes",tags=["Clientes"], response_model=List[ClienteRead])
 def listar_clientes(db: Session = Depends(conexion.get_db)):
     log_accion("admin", "Listar clientes")
     return db.query(Cliente).filter(Cliente.deleted == False).all()
 
+# --- Búsqueda avanzada de clientes ---
+@router.get("/clientes/buscar",tags=["Clientes"], response_model=List[ClienteRead])
+def buscar_clientes(
+    nombre: Optional[str] = None,
+    apellido: Optional[str] = None,
+    tipo_documento: Optional[str] = None,
+    numero_documento: Optional[str] = None,
+    empresa_id: Optional[int] = None,
+    db: Session = Depends(conexion.get_db)
+):
+    query = db.query(Cliente).filter(Cliente.deleted == False)
+    if nombre:
+        query = query.filter(Cliente.nombre.ilike(f"%{nombre}%"))
+    if apellido:
+        query = query.filter(Cliente.apellido.ilike(f"%{apellido}%"))
+    if tipo_documento:
+        query = query.filter(Cliente.tipo_documento.ilike(f"%{tipo_documento}%"))
+    if numero_documento:
+        query = query.filter(Cliente.numero_documento.ilike(f"%{numero_documento}%"))
+    if empresa_id:
+        query = query.filter(Cliente.empresa_id == empresa_id)
+    resultados = query.all()
+    log_accion("admin", "Buscar clientes", f"criterios={nombre} {apellido} {tipo_documento} {numero_documento} {empresa_id}")
+    return resultados
 # --- Obtener cliente por ID ---
-@router.get("/clientes/{cliente_id}", response_model=ClienteRead)
+@router.get("/clientes/{cliente_id}",tags=["Clientes"], response_model=ClienteRead)
 def obtener_cliente(cliente_id: int, db: Session = Depends(conexion.get_db)):
     cliente = db.query(Cliente).filter(Cliente.id == cliente_id, Cliente.deleted == False).first()
     log_accion("admin", "Obtener cliente", f"id={cliente_id}")
@@ -35,7 +184,7 @@ def obtener_cliente(cliente_id: int, db: Session = Depends(conexion.get_db)):
     return cliente
 
 # --- Crear cliente ---
-@router.post("/clientes", response_model=ClienteRead, status_code=201)
+@router.post("/clientes",tags=["Clientes"], response_model=ClienteRead, status_code=201)
 def crear_cliente(cliente: ClienteCreate, db: Session = Depends(conexion.get_db)):
     existe = db.query(Cliente).filter(
         Cliente.tipo_documento == cliente.tipo_documento,
@@ -66,7 +215,7 @@ def crear_cliente(cliente: ClienteCreate, db: Session = Depends(conexion.get_db)
     return nuevo_cliente
 
 # --- Actualizar cliente ---
-@router.put("/clientes/{cliente_id}", response_model=ClienteRead)
+@router.put("/clientes/{cliente_id}",tags=["Clientes"], response_model=ClienteRead)
 def actualizar_cliente(cliente_id: int, cliente: ClienteUpdate, db: Session = Depends(conexion.get_db)):
     cliente_db = db.query(Cliente).filter(Cliente.id == cliente_id, Cliente.deleted == False).first()
     if not cliente_db:
@@ -100,77 +249,6 @@ def actualizar_cliente(cliente_id: int, cliente: ClienteUpdate, db: Session = De
     log_accion("admin", "Actualizar cliente", f"id={cliente_id}")
     return cliente_db
 
-# --- Baja lógica ---
-@router.delete("/clientes/{cliente_id}", status_code=204)
-def eliminar_cliente(cliente_id: int, db: Session = Depends(conexion.get_db)):
-    cliente = db.query(Cliente).filter(Cliente.id == cliente_id, Cliente.deleted == False).first()
-    if not cliente:
-        log_accion("admin", "Intento eliminar cliente inexistente", f"id={cliente_id}")
-        raise HTTPException(status_code=404, detail="Cliente no encontrado")
-    reservas_activas = db.query(Reserva).filter(
-        Reserva.cliente_id == cliente_id,
-        Reserva.estado.in_(["reservada", "ocupada"])
-    ).count()
-    if reservas_activas > 0:
-        log_accion("admin", "Intento eliminar cliente con reservas activas", f"id={cliente_id}")
-        raise HTTPException(
-            status_code=409,
-            detail="No se puede eliminar un cliente con reservas activas."
-        )
-    cliente.deleted = True
-    db.commit()
-    log_accion("admin", "Baja lógica cliente", f"id={cliente_id}")
-    return
 
-# --- Restaurar cliente (baja lógica inversa) ---
-@router.put("/clientes/{cliente_id}/restaurar", response_model=ClienteRead)
-def restaurar_cliente(cliente_id: int, db: Session = Depends(conexion.get_db)):
-    cliente = db.query(Cliente).filter(Cliente.id == cliente_id, Cliente.deleted == True).first()
-    if not cliente:
-        log_accion("admin", "Intento restaurar cliente inexistente/no eliminado", f"id={cliente_id}")
-        raise HTTPException(status_code=404, detail="Cliente no encontrado o no está eliminado")
-    cliente.deleted = False
-    db.commit()
-    db.refresh(cliente)
-    log_accion("admin", "Restaurar cliente", f"id={cliente_id}")
-    return cliente
 
-# --- Eliminar físico (sólo superadmin) ---
-@router.delete("/clientes/{cliente_id}/eliminar-definitivo", status_code=204)
-def eliminar_fisico_cliente(cliente_id: int, db: Session = Depends(conexion.get_db), superadmin: bool = Query(False, description="¿Es superadmin?")):
-    if not superadmin:
-        log_accion("admin", "Intento eliminar físico sin permisos", f"id={cliente_id}")
-        raise HTTPException(status_code=403, detail="Solo superadmin puede eliminar físicamente un cliente")
-    cliente = db.query(Cliente).filter(Cliente.id == cliente_id).first()
-    if not cliente:
-        log_accion("superadmin", "Intento eliminar físico cliente inexistente", f"id={cliente_id}")
-        raise HTTPException(status_code=404, detail="Cliente no encontrado")
-    db.delete(cliente)
-    db.commit()
-    log_accion("superadmin", "Eliminación física cliente", f"id={cliente_id}")
-    return
 
-# --- Búsqueda avanzada de clientes ---
-@router.get("/clientes/buscar", response_model=List[ClienteRead])
-def buscar_clientes(
-    nombre: Optional[str] = None,
-    apellido: Optional[str] = None,
-    tipo_documento: Optional[str] = None,
-    numero_documento: Optional[str] = None,
-    empresa_id: Optional[int] = None,
-    db: Session = Depends(conexion.get_db)
-):
-    query = db.query(Cliente).filter(Cliente.deleted == False)
-    if nombre:
-        query = query.filter(Cliente.nombre.ilike(f"%{nombre}%"))
-    if apellido:
-        query = query.filter(Cliente.apellido.ilike(f"%{apellido}%"))
-    if tipo_documento:
-        query = query.filter(Cliente.tipo_documento.ilike(f"%{tipo_documento}%"))
-    if numero_documento:
-        query = query.filter(Cliente.numero_documento.ilike(f"%{numero_documento}%"))
-    if empresa_id:
-        query = query.filter(Cliente.empresa_id == empresa_id)
-    resultados = query.all()
-    log_accion("admin", "Buscar clientes", f"criterios={nombre} {apellido} {tipo_documento} {numero_documento} {empresa_id}")
-    return resultados

@@ -19,6 +19,7 @@ class Cliente(Base):
     telefono = Column(String(30), nullable=False)
     empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=True)
     deleted = Column(Boolean, default=False, nullable=False)  # 🟢 Baja lógica
+    blacklist = Column(Boolean, default=False, nullable=False)  # 🟢 Lista negra
 
     empresa = relationship("Empresa", back_populates="clientes")
     reservas = relationship("Reserva", back_populates="cliente")

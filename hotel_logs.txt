@@ -50,3 +50,100 @@
 [2025-06-22 21:43:35.262156] Usuario: admin | Acción: Intento crear empresa duplicada | Detalle: CUIT=20-77889900-7
 [2025-06-22 21:43:35.267806] Usuario: admin | Acción: Intento crear empresa duplicada | Detalle: CUIT=27-88990011-8
 [2025-06-22 21:43:35.272180] Usuario: admin | Acción: Intento crear empresa duplicada | Detalle: CUIT=20-99001122-0
+CLIENTE [2025-06-28 17:03:52.285722] Usuario: admin | Acción: Intento crear cliente con empresa inexistente | Detalle: empresa_id=30
+CLIENTE [2025-06-28 17:03:52.297581] Usuario: admin | Acción: Crear cliente | Detalle: id=1
+CLIENTE [2025-06-28 17:03:52.305288] Usuario: admin | Acción: Intento crear cliente con empresa inexistente | Detalle: empresa_id=25
+CLIENTE [2025-06-28 17:03:52.311921] Usuario: admin | Acción: Intento crear cliente con empresa inexistente | Detalle: empresa_id=99
+CLIENTE [2025-06-28 17:03:52.317051] Usuario: admin | Acción: Intento crear cliente con empresa inexistente | Detalle: empresa_id=43
+CLIENTE [2025-06-28 17:03:52.325307] Usuario: admin | Acción: Crear cliente | Detalle: id=2
+CLIENTE [2025-06-28 17:03:52.330882] Usuario: admin | Acción: Intento crear cliente con empresa inexistente | Detalle: empresa_id=27
+CLIENTE [2025-06-28 17:03:52.337016] Usuario: admin | Acción: Intento crear cliente con empresa inexistente | Detalle: empresa_id=24
+CLIENTE [2025-06-28 17:04:43.085881] Usuario: admin | Acción: Intento crear cliente duplicado | Detalle: doc=DNI-12345678
+CLIENTE [2025-06-28 17:04:43.090387] Usuario: admin | Acción: Intento crear cliente duplicado | Detalle: doc=DNI-87654321
+CLIENTE [2025-06-28 17:04:43.099633] Usuario: admin | Acción: Crear cliente | Detalle: id=3
+CLIENTE [2025-06-28 17:04:43.108482] Usuario: admin | Acción: Crear cliente | Detalle: id=4
+CLIENTE [2025-06-28 17:04:43.117919] Usuario: admin | Acción: Intento crear cliente con empresa inexistente | Detalle: empresa_id=43
+CLIENTE [2025-06-28 17:04:43.122917] Usuario: admin | Acción: Intento crear cliente duplicado | Detalle: doc=DNI-12345678
+CLIENTE [2025-06-28 17:04:43.131052] Usuario: admin | Acción: Crear cliente | Detalle: id=5
+CLIENTE [2025-06-28 17:04:43.138122] Usuario: admin | Acción: Intento crear cliente duplicado | Detalle: doc=Pasaporte-AA123456
+EMPRESA [2025-06-28 17:17:26.133617] Usuario: admin | Acción: Crear empresa | Detalle: id=1
+EMPRESA [2025-06-28 17:17:26.140992] Usuario: admin | Acción: Crear empresa | Detalle: id=2
+EMPRESA [2025-06-28 17:17:26.149791] Usuario: admin | Acción: Crear empresa | Detalle: id=3
+EMPRESA [2025-06-28 17:17:26.157723] Usuario: admin | Acción: Crear empresa | Detalle: id=4
+EMPRESA [2025-06-28 17:17:26.163952] Usuario: admin | Acción: Crear empresa | Detalle: id=5
+EMPRESA [2025-06-28 17:17:26.172510] Usuario: admin | Acción: Crear empresa | Detalle: id=6
+EMPRESA [2025-06-28 17:17:26.179046] Usuario: admin | Acción: Crear empresa | Detalle: id=7
+EMPRESA [2025-06-28 17:17:26.186040] Usuario: admin | Acción: Crear empresa | Detalle: id=8
+EMPRESA [2025-06-28 17:17:26.193154] Usuario: admin | Acción: Crear empresa | Detalle: id=9
+EMPRESA [2025-06-28 17:17:26.199237] Usuario: admin | Acción: Crear empresa | Detalle: id=10
+EMPRESA [2025-06-28 17:17:26.206635] Usuario: admin | Acción: Crear empresa | Detalle: id=11
+EMPRESA [2025-06-28 17:17:26.213206] Usuario: admin | Acción: Crear empresa | Detalle: id=12
+EMPRESA [2025-06-28 17:17:26.220971] Usuario: admin | Acción: Crear empresa | Detalle: id=13
+EMPRESA [2025-06-28 17:17:26.228069] Usuario: admin | Acción: Crear empresa | Detalle: id=14
+EMPRESA [2025-06-28 17:17:26.235411] Usuario: admin | Acción: Crear empresa | Detalle: id=15
+EMPRESA [2025-06-28 17:17:26.243205] Usuario: admin | Acción: Crear empresa | Detalle: id=16
+EMPRESA [2025-06-28 17:17:26.249578] Usuario: admin | Acción: Crear empresa | Detalle: id=17
+EMPRESA [2025-06-28 17:17:26.256847] Usuario: admin | Acción: Crear empresa | Detalle: id=18
+EMPRESA [2025-06-28 17:17:26.262539] Usuario: admin | Acción: Crear empresa | Detalle: id=19
+EMPRESA [2025-06-28 17:17:26.269686] Usuario: admin | Acción: Crear empresa | Detalle: id=20
+CLIENTE [2025-06-28 17:17:43.552209] Usuario: admin | Acción: Crear cliente | Detalle: id=1
+CLIENTE [2025-06-28 17:17:43.560856] Usuario: admin | Acción: Crear cliente | Detalle: id=2
+CLIENTE [2025-06-28 17:17:43.570852] Usuario: admin | Acción: Crear cliente | Detalle: id=3
+CLIENTE [2025-06-28 17:17:43.581010] Usuario: admin | Acción: Crear cliente | Detalle: id=4
+CLIENTE [2025-06-28 17:17:43.589091] Usuario: admin | Acción: Intento crear cliente con empresa inexistente | Detalle: empresa_id=43
+CLIENTE [2025-06-28 17:17:43.595070] Usuario: admin | Acción: Intento crear cliente duplicado | Detalle: doc=DNI-12345678
+CLIENTE [2025-06-28 17:17:43.604265] Usuario: admin | Acción: Crear cliente | Detalle: id=5
+CLIENTE [2025-06-28 17:17:43.611022] Usuario: admin | Acción: Intento crear cliente duplicado | Detalle: doc=Pasaporte-AA123456
+EMPRESA [2025-06-28 17:21:28.093864] Usuario: admin | Acción: Listar empresas | Detalle: 
+EMPRESA [2025-06-28 17:21:28.132277] Usuario: admin | Acción: Baja lógica empresa | Detalle: id=1
+EMPRESA [2025-06-28 17:21:28.139095] Usuario: admin | Acción: Baja lógica empresa | Detalle: id=2
+EMPRESA [2025-06-28 17:21:28.145739] Usuario: admin | Acción: Baja lógica empresa | Detalle: id=3
+EMPRESA [2025-06-28 17:21:28.153191] Usuario: admin | Acción: Baja lógica empresa | Detalle: id=4
+EMPRESA [2025-06-28 17:21:28.161055] Usuario: admin | Acción: Baja lógica empresa | Detalle: id=5
+EMPRESA [2025-06-28 17:21:28.169515] Usuario: admin | Acción: Baja lógica empresa | Detalle: id=6
+EMPRESA [2025-06-28 17:21:28.176343] Usuario: admin | Acción: Baja lógica empresa | Detalle: id=7
+EMPRESA [2025-06-28 17:21:28.184954] Usuario: admin | Acción: Baja lógica empresa | Detalle: id=8
+EMPRESA [2025-06-28 17:21:28.191925] Usuario: admin | Acción: Baja lógica empresa | Detalle: id=9
+EMPRESA [2025-06-28 17:21:28.199173] Usuario: admin | Acción: Baja lógica empresa | Detalle: id=10
+EMPRESA [2025-06-28 17:21:28.205671] Usuario: admin | Acción: Baja lógica empresa | Detalle: id=11
+EMPRESA [2025-06-28 17:21:28.211831] Usuario: admin | Acción: Baja lógica empresa | Detalle: id=12
+EMPRESA [2025-06-28 17:21:28.220045] Usuario: admin | Acción: Baja lógica empresa | Detalle: id=13
+EMPRESA [2025-06-28 17:21:28.226349] Usuario: admin | Acción: Baja lógica empresa | Detalle: id=14
+EMPRESA [2025-06-28 17:21:28.233422] Usuario: admin | Acción: Baja lógica empresa | Detalle: id=15
+EMPRESA [2025-06-28 17:21:28.239709] Usuario: admin | Acción: Baja lógica empresa | Detalle: id=16
+EMPRESA [2025-06-28 17:21:28.245897] Usuario: admin | Acción: Baja lógica empresa | Detalle: id=17
+EMPRESA [2025-06-28 17:21:28.253061] Usuario: admin | Acción: Baja lógica empresa | Detalle: id=18
+EMPRESA [2025-06-28 17:21:28.258639] Usuario: admin | Acción: Baja lógica empresa | Detalle: id=19
+EMPRESA [2025-06-28 17:21:28.265233] Usuario: admin | Acción: Baja lógica empresa | Detalle: id=20
+EMPRESA [2025-06-28 17:23:17.377140] Usuario: admin | Acción: Listar empresas | Detalle: 
+EMPRESA [2025-06-28 17:23:36.155967] Usuario: admin | Acción: Listar empresas | Detalle: 
+EMPRESA [2025-06-28 17:31:09.142934] Usuario: admin | Acción: Listar empresas | Detalle: 
+EMPRESA [2025-06-28 17:31:21.869713] Usuario: admin | Acción: Listar empresas | Detalle: 
+EMPRESA [2025-06-28 17:31:23.548063] Usuario: admin | Acción: Listar empresas | Detalle: 
+CLIENTE [2025-06-28 17:34:01.687141] Usuario: admin | Acción: Baja lógica cliente | Detalle: id=1
+CLIENTE [2025-06-28 17:35:27.212915] Usuario: admin | Acción: Listar clientes | Detalle: 
+CLIENTE [2025-06-28 17:41:44.719239] Usuario: admin | Acción: Listar clientes eliminados | Detalle: 
+CLIENTE [2025-06-28 17:42:41.631275] Usuario: admin | Acción: Listar clientes eliminados | Detalle: 
+CLIENTE [2025-06-28 17:43:03.844103] Usuario: admin | Acción: Restaurar cliente | Detalle: id=1
+CLIENTE [2025-06-28 17:58:23.755340] Usuario: admin | Acción: Poner cliente en blacklist | Detalle: id=1
+CLIENTE [2025-06-28 17:58:57.760451] Usuario: admin | Acción: Quitar cliente de blacklist | Detalle: id=1
+CLIENTE [2025-06-28 17:59:29.249972] Usuario: admin | Acción: Listar clientes en blacklist | Detalle: 
+CLIENTE [2025-06-28 17:59:36.207633] Usuario: admin | Acción: Poner cliente en blacklist | Detalle: id=1
+CLIENTE [2025-06-28 17:59:37.118566] Usuario: admin | Acción: Poner cliente en blacklist | Detalle: id=1
+CLIENTE [2025-06-28 17:59:39.870173] Usuario: admin | Acción: Poner cliente en blacklist | Detalle: id=1
+CLIENTE [2025-06-28 17:59:45.983229] Usuario: admin | Acción: Listar clientes en blacklist | Detalle: 
+CLIENTE [2025-06-28 19:12:22.080047] Usuario: admin | Acción: Listar clientes eliminados | Detalle: 
+CLIENTE [2025-06-28 19:12:32.124923] Usuario: admin | Acción: Baja lógica cliente | Detalle: id=1
+CLIENTE [2025-06-28 19:12:43.913675] Usuario: admin | Acción: Listar clientes eliminados | Detalle: 
+CLIENTE [2025-06-28 19:12:49.871291] Usuario: admin | Acción: Restaurar cliente | Detalle: id=1
+CLIENTE [2025-06-28 19:12:59.236530] Usuario: superadmin | Acción: Eliminación física cliente | Detalle: id=1
+CLIENTE [2025-06-28 19:13:19.220931] Usuario: admin | Acción: Listar clientes en blacklist | Detalle: 
+CLIENTE [2025-06-28 19:13:28.943685] Usuario: admin | Acción: Poner cliente en blacklist | Detalle: id=2
+CLIENTE [2025-06-28 19:13:32.303097] Usuario: admin | Acción: Listar clientes en blacklist | Detalle: 
+CLIENTE [2025-06-28 19:13:37.294746] Usuario: admin | Acción: Quitar cliente de blacklist | Detalle: id=2
+CLIENTE [2025-06-28 19:13:42.936165] Usuario: admin | Acción: Quitar cliente de blacklist | Detalle: id=2
+CLIENTE [2025-06-28 19:13:43.814124] Usuario: admin | Acción: Quitar cliente de blacklist | Detalle: id=2
+CLIENTE [2025-06-28 19:14:00.186752] Usuario: admin | Acción: Listar clientes | Detalle: 
+CLIENTE [2025-06-28 19:14:27.616588] Usuario: admin | Acción: Obtener cliente | Detalle: id=2
+CLIENTE [2025-06-28 19:14:36.203174] Usuario: admin | Acción: Obtener cliente | Detalle: id=3
+CLIENTE [2025-06-28 19:20:19.366559] Usuario: admin | Acción: Buscar clientes | Detalle: criterios=Carlos None None None None
