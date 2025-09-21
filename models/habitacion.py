@@ -12,7 +12,6 @@ class Habitacion(Base):
     id = Column(Integer, primary_key=True, index=True)
     numero = Column(Integer, nullable=False, unique=True)
     tipo = Column(String(30), nullable=False)  # simple, doble, suite, etc.
-    precio = Column(Numeric(10, 2), nullable=False)
     estado = Column(String(30), nullable=False)  # libre, ocupada, mantenimiento
     mantenimiento = Column(Boolean, default=False)
     observaciones = Column(Text)

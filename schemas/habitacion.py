@@ -5,7 +5,6 @@ from pydantic import BaseModel, Field, EmailStr, PositiveInt, constr, condecimal
 class HabitacionBase(BaseModel):
     numero: PositiveInt
     tipo: constr(strip_whitespace=True, min_length=1, max_length=30)
-    precio: condecimal(gt=0, max_digits=10, decimal_places=2)
     estado: constr(strip_whitespace=True, min_length=1, max_length=30)
     mantenimiento: Optional[bool] = False
     observaciones: Optional[str] = None

@@ -1,6 +1,17 @@
 from typing import Optional, List
-from datetime import date
+from datetime import date,datetime
 from pydantic import BaseModel, Field, constr, condecimal, PositiveInt
+
+
+
+class HistorialReservaRead(BaseModel):
+    id: int
+    estado: str
+    usuario: str
+    fecha: datetime
+
+    class Config:
+        orm_mode = True
 
 # ----------- RESERVA HABITACION SCHEMAS -----------
 class ReservaHabitacionCreate(BaseModel):
@@ -24,7 +35,7 @@ class ReservaItemCreate(BaseModel):
 
 class ReservaItemRead(ReservaItemCreate):
     id: int
-    # producto: Optional[ProductoServicioRead]  # si lo necesitás, descomenta
+    # producto: Optional[ProductoServicioRead] 
 
     class Config:
         orm_mode = True
@@ -36,6 +47,7 @@ class ReservaBase(BaseModel):
     fecha_checkin: date
     fecha_checkout: date
     estado: constr(strip_whitespace=True, min_length=1, max_length=20)
+    notas: Optional[str] = None 
 
 class ReservaCreate(ReservaBase):
     habitaciones: List[ReservaHabitacionCreate]
@@ -51,8 +63,11 @@ class ReservaRead(ReservaBase):
     total: Optional[condecimal(max_digits=12, decimal_places=2)] = None
     # cliente: Optional[ClienteRead]  # descomenta si lo querés expandido
     # empresa: Optional[EmpresaRead]
+    deleted: Optional[bool] = False  # ← opcional si querés verlo
     habitaciones: List[ReservaHabitacionRead] = Field(default_factory=list)
     items: List[ReservaItemRead] = Field(default_factory=list)
+    historial: List[HistorialReservaRead] = Field(default_factory=list)
+
 
     class Config:
         orm_mode = True
@@ -61,3 +76,7 @@ class ReservaRead(ReservaBase):
 ReservaRead.update_forward_refs()
 ReservaHabitacionRead.update_forward_refs()
 ReservaItemRead.update_forward_refs()
+
+
+
+
