@@ -1,240 +1,357 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
 from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
+from sqlalchemy.orm import Session
+
 from database import conexion
 from models.empresa import Empresa
 from models.reserva import Reserva
+from models.cliente import Cliente
 from schemas.empresas import EmpresaCreate, EmpresaUpdate, EmpresaRead
+from utils.logging_utils import log_event
 
-import os
-import datetime
 
 router = APIRouter()
+ACTIVE_RESERVATION_STATES = ("reservada", "ocupada")
 
-# --- Logger
-def log_accion(usuario, accion, detalle=""):
-    print(f"EMPRESA [{datetime.datetime.now()}] Usuario: {usuario} | Acción: {accion} | Detalle: {detalle}")
-    log_entry = f"EMPRESA [{datetime.datetime.now()}] Usuario: {usuario} | Acción: {accion} | Detalle: {detalle}\n"
-    with open("hotel_logs.txt", "a", encoding="utf-8") as f:
-        f.write(log_entry)
-# ═════════════════════════════════════════════════════════════ #
-#
-# ║███████╗██╗     ██╗███╗   ███╗██╗███╗   ██╗ █████╗ ██████╗ ║ #
-# ║██╔════╝██║     ██║████╗ ████║██║████╗  ██║██╔══██╗██╔══██╗║ #
-# ║█████╗  ██║     ██║██╔████╔██║██║██╔██╗ ██║███████║██████╔╝║ #
-# ║██╔══╝  ██║     ██║██║╚██╔╝██║██║██║╚██╗██║██╔══██║██╔══██╗║ #
-# ║███████╗███████╗██║██║ ╚═╝ ██║██║██║ ╚████║██║  ██║██║  ██║║ #
-# ║╚══════╝╚══════╝╚═╝╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝╚═╝  ╚═╝║ #
-#
-#          ---  E N D P O I N T S   D E   ELIMINAR  ---         #
-#
-# ═════════════════════════════════════════════════════════════ #
-# --- Listar empresas eliminadas ---
-@router.get("/empresas/eliminadas", tags=["Eliminar empresas"], response_model=List[EmpresaRead])
+
+def _buscar_empresa(db: Session, empresa_id: int, include_deleted: bool = False) -> Optional[Empresa]:
+    query = db.query(Empresa).filter(Empresa.id == empresa_id)
+    if not include_deleted:
+        query = query.filter(Empresa.deleted.is_(False))
+    return query.first()
+
+
+def _tiene_reservas_activas(db: Session, empresa_id: int) -> bool:
+    return (
+        db.query(Reserva)
+        .filter(
+            Reserva.empresa_id == empresa_id,
+            Reserva.deleted.is_(False),
+            Reserva.estado.in_(ACTIVE_RESERVATION_STATES),
+        )
+        .count()
+        > 0
+    )
+
+
+def _tiene_clientes_asociados(db: Session, empresa_id: int) -> bool:
+    return db.query(Cliente).filter(Cliente.empresa_id == empresa_id).count() > 0
+
+
+@router.get(
+    "/empresas/eliminadas",
+    tags=["Eliminar empresas"],
+    response_model=List[EmpresaRead],
+)
 def listar_empresas_eliminadas(db: Session = Depends(conexion.get_db)):
-    log_accion("admin", "Listar empresas eliminadas")
     empresas = db.query(Empresa).filter(Empresa.deleted.is_(True)).all()
+    log_event("empresas", "admin", "Listar empresas eliminadas", f"total={len(empresas)}")
     return empresas
 
-# --- Baja lógica ---
-@router.delete("/empresas/{empresa_id}",tags=["Eliminar empresas"], status_code=204)
-def eliminar_empresa(empresa_id: int, db: Session = Depends(conexion.get_db)):
-    empresa = db.query(Empresa).filter(Empresa.id == empresa_id, Empresa.deleted == False).first()
+
+@router.delete(
+    "/empresas/{empresa_id}",
+    tags=["Eliminar empresas"],
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def eliminar_empresa(
+    empresa_id: int = Path(..., gt=0),
+    db: Session = Depends(conexion.get_db),
+):
+    empresa = _buscar_empresa(db, empresa_id)
     if not empresa:
-        log_accion("admin", "Intento eliminar empresa inexistente", f"id={empresa_id}")
-        raise HTTPException(status_code=404, detail="Empresa no encontrada")
-    reservas_activas = db.query(Reserva).filter(
-        Reserva.empresa_id == empresa_id,
-        Reserva.estado.in_(["reservada", "ocupada"])
-    ).count()
-    if reservas_activas > 0:
-        log_accion("admin", "Intento eliminar empresa con reservas activas", f"id={empresa_id}")
+        log_event("empresas", "admin", "Intento eliminar empresa inexistente", f"id={empresa_id}")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empresa no encontrada")
+    if _tiene_reservas_activas(db, empresa_id):
+        log_event("empresas", "admin", "Intento eliminar empresa con reservas activas", f"id={empresa_id}")
         raise HTTPException(
-            status_code=409,
-            detail="No se puede eliminar una empresa con reservas activas."
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No se puede eliminar una empresa con reservas activas",
         )
     empresa.deleted = True
     db.commit()
-    log_accion("admin", "Baja lógica empresa", f"id={empresa_id}")
-    return
+    log_event("empresas", "admin", "Baja logica empresa", f"id={empresa_id}")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
-# --- Restaurar empresa (baja lógica inversa) ---
-@router.put("/empresas/{empresa_id}/restaurar",tags=["Eliminar empresas"], response_model=EmpresaRead)
-def restaurar_empresa(empresa_id: int, db: Session = Depends(conexion.get_db)):
-    empresa = db.query(Empresa).filter(Empresa.id == empresa_id, Empresa.deleted == True).first()
+
+@router.put(
+    "/empresas/{empresa_id}/restaurar",
+    tags=["Eliminar empresas"],
+    response_model=EmpresaRead,
+)
+def restaurar_empresa(
+    empresa_id: int = Path(..., gt=0),
+    db: Session = Depends(conexion.get_db),
+):
+    empresa = (
+        db.query(Empresa)
+        .filter(Empresa.id == empresa_id, Empresa.deleted.is_(True))
+        .first()
+    )
     if not empresa:
-        log_accion("admin", "Intento restaurar empresa inexistente/no eliminada", f"id={empresa_id}")
-        raise HTTPException(status_code=404, detail="Empresa no encontrada o no está eliminada")
+        log_event(
+            "empresas",
+            "admin",
+            "Intento restaurar empresa inexistente o activa",
+            f"id={empresa_id}",
+        )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Empresa no encontrada o no eliminada",
+        )
     empresa.deleted = False
     db.commit()
     db.refresh(empresa)
-    log_accion("admin", "Restaurar empresa", f"id={empresa_id}")
+    log_event("empresas", "admin", "Restaurar empresa", f"id={empresa_id}")
     return empresa
 
-# --- Eliminar físico (sólo superadmin) ---
-@router.delete("/empresas/{empresa_id}/eliminar-definitivo",tags=["Eliminar empresas"], status_code=204)
-def eliminar_fisico_empresa(empresa_id: int, db: Session = Depends(conexion.get_db), superadmin: bool = Query(False, description="¿Es superadmin?")):
+
+@router.delete(
+    "/empresas/{empresa_id}/eliminar-definitivo",
+    tags=["Eliminar empresas"],
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def eliminar_fisico_empresa(
+    empresa_id: int = Path(..., gt=0),
+    superadmin: bool = Query(False, description="Debe ser True para eliminar definitivamente"),
+    db: Session = Depends(conexion.get_db),
+):
     if not superadmin:
-        log_accion("admin", "Intento eliminar físico sin permisos", f"id={empresa_id}")
-        raise HTTPException(status_code=403, detail="Solo superadmin puede eliminar físicamente una empresa")
-    empresa = db.query(Empresa).filter(Empresa.id == empresa_id).first()
+        log_event("empresas", "admin", "Intento eliminar fisico sin permiso", f"id={empresa_id}")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo superadmin puede eliminar fisicamente una empresa",
+        )
+    empresa = _buscar_empresa(db, empresa_id, include_deleted=True)
     if not empresa:
-        log_accion("superadmin", "Intento eliminar físico empresa inexistente", f"id={empresa_id}")
-        raise HTTPException(status_code=404, detail="Empresa no encontrada")
+        log_event("empresas", "superadmin", "Intento eliminar empresa inexistente", f"id={empresa_id}")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empresa no encontrada")
+    if db.query(Reserva).filter(Reserva.empresa_id == empresa_id).count() > 0:
+        log_event(
+            "empresas",
+            "superadmin",
+            "Intento eliminar empresa con reservas registradas",
+            f"id={empresa_id}",
+        )
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No se puede eliminar la empresa porque existen reservas asociadas",
+        )
+    if _tiene_clientes_asociados(db, empresa_id):
+        log_event(
+            "empresas",
+            "superadmin",
+            "Intento eliminar empresa con clientes asociados",
+            f"id={empresa_id}",
+        )
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No se puede eliminar la empresa porque existen clientes asociados",
+        )
     db.delete(empresa)
     db.commit()
-    log_accion("superadmin", "Eliminación física empresa", f"id={empresa_id}")
-    return
-# ══════════════════════════════════════════════════════════════════════ #
-#
-# ║██████╗ ██╗      █████╗  ██████╗██╗  ██╗██╗     ██╗███████╗████████╗║ #
-# ║██╔══██╗██║     ██╔══██╗██╔════╝██║ ██╔╝██║     ██║██╔════╝╚══██╔══╝║ #
-# ║██████╔╝██║     ███████║██║     █████╔╝ ██║     ██║███████╗   ██║   ║ #
-# ║██╔══██╗██║     ██╔══██║██║     ██╔═██╗ ██║     ██║╚════██║   ██║   ║ #
-# ║██████╔╝███████╗██║  ██║╚██████╗██║  ██╗███████╗██║███████║   ██║   ║ #
-# ║╚═════╝ ╚══════╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝╚══════╝╚═╝╚══════╝   ╚═╝   ║ #
-#
-#             ---  E N D P O I N T S   D E   BLACKLIST  ---              #
-#
-# ══════════════════════════════════════════════════════════════════════ #
-# --- Listar empresas en blacklist ---
-@router.get("/empresas/blacklist", tags=["Blacklist empresas"], response_model=List[EmpresaRead])
+    log_event("empresas", "superadmin", "Eliminacion fisica empresa", f"id={empresa_id}")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get(
+    "/empresas/blacklist",
+    tags=["Blacklist empresas"],
+    response_model=List[EmpresaRead],
+)
 def listar_empresas_blacklist(db: Session = Depends(conexion.get_db)):
-    log_accion("admin", "Listar empresas en blacklist")
-    empresas = db.query(Empresa).filter(Empresa.blacklist.is_(True)).all()
+    empresas = (
+        db.query(Empresa)
+        .filter(Empresa.blacklist.is_(True), Empresa.deleted.is_(False))
+        .all()
+    )
+    log_event("empresas", "admin", "Listar empresas en blacklist", f"total={len(empresas)}")
     return empresas
-# --- Agregar empresa a blacklist ---
-@router.put("/empresas/{empresa_id}/blacklist", tags=["Blacklist empresas"], response_model=EmpresaRead)
-def poner_empresa_blacklist(empresa_id: int, db: Session = Depends(conexion.get_db)):
-    empresa = db.query(Empresa).filter(Empresa.id == empresa_id, Empresa.deleted == False).first()
+
+
+@router.put(
+    "/empresas/{empresa_id}/blacklist",
+    tags=["Blacklist empresas"],
+    response_model=EmpresaRead,
+)
+def poner_empresa_blacklist(
+    empresa_id: int = Path(..., gt=0),
+    db: Session = Depends(conexion.get_db),
+):
+    empresa = _buscar_empresa(db, empresa_id)
     if not empresa:
-        log_accion("admin", "Intento poner en blacklist empresa inexistente", f"id={empresa_id}")
-        raise HTTPException(status_code=404, detail="Empresa no encontrada")
+        log_event("empresas", "admin", "Intento poner en blacklist empresa inexistente", f"id={empresa_id}")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empresa no encontrada")
+    if empresa.blacklist:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="La empresa ya esta en blacklist")
     empresa.blacklist = True
     db.commit()
     db.refresh(empresa)
-    log_accion("admin", "Poner empresa en blacklist", f"id={empresa_id}")
+    log_event("empresas", "admin", "Poner empresa en blacklist", f"id={empresa_id}")
     return empresa
-# --- Quitar empresa de blacklist ---
-@router.put("/empresas/{empresa_id}/quitar-blacklist", tags=["Blacklist empresas"], response_model=EmpresaRead)
-def quitar_empresa_blacklist(empresa_id: int, db: Session = Depends(conexion.get_db)):
-    empresa = db.query(Empresa).filter(Empresa.id == empresa_id, Empresa.deleted == False).first()
+
+
+@router.put(
+    "/empresas/{empresa_id}/quitar-blacklist",
+    tags=["Blacklist empresas"],
+    response_model=EmpresaRead,
+)
+def quitar_empresa_blacklist(
+    empresa_id: int = Path(..., gt=0),
+    db: Session = Depends(conexion.get_db),
+):
+    empresa = _buscar_empresa(db, empresa_id)
     if not empresa:
-        log_accion("admin", "Intento quitar de blacklist empresa inexistente", f"id={empresa_id}")
-        raise HTTPException(status_code=404, detail="Empresa no encontrada")
+        log_event("empresas", "admin", "Intento quitar de blacklist empresa inexistente", f"id={empresa_id}")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empresa no encontrada")
+    if not empresa.blacklist:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="La empresa no esta en blacklist")
     empresa.blacklist = False
     db.commit()
     db.refresh(empresa)
-    log_accion("admin", "Quitar empresa de blacklist", f"id={empresa_id}")
+    log_event("empresas", "admin", "Quitar empresa de blacklist", f"id={empresa_id}")
     return empresa
-# ═════════════════════════════════════════════════════════════════════ #
-#
-# ║███████╗███╗   ███╗██████╗ ██████╗ ███████╗███████╗ █████╗ ███████╗║ #
-# ║██╔════╝████╗ ████║██╔══██╗██╔══██╗██╔════╝██╔════╝██╔══██╗██╔════╝║ #
-# ║█████╗  ██╔████╔██║██████╔╝██████╔╝█████╗  ███████╗███████║███████╗║ #
-# ║██╔══╝  ██║╚██╔╝██║██╔═══╝ ██╔══██╗██╔══╝  ╚════██║██╔══██║╚════██║║ #
-# ║███████╗██║ ╚═╝ ██║██║     ██║  ██║███████╗███████║██║  ██║███████║║ #
-# ║╚══════╝╚═╝     ╚═╝╚═╝     ╚═╝  ╚═╝╚══════╝╚══════╝╚═╝  ╚═╝╚══════╝║ #
-#
-#              ---  E N D P O I N T S   D E   EMPRESAS  ---             #
-#
-# ═════════════════════════════════════════════════════════════════════ #
-# --- Resumen empresas ---
+
+
 @router.get("/empresas/resumen", tags=["Empresas"])
 def resumen_empresas(db: Session = Depends(conexion.get_db)):
     total = db.query(Empresa).count()
-    activas = db.query(Empresa).filter(Empresa.deleted == False).count()
-    eliminadas = db.query(Empresa).filter(Empresa.deleted == True).count()
-    blacklist = db.query(Empresa).filter(Empresa.blacklist == True).count()
-    log_accion("admin", "Resumen empresas")
+    activas = db.query(Empresa).filter(Empresa.deleted.is_(False)).count()
+    eliminadas = db.query(Empresa).filter(Empresa.deleted.is_(True)).count()
+    blacklist = db.query(Empresa).filter(Empresa.blacklist.is_(True)).count()
+    log_event(
+        "empresas",
+        "admin",
+        "Resumen empresas",
+        f"total={total} activas={activas} eliminadas={eliminadas} blacklist={blacklist}",
+    )
     return {
         "total": total,
         "activas": activas,
         "eliminadas": eliminadas,
-        "blacklist": blacklist
+        "blacklist": blacklist,
     }
 
-# --- Verificar existencia empresa por CUIT ---
-@router.get("/empresas/existe", tags=["Empresas"])
-def verificar_empresa_por_cuit(cuit: str, db: Session = Depends(conexion.get_db)):
-    existe = db.query(Empresa).filter(Empresa.cuit == cuit, Empresa.deleted == False).first()
-    log_accion("admin", "Verificar existencia empresa por CUIT", f"CUIT={cuit}")
-    return {"existe": existe is not None}
 
-# --- Buscar empresa exacta por nombre o CUIT ---
-@router.get("/empresas/buscar-exacta", tags=["Empresas"], response_model=Optional[EmpresaRead])
-def buscar_empresa_exacta(nombre: Optional[str] = None, cuit: Optional[str] = None, db: Session = Depends(conexion.get_db)):
-    query = db.query(Empresa).filter(Empresa.deleted == False)
+@router.get("/empresas/existe", tags=["Empresas"])
+def verificar_empresa_por_cuit(
+    cuit: str = Query(..., min_length=6, max_length=20, strip_whitespace=True),
+    db: Session = Depends(conexion.get_db),
+):
+    existe = (
+        db.query(Empresa)
+        .filter(Empresa.cuit == cuit, Empresa.deleted.is_(False))
+        .first()
+        is not None
+    )
+    log_event("empresas", "admin", "Verificar existencia empresa por CUIT", f"cuit={cuit} existe={existe}")
+    return {"existe": existe}
+
+
+@router.get(
+    "/empresas/buscar-exacta",
+    tags=["Empresas"],
+    response_model=Optional[EmpresaRead],
+)
+def buscar_empresa_exacta(
+    nombre: Optional[str] = Query(None, min_length=1, max_length=100, strip_whitespace=True),
+    cuit: Optional[str] = Query(None, min_length=6, max_length=20, strip_whitespace=True),
+    db: Session = Depends(conexion.get_db),
+):
+    query = db.query(Empresa).filter(Empresa.deleted.is_(False))
     if nombre:
         query = query.filter(Empresa.nombre == nombre)
     if cuit:
         query = query.filter(Empresa.cuit == cuit)
     empresa = query.first()
-    log_accion("admin", "Buscar empresa exacta", f"nombre={nombre} CUIT={cuit}")
+    log_event("empresas", "admin", "Buscar empresa exacta", f"nombre={nombre} cuit={cuit} encontrada={empresa is not None}")
     return empresa
 
-# --- Listar empresas no eliminadas ---
-@router.get("/empresas",tags=["Empresas"], response_model=List[EmpresaRead])
+
+@router.get("/empresas", tags=["Empresas"], response_model=List[EmpresaRead])
 def listar_empresas(db: Session = Depends(conexion.get_db)):
-    log_accion("admin", "Listar empresas")
-    return db.query(Empresa).filter(Empresa.deleted == False).all()
+    empresas = db.query(Empresa).filter(Empresa.deleted.is_(False)).all()
+    log_event("empresas", "admin", "Listar empresas", f"total={len(empresas)}")
+    return empresas
 
 
-# --- Crear empresa ---
-@router.post("/empresas", response_model=EmpresaRead,tags=["Empresas"], status_code=201)
+@router.post(
+    "/empresas",
+    tags=["Empresas"],
+    response_model=EmpresaRead,
+    status_code=status.HTTP_201_CREATED,
+)
 def crear_empresa(empresa: EmpresaCreate, db: Session = Depends(conexion.get_db)):
-    existe = db.query(Empresa).filter(
-        Empresa.cuit == empresa.cuit,
-        Empresa.deleted == False
-    ).first()
+    existe = (
+        db.query(Empresa)
+        .filter(Empresa.cuit == empresa.cuit, Empresa.deleted.is_(False))
+        .first()
+    )
     if existe:
-        log_accion("admin", "Intento crear empresa duplicada", f"CUIT={empresa.cuit}")
+        log_event("empresas", "admin", "Intento crear empresa duplicada", f"cuit={empresa.cuit}")
         raise HTTPException(
-            status_code=409,
-            detail="Ya existe una empresa con ese CUIT."
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Ya existe una empresa con ese CUIT",
         )
     nueva_empresa = Empresa(**empresa.dict())
     db.add(nueva_empresa)
     db.commit()
     db.refresh(nueva_empresa)
-    log_accion("admin", "Crear empresa", f"id={nueva_empresa.id}")
+    log_event("empresas", "admin", "Crear empresa", f"id={nueva_empresa.id}")
     return nueva_empresa
 
-# --- Actualizar empresa ---
-@router.put("/empresas/{empresa_id}",tags=["Empresas"], response_model=EmpresaRead)
-def actualizar_empresa(empresa_id: int, empresa: EmpresaUpdate, db: Session = Depends(conexion.get_db)):
-    empresa_db = db.query(Empresa).filter(Empresa.id == empresa_id, Empresa.deleted == False).first()
+
+@router.put(
+    "/empresas/{empresa_id}",
+    tags=["Empresas"],
+    response_model=EmpresaRead,
+)
+def actualizar_empresa(
+    empresa: EmpresaUpdate,
+    empresa_id: int = Path(..., gt=0),
+    db: Session = Depends(conexion.get_db),
+):
+    empresa_db = _buscar_empresa(db, empresa_id)
     if not empresa_db:
-        log_accion("admin", "Intento actualizar empresa inexistente", f"id={empresa_id}")
-        raise HTTPException(status_code=404, detail="Empresa no encontrada")
-    if empresa.cuit != empresa_db.cuit:
-        existe = db.query(Empresa).filter(
-            Empresa.cuit == empresa.cuit,
-            Empresa.id != empresa_id,
-            Empresa.deleted == False
-        ).first()
-        if existe:
-            log_accion("admin", "Intento duplicar CUIT en actualización", f"CUIT={empresa.cuit}")
-            raise HTTPException(
-                status_code=409,
-                detail="Ya existe una empresa con ese CUIT."
+        log_event("empresas", "admin", "Intento actualizar empresa inexistente", f"id={empresa_id}")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empresa no encontrada")
+    datos = empresa.dict(exclude_unset=True)
+    nuevo_cuit = datos.get("cuit", empresa_db.cuit)
+    if nuevo_cuit != empresa_db.cuit:
+        existe = (
+            db.query(Empresa)
+            .filter(
+                Empresa.cuit == nuevo_cuit,
+                Empresa.id != empresa_id,
+                Empresa.deleted.is_(False),
             )
-    for campo, valor in empresa.dict().items():
+            .first()
+        )
+        if existe:
+            log_event("empresas", "admin", "Intento duplicar CUIT en actualizacion", f"cuit={nuevo_cuit}")
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Ya existe una empresa con ese CUIT",
+            )
+    datos.pop("deleted", None)
+    datos.pop("blacklist", None)
+    for campo, valor in datos.items():
         setattr(empresa_db, campo, valor)
     db.commit()
     db.refresh(empresa_db)
-    log_accion("admin", "Actualizar empresa", f"id={empresa_id}")
+    log_event("empresas", "admin", "Actualizar empresa", f"id={empresa_id}")
     return empresa_db
 
-# --- Búsqueda avanzada de empresas ---
-@router.get("/empresas/buscar", response_model=List[EmpresaRead])
+
+@router.get("/empresas/buscar", tags=["Empresas"], response_model=List[EmpresaRead])
 def buscar_empresas(
-    nombre: Optional[str] = None,
-    cuit: Optional[str] = None,
-    email: Optional[str] = None,
-    db: Session = Depends(conexion.get_db)
+    nombre: Optional[str] = Query(None, min_length=1, max_length=100, strip_whitespace=True),
+    cuit: Optional[str] = Query(None, min_length=6, max_length=20, strip_whitespace=True),
+    email: Optional[str] = Query(None, min_length=3, max_length=100, strip_whitespace=True),
+    db: Session = Depends(conexion.get_db),
 ):
-    query = db.query(Empresa).filter(Empresa.deleted == False)
+    query = db.query(Empresa).filter(Empresa.deleted.is_(False))
     if nombre:
         query = query.filter(Empresa.nombre.ilike(f"%{nombre}%"))
     if cuit:
@@ -242,13 +359,27 @@ def buscar_empresas(
     if email:
         query = query.filter(Empresa.email.ilike(f"%{email}%"))
     resultados = query.all()
-    log_accion("admin", "Buscar empresas", f"criterios={nombre} {cuit} {email}")
+    log_event(
+        "empresas",
+        "admin",
+        "Buscar empresas",
+        f"nombre={nombre} cuit={cuit} email={email} total={len(resultados)}",
+    )
     return resultados
-# --- Obtener empresa por ID ---
-@router.get("/empresas/{empresa_id}",tags=["Empresas"], response_model=EmpresaRead)
-def obtener_empresa(empresa_id: int, db: Session = Depends(conexion.get_db)):
-    empresa = db.query(Empresa).filter(Empresa.id == empresa_id, Empresa.deleted == False).first()
-    log_accion("admin", "Obtener empresa", f"id={empresa_id}")
+
+
+@router.get(
+    "/empresas/{empresa_id}",
+    tags=["Empresas"],
+    response_model=EmpresaRead,
+)
+def obtener_empresa(
+    empresa_id: int = Path(..., gt=0),
+    db: Session = Depends(conexion.get_db),
+):
+    empresa = _buscar_empresa(db, empresa_id)
     if not empresa:
-        raise HTTPException(status_code=404, detail="Empresa no encontrada")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empresa no encontrada")
+    log_event("empresas", "admin", "Obtener empresa", f"id={empresa_id}")
     return empresa
+
