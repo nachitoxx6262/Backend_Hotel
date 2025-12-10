@@ -1,5 +1,180 @@
 # 🏨 ERS — Sistema de Gestión Hotelera
 
+## 📋 Descripción
+
+Sistema administrativo completo para hoteles con gestión de reservas, habitaciones, clientes, empresas y servicios. Incluye autenticación JWT, autorización por roles, estadísticas avanzadas y operaciones de check-in/check-out.
+
+**Versión:** 2.0 - Con endpoints robustos y auditoría completa
+
+## ✨ Características Principales
+
+### 🔐 Autenticación y Seguridad
+- ✅ Sistema JWT con Access Token y Refresh Token
+- ✅ 4 niveles de roles (Admin, Gerente, Recepcionista, Readonly)
+- ✅ Protección contra fuerza bruta (intentos fallidos, bloqueos)
+- ✅ Passwords hasheadas con bcrypt
+- ✅ Auditoría completa de accesos
+- ✅ Timestamps automáticos en cambios
+
+### 📊 Módulos Principales
+- ✅ Gestión de Clientes (con preferencias, auditoría completa)
+- ✅ Gestión de Empresas (con términos comerciales)
+- ✅ Gestión de Habitaciones (con categorías y historial de mantenimiento)
+- ✅ Sistema de Reservas (breakdown financiero, estados detallados)
+- ✅ Check-in / Check-out automatizado
+- ✅ Estadísticas y reportes
+- ✅ Consulta de disponibilidad
+- ✅ Historial de cambios con trazabilidad
+
+### 🚀 Características Avanzadas
+- ✅ Soft delete en todas las entidades
+- ✅ Validaciones exhaustivas con manejo robusto de errores
+- ✅ Logging detallado de operaciones
+- ✅ Descuentos automáticos (7+ noches)
+- ✅ Gestión de productos/servicios adicionales
+- ✅ Dashboard con métricas en tiempo real
+- ✅ Cascading relationships y referential integrity
+- ✅ Enums para type-safety
+
+## 🆕 Mejoras en v2.0
+
+### Modelos Mejorados
+```
+✅ Cliente: campos personales, auditoría, preferencias JSON
+✅ Empresa: contacto desagregado, términos comerciales
+✅ Reserva: breakdown financiero, historial con estados
+✅ Habitación: categorías, mantenimiento con historial
+✅ Usuario: roles dinámicos, seguridad mejorada
+✅ Servicios: auditoría y control de estado
+```
+
+### Endpoints Robustos
+```
+✅ Validaciones exhaustivas (50+ nuevas)
+✅ Manejo de errores específicos (IntegrityError, SQLAlchemyError)
+✅ Prevención de duplicados
+✅ Auditoría automática (creado_en, actualizado_en)
+✅ Transacciones ACID con rollback
+✅ Logs detallados por operación
+```
+
+## 📦 Instalación
+
+### 1. Clonar el repositorio
+
+```bash
+git clone https://github.com/nachitoxx6262/Backend_Hotel.git
+cd Backend_Hotel
+```
+
+### 2. Instalar dependencias base
+
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Instalar sistema de autenticación
+
+**Windows (PowerShell):**
+```powershell
+.\install_auth.ps1
+```
+
+**Linux/Mac:**
+```bash
+chmod +x install_auth.sh
+./install_auth.sh
+```
+
+### 4. Configurar variables de entorno
+
+```bash
+# Copiar plantilla
+cp .env.example .env
+
+# Editar .env y configurar
+# Especialmente cambiar SECRET_KEY en producción
+```
+
+### 5. Crear usuario administrador
+
+```bash
+python create_admin.py
+```
+
+### 6. Iniciar el servidor
+
+```bash
+uvicorn main:app --reload
+```
+
+Acceder a:
+- **API Docs:** http://localhost:8000/docs
+- **API:** http://localhost:8000
+
+## 🎯 Endpoints Disponibles
+
+### 🔐 Autenticación (`/auth`)
+- `POST /auth/login` - Iniciar sesión
+- `POST /auth/register` - Registrar usuario (admin)
+- `POST /auth/refresh` - Renovar token
+- `GET /auth/me` - Obtener perfil
+- `PUT /auth/me` - Actualizar perfil
+- `POST /auth/change-password` - Cambiar contraseña
+- `GET /auth/usuarios` - Listar usuarios (admin/gerente)
+- `GET /auth/usuarios/{id}` - Obtener usuario
+- `PUT /auth/usuarios/{id}` - Actualizar usuario
+- `DELETE /auth/usuarios/{id}` - Eliminar usuario (admin)
+
+### 👥 Clientes (`/clientes`)
+- CRUD completo de clientes
+- Búsqueda por nombre, apellido, documento
+- Gestión de blacklist
+- Soft delete y restauración
+- Resumen de clientes
+
+### 🏢 Empresas (`/empresas`)
+- CRUD completo de empresas
+- Búsqueda por nombre, CUIT, email
+- Gestión de blacklist
+- Soft delete y restauración
+- Resumen de empresas
+
+### 🛏️ Habitaciones (`/habitaciones`)
+- CRUD completo de habitaciones
+- Estados: libre, ocupada, reservada, mantenimiento
+- Validación de número único
+
+### 📅 Reservas (`/reservas`)
+- Crear, modificar, consultar reservas
+- Estados: reservada, ocupada, finalizada, cancelada
+- Gestión de habitaciones y servicios adicionales
+- Cálculo automático de totales
+- Descuentos por estadía prolongada
+- Historial de cambios de estado
+- Filtros por estado, cliente, empresa, fechas
+
+### ✅ Check-In/Check-Out (`/checkin-checkout`)
+- `GET /checkin-checkout/pendientes-checkin` - Listar pendientes entrada
+- `GET /checkin-checkout/pendientes-checkout` - Listar pendientes salida
+- `POST /checkin-checkout/{id}/checkin` - Realizar check-in
+- `POST /checkin-checkout/{id}/checkout` - Realizar check-out
+- `POST /checkin-checkout/{id}/checkin-express` - Check-in rápido
+- `POST /checkin-checkout/{id}/checkout-express` - Check-out rápido
+- `GET /checkin-checkout/resumen` - Resumen diario
+
+### 📊 Estadísticas (`/estadisticas`)
+- `GET /estadisticas/dashboard` - Dashboard general
+- `GET /estadisticas/ocupacion` - Ocupación por período
+- `GET /estadisticas/ingresos` - Ingresos agrupados
+- `GET /estadisticas/top-clientes` - Mejores clientes
+- `GET /estadisticas/habitaciones-populares` - Habitaciones más reservadas
+
+### 🔍 Disponibilidad (`/disponibilidad`)
+- `GET /disponibilidad/habitaciones` - Consultar disponibilidad
+- `GET /disponibilidad/calendario` - Calendario por habitación
+- `GET /disponibilidad/resumen` - Resumen por fecha
+
 ## 1. Objetivo General
 Desarrollar un sistema administrativo para hoteles, permitiendo la gestión eficiente de reservas, habitaciones, clientes, empresas y servicios, asegurando la integridad y trazabilidad de los datos y facilitando el trabajo del personal.
 
@@ -99,3 +274,22 @@ Desarrollar un sistema administrativo para hoteles, permitiendo la gestión efic
 - Restringir acciones según permisos de usuario en el sistema.
 - Posibilidad de expandir a multi-sucursal.
 - Implementar notificaciones y recordatorios internos (alertas de reservas próximas, habitaciones a liberar, etc.).
+
+
+
+
+
+
+
+
+ Sugerencias Adicionales Documentadas
+Autenticación JWT y autorización por roles
+Sistema de facturación
+Notificaciones email/SMS
+Precios dinámicos
+Reportes avanzados (PDF/Excel)
+Sistema de reviews
+Gestión de mantenimiento programado
+Integración con pasarelas de pago
+Webhooks para eventos
+Y más...

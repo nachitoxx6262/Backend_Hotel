@@ -1,7 +1,9 @@
 from typing import List, Optional
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
 from database import conexion
 from models.empresa import Empresa
@@ -59,20 +61,30 @@ def eliminar_empresa(
     empresa_id: int = Path(..., gt=0),
     db: Session = Depends(conexion.get_db),
 ):
-    empresa = _buscar_empresa(db, empresa_id)
-    if not empresa:
-        log_event("empresas", "admin", "Intento eliminar empresa inexistente", f"id={empresa_id}")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empresa no encontrada")
-    if _tiene_reservas_activas(db, empresa_id):
-        log_event("empresas", "admin", "Intento eliminar empresa con reservas activas", f"id={empresa_id}")
+    try:
+        empresa = _buscar_empresa(db, empresa_id)
+        if not empresa:
+            log_event("empresas", "admin", "Intento eliminar empresa inexistente", f"id={empresa_id}")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empresa no encontrada")
+        if _tiene_reservas_activas(db, empresa_id):
+            log_event("empresas", "admin", "Intento eliminar empresa con reservas activas", f"id={empresa_id}")
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="No se puede eliminar una empresa con reservas activas",
+            )
+        empresa.deleted = True
+        db.commit()
+        log_event("empresas", "admin", "Baja logica empresa", f"id={empresa_id}")
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        db.rollback()
+        log_event("empresas", "admin", "Error al eliminar empresa", f"id={empresa_id} error={str(e)}")
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="No se puede eliminar una empresa con reservas activas",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error al procesar la eliminación de la empresa"
         )
-    empresa.deleted = True
-    db.commit()
-    log_event("empresas", "admin", "Baja logica empresa", f"id={empresa_id}")
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.put(
@@ -283,23 +295,77 @@ def listar_empresas(db: Session = Depends(conexion.get_db)):
     status_code=status.HTTP_201_CREATED,
 )
 def crear_empresa(empresa: EmpresaCreate, db: Session = Depends(conexion.get_db)):
-    existe = (
-        db.query(Empresa)
-        .filter(Empresa.cuit == empresa.cuit, Empresa.deleted.is_(False))
-        .first()
-    )
-    if existe:
-        log_event("empresas", "admin", "Intento crear empresa duplicada", f"cuit={empresa.cuit}")
+    try:
+        # Validaciones de integridad
+        if not empresa.nombre.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El nombre de la empresa no puede estar vacío"
+            )
+        if not empresa.cuit.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El CUIT de la empresa no puede estar vacío"
+            )
+        if not empresa.contacto_principal_nombre.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El nombre del contacto principal es requerido"
+            )
+        if not empresa.direccion.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="La dirección de la empresa es requerida"
+            )
+        if not empresa.ciudad.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="La ciudad de la empresa es requerida"
+            )
+        
+        # Verificar CUIT duplicado
+        existe = (
+            db.query(Empresa)
+            .filter(Empresa.cuit == empresa.cuit, Empresa.deleted.is_(False))
+            .first()
+        )
+        if existe:
+            log_event("empresas", "admin", "Intento crear empresa duplicada", f"cuit={empresa.cuit}")
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Ya existe una empresa activa con ese CUIT"
+            )
+        
+        # Crear empresa
+        nueva_empresa = Empresa(
+            **empresa.dict(exclude_unset=True),
+            activo=True,
+            deleted=False,
+            blacklist=False
+        )
+        
+        db.add(nueva_empresa)
+        db.commit()
+        db.refresh(nueva_empresa)
+        log_event("empresas", "admin", "Crear empresa", f"id={nueva_empresa.id} cuit={empresa.cuit}")
+        return nueva_empresa
+        
+    except HTTPException:
+        raise
+    except IntegrityError as e:
+        db.rollback()
+        log_event("empresas", "admin", "Error de integridad al crear empresa", f"error={str(e)}")
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Ya existe una empresa con ese CUIT",
+            detail="Violación de restricción de integridad (CUIT o email duplicado)"
         )
-    nueva_empresa = Empresa(**empresa.dict())
-    db.add(nueva_empresa)
-    db.commit()
-    db.refresh(nueva_empresa)
-    log_event("empresas", "admin", "Crear empresa", f"id={nueva_empresa.id}")
-    return nueva_empresa
+    except SQLAlchemyError as e:
+        db.rollback()
+        log_event("empresas", "admin", "Error de BD al crear empresa", f"error={str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error al crear la empresa en la base de datos"
+        )
 
 
 @router.put(
@@ -312,32 +378,70 @@ def actualizar_empresa(
     empresa_id: int = Path(..., gt=0),
     db: Session = Depends(conexion.get_db),
 ):
-    empresa_db = _buscar_empresa(db, empresa_id)
-    if not empresa_db:
-        log_event("empresas", "admin", "Intento actualizar empresa inexistente", f"id={empresa_id}")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empresa no encontrada")
-    datos = empresa.dict(exclude_unset=True)
-    nuevo_cuit = datos.get("cuit", empresa_db.cuit)
-    if nuevo_cuit != empresa_db.cuit:
-        existe = (
-            db.query(Empresa)
-            .filter(
-                Empresa.cuit == nuevo_cuit,
-                Empresa.id != empresa_id,
-                Empresa.deleted.is_(False),
-            )
-            .first()
-        )
-        if existe:
-            log_event("empresas", "admin", "Intento duplicar CUIT en actualizacion", f"cuit={nuevo_cuit}")
+    try:
+        empresa_db = _buscar_empresa(db, empresa_id)
+        if not empresa_db:
+            log_event("empresas", "admin", "Intento actualizar empresa inexistente", f"id={empresa_id}")
             raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Ya existe una empresa con ese CUIT",
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Empresa no encontrada"
             )
-    datos.pop("deleted", None)
-    datos.pop("blacklist", None)
-    for campo, valor in datos.items():
-        setattr(empresa_db, campo, valor)
+        
+        datos = empresa.dict(exclude_unset=True)
+        
+        # Validar cambio de CUIT si se proporciona
+        if "cuit" in datos:
+            nuevo_cuit = datos["cuit"]
+            if nuevo_cuit != empresa_db.cuit:
+                existe = (
+                    db.query(Empresa)
+                    .filter(
+                        Empresa.cuit == nuevo_cuit,
+                        Empresa.id != empresa_id,
+                        Empresa.deleted.is_(False),
+                    )
+                    .first()
+                )
+                if existe:
+                    log_event("empresas", "admin", "Intento duplicar CUIT en actualización", f"cuit={nuevo_cuit}")
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="Ya existe otra empresa con ese CUIT"
+                    )
+        
+        # No permitir actualizar deleted y blacklist directamente
+        datos.pop("deleted", None)
+        datos.pop("blacklist", None)
+        
+        # Actualizar solo los campos proporcionados
+        for campo, valor in datos.items():
+            if valor is not None:
+                setattr(empresa_db, campo, valor)
+        
+        # Actualizar marca de tiempo
+        empresa_db.actualizado_en = datetime.utcnow()
+        
+        db.commit()
+        db.refresh(empresa_db)
+        log_event("empresas", "admin", "Actualizar empresa", f"id={empresa_id} campos={len(datos)}")
+        return empresa_db
+        
+    except HTTPException:
+        raise
+    except IntegrityError as e:
+        db.rollback()
+        log_event("empresas", "admin", "Error de integridad al actualizar empresa", f"id={empresa_id} error={str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Error de integridad (CUIT o email duplicado)"
+        )
+    except SQLAlchemyError as e:
+        db.rollback()
+        log_event("empresas", "admin", "Error de BD al actualizar empresa", f"id={empresa_id} error={str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error al actualizar la empresa en la base de datos"
+        )
     db.commit()
     db.refresh(empresa_db)
     log_event("empresas", "admin", "Actualizar empresa", f"id={empresa_id}")

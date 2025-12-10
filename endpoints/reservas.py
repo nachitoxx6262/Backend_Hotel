@@ -5,6 +5,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
 from sqlalchemy import and_, or_, func
 from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
 from database import conexion
 from models.reserva import Reserva, ReservaHabitacion, ReservaItem, HistorialReserva
@@ -16,12 +17,53 @@ from schemas.reservas import (
     ReservaRead,
     ReservaUpdate,
     HistorialReservaRead,
+    ReservaMove,
 )
 from utils.logging_utils import log_event
 
 
 router = APIRouter(prefix="/reservas", tags=["Reservas"])
 ACTIVE_RESERVATION_STATES = ("reservada", "ocupada")
+
+
+def _recalcular_totales(reserva: Reserva, dias: int) -> None:
+    total = Decimal("0")
+    for habitacion in reserva.habitaciones:
+        habitacion.cantidad_noches = dias
+        habitacion.subtotal_habitacion = Decimal(habitacion.precio_noche) * dias
+        total += habitacion.subtotal_habitacion
+    for item in reserva.items:
+        total += Decimal(item.monto_total)
+    if dias >= 7:
+        total *= Decimal("0.9")
+    reserva.total = total.quantize(Decimal("0.01"))
+
+
+def _enriquecer_reserva(db: Session, reserva: Reserva) -> None:
+    """Agrega alias y datos derivados usados por el frontend."""
+    reserva.fecha_entrada = reserva.fecha_checkin
+    reserva.fecha_salida = reserva.fecha_checkout
+    try:
+        reserva.numero_noches = (reserva.fecha_checkout - reserva.fecha_checkin).days
+    except Exception:
+        reserva.numero_noches = None
+
+    if reserva.cliente_id:
+        cliente = db.query(Cliente).filter(Cliente.id == reserva.cliente_id).first()
+        if cliente:
+            reserva.cliente_nombre = f"{cliente.nombre} {cliente.apellido}"
+    elif reserva.empresa_id:
+        empresa = db.query(Empresa).filter(Empresa.id == reserva.empresa_id).first()
+        if empresa:
+            reserva.empresa_nombre = empresa.nombre
+    else:
+        reserva.cliente_nombre = reserva.nombre_temporal or "Sin asignar"
+
+    if reserva.habitaciones:
+        primera = reserva.habitaciones[0]
+        habitacion = db.query(Habitacion).filter(Habitacion.id == primera.habitacion_id).first()
+        if habitacion:
+            reserva.habitacion_numero = str(habitacion.numero)
 
 
 def _buscar_reserva(db: Session, reserva_id: int, include_deleted: bool = False) -> Optional[Reserva]:
@@ -50,53 +92,61 @@ def _obtener_habitaciones_validas(db: Session, habitaciones_ids: List[int]) -> L
     if faltantes:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Habitaciones no encontradas: {faltantes}")
     for habitacion in habitaciones:
-        if habitacion.mantenimiento:
+        if habitacion.estado == "mantenimiento":
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail=f"La habitacion {habitacion.id} se encuentra en mantenimiento",
+                detail=f"La habitacion {habitacion.numero} se encuentra en mantenimiento",
+            )
+        if not habitacion.activo or habitacion.deleted:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"La habitacion {habitacion.numero} no está disponible",
             )
     return habitaciones
 
 
-def _verificar_disponibilidad_habitaciones(
-    db: Session,
-    habitaciones_ids: List[int],
-    checkin,
-    checkout,
-    reserva_id_excluir: Optional[int] = None,
-) -> None:
-    if checkout <= checkin:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="La fecha de checkout debe ser posterior al checkin")
-    conflicto_query = (
-        db.query(ReservaHabitacion)
-        .join(Reserva)
+def _verificar_disponibilidad_habitaciones(db, habitacion_ids, start_date, end_date, reserva_id_excluir=None):
+    # Buscamos cualquier reserva que se superponga en fechas para las habitaciones solicitadas
+    # Checkout es 10:00 AM, así que permite: reserva_A (05-10) + reserva_B (10-12) mismo día
+    # Overlap solo si: existente.fecha_checkin < nueva.fecha_checkout AND existente.fecha_checkout > nueva.fecha_checkin
+    # Usamos < y > para permitir checkin == checkout (turnover)
+    query = (
+        db.query(Reserva)
+        .join(ReservaHabitacion)
         .filter(
-            ReservaHabitacion.habitacion_id.in_(habitaciones_ids),
+            ReservaHabitacion.habitacion_id.in_(habitacion_ids),
             Reserva.deleted.is_(False),
-            Reserva.estado.in_(ACTIVE_RESERVATION_STATES),
-            or_(
-                and_(Reserva.fecha_checkin <= checkin, Reserva.fecha_checkout > checkin),
-                and_(Reserva.fecha_checkin < checkout, Reserva.fecha_checkout >= checkout),
-                and_(Reserva.fecha_checkin >= checkin, Reserva.fecha_checkout <= checkout),
-            ),
+            Reserva.estado.in_(["reservada", "ocupada"]),  # Solo verificar reservas activas
+            # NO hay conflicto si: existente.checkin >= nueva.checkout O existente.checkout <= nueva.checkin
+            # HAY conflicto si: existente.checkin < nueva.checkout AND existente.checkout > nueva.checkin
+            Reserva.fecha_checkin < end_date,
+            Reserva.fecha_checkout > start_date,
         )
     )
-    if reserva_id_excluir is not None:
-        conflicto_query = conflicto_query.filter(Reserva.id != reserva_id_excluir)
-    conflictos = conflicto_query.all()
-    if conflictos:
-        habitaciones_conflictivas = sorted({c.habitacion_id for c in conflictos})
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Las habitaciones {habitaciones_conflictivas} no estan disponibles para ese rango",
+
+    if reserva_id_excluir:
+        query = query.filter(Reserva.id != reserva_id_excluir)
+
+    conflicto = query.first()
+
+    if conflicto:
+        print(
+            f"CONFLICTO DETECTADO CON RESERVA ID: {conflicto.id} "
+            f"({conflicto.fecha_checkin} - {conflicto.fecha_checkout})"
         )
 
+        raise HTTPException(
+            status_code=409,
+            detail=f"La habitación no está disponible. Choca con reserva #{conflicto.id}"
+        )
 
 def _validar_referencias(
     db: Session,
     cliente_id: Optional[int],
     empresa_id: Optional[int],
 ) -> None:
+    # Permitir reservas sin asignar (ambos None)
+    # Solo validar si se proporcionan
     cliente = None
     empresa = None
     if cliente_id is not None:
@@ -123,15 +173,47 @@ def _validar_referencias(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El cliente pertenece a otra empresa")
 
 
-def _registrar_historial(db: Session, reserva_id: int, estado: str, usuario: str) -> None:
+def _registrar_historial(db: Session, reserva_id: int, estado_nuevo: str, usuario: str, estado_anterior: Optional[str] = None, motivo: Optional[str] = None) -> None:
     historial = HistorialReserva(
         reserva_id=reserva_id,
-        estado=estado,
+        estado_anterior=estado_anterior,
+        estado_nuevo=estado_nuevo,
         usuario=usuario,
         fecha=datetime.utcnow(),
+        motivo=motivo,
     )
     db.add(historial)
 
+@router.get("/disponibilidad")
+def verificar_disponibilidad(
+    habitacion_id: int = Query(..., gt=0),
+    fecha_checkin: str = Query(..., description="ISO date: YYYY-MM-DD"),
+    fecha_checkout: str = Query(..., description="ISO date: YYYY-MM-DD"),
+    reserva_id_excluir: Optional[int] = Query(None, gt=0),
+    db: Session = Depends(conexion.get_db),
+):
+    try:
+        from dateutil import parser
+        checkin = parser.isoparse(fecha_checkin).date() if isinstance(fecha_checkin, str) else fecha_checkin
+        checkout = parser.isoparse(fecha_checkout).date() if isinstance(fecha_checkout, str) else fecha_checkout
+        
+        _obtener_habitaciones_validas(db, [habitacion_id])
+        _verificar_disponibilidad_habitaciones(
+            db,
+            [habitacion_id],
+            checkin,
+            checkout,
+            reserva_id_excluir=reserva_id_excluir,
+        )
+        return {"disponible": True, "mensaje": "La habitación está disponible en el rango solicitado"}
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al verificar disponibilidad: {str(e)}"
+        )
 
 @router.get("", response_model=List[ReservaRead])
 def listar_reservas(
@@ -164,6 +246,11 @@ def listar_reservas(
     if hasta:
         query = query.filter(Reserva.fecha_checkout <= hasta)
     reservas = query.all()
+    
+    # Enriquecer con datos de cliente, empresa, habitación y alias de fechas para el frontend
+    for reserva in reservas:
+        _enriquecer_reserva(db, reserva)
+    
     log_event("reservas", "admin", "Listar reservas", f"total={len(reservas)}")
     return reservas
 
@@ -180,6 +267,8 @@ def listar_reservas_eliminadas(db: Session = Depends(conexion.get_db)):
         .filter(Reserva.deleted.is_(True))
         .all()
     )
+    for reserva in reservas:
+        _enriquecer_reserva(db, reserva)
     log_event("reservas", "admin", "Listar reservas eliminadas", f"total={len(reservas)}")
     return reservas
 
@@ -192,8 +281,11 @@ def obtener_reserva(
     reserva = _buscar_reserva(db, reserva_id)
     if not reserva:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reserva no encontrada")
+    _enriquecer_reserva(db, reserva)
     log_event("reservas", "admin", "Obtener reserva", f"id={reserva_id}")
     return reserva
+
+
 
 
 @router.get("/{reserva_id}/historial", response_model=List[HistorialReservaRead])
@@ -216,58 +308,131 @@ def obtener_historial_reserva(
 
 @router.post("", response_model=ReservaRead, status_code=status.HTTP_201_CREATED)
 def crear_reserva(reserva: ReservaCreate, db: Session = Depends(conexion.get_db)):
-    _validar_referencias(db, reserva.cliente_id, reserva.empresa_id)
-    habitaciones_ids = [h.habitacion_id for h in reserva.habitaciones]
-    _obtener_habitaciones_validas(db, habitaciones_ids)
-    _verificar_disponibilidad_habitaciones(
-        db,
-        habitaciones_ids,
-        reserva.fecha_checkin,
-        reserva.fecha_checkout,
-    )
-    dias = (reserva.fecha_checkout - reserva.fecha_checkin).days
-    if dias <= 0:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="La estadia debe tener al menos una noche")
-    nueva = Reserva(
-        cliente_id=reserva.cliente_id,
-        empresa_id=reserva.empresa_id,
-        fecha_checkin=reserva.fecha_checkin,
-        fecha_checkout=reserva.fecha_checkout,
-        estado=reserva.estado,
-        notas=reserva.notas,
-    )
-    db.add(nueva)
-    db.flush()
-    total = Decimal("0")
-    for habitacion_data in reserva.habitaciones:
-        db.add(
-            ReservaHabitacion(
-                reserva_id=nueva.id,
-                habitacion_id=habitacion_data.habitacion_id,
-                precio_noche=habitacion_data.precio_noche,
-            )
+    try:
+        print(f"[DEBUG CREATE] Creando reserva: checkin={reserva.fecha_checkin}, checkout={reserva.fecha_checkout}, habitaciones={[h.habitacion_id for h in reserva.habitaciones]}")
+        
+        _validar_referencias(db, reserva.cliente_id, reserva.empresa_id)
+        habitaciones_ids = [h.habitacion_id for h in reserva.habitaciones]
+        _obtener_habitaciones_validas(db, habitaciones_ids)
+        _verificar_disponibilidad_habitaciones(
+            db,
+            habitaciones_ids,
+            reserva.fecha_checkin,
+            reserva.fecha_checkout,
         )
-        total += Decimal(habitacion_data.precio_noche) * dias
-    for item_data in reserva.items:
-        db.add(
-            ReservaItem(
-                reserva_id=nueva.id,
-                producto_id=item_data.producto_id,
-                descripcion=item_data.descripcion,
-                cantidad=item_data.cantidad,
-                monto_total=item_data.monto_total,
-                tipo_item=item_data.tipo_item,
-            )
+        dias = (reserva.fecha_checkout - reserva.fecha_checkin).days
+        if dias <= 0:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="La estadia debe tener al menos una noche")
+        
+        # Permitir reservas sin cliente_id para walk-ins (se registra en check-in)
+        # Solo validar referencias si est\u00e1n presentes
+        if reserva.cliente_id or reserva.empresa_id:
+            _validar_referencias(db, reserva.cliente_id, reserva.empresa_id)
+        
+        nueva = Reserva(
+            cliente_id=reserva.cliente_id,
+            empresa_id=reserva.empresa_id,
+            nombre_temporal=reserva.nombre_temporal,
+            fecha_checkin=reserva.fecha_checkin,
+            fecha_checkout=reserva.fecha_checkout,
+            estado=reserva.estado,
+            notas=reserva.notas,
         )
-        total += Decimal(item_data.monto_total)
-    if dias >= 7:
-        total *= Decimal("0.9")
-    nueva.total = total.quantize(Decimal("0.01"))
-    _registrar_historial(db, nueva.id, nueva.estado, "admin")
-    db.commit()
-    db.refresh(nueva)
-    log_event("reservas", "admin", "Crear reserva", f"id={nueva.id}")
-    return nueva
+        db.add(nueva)
+        db.flush()
+        total = Decimal("0")
+        for habitacion_data in reserva.habitaciones:
+            if habitacion_data.precio_noche <= 0:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="El precio por noche debe ser mayor a 0"
+                )
+            subtotal_hab = Decimal(habitacion_data.precio_noche) * dias
+            db.add(
+                ReservaHabitacion(
+                    reserva_id=nueva.id,
+                    habitacion_id=habitacion_data.habitacion_id,
+                    precio_noche=habitacion_data.precio_noche,
+                    cantidad_noches=dias,
+                    subtotal_habitacion=subtotal_hab,
+                )
+            )
+            # Actualizar estado de la habitación a "reservado"
+            habitacion = db.query(Habitacion).filter(
+                Habitacion.id == habitacion_data.habitacion_id
+            ).first()
+            if habitacion and habitacion.estado == "disponible":
+                habitacion.estado = "reservado"
+            total += subtotal_hab
+        for item_data in reserva.items:
+            if item_data.cantidad <= 0:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="La cantidad de items debe ser mayor a 0"
+                )
+            if item_data.monto_total < 0:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="El monto total no puede ser negativo"
+                )
+            
+            # Calcular monto_unitario
+            monto_total = Decimal(item_data.monto_total)
+            cantidad = Decimal(item_data.cantidad)
+            if monto_total > 0 and cantidad > 0:
+                monto_unitario = (monto_total / cantidad).quantize(Decimal("0.01"))
+            else:
+                monto_unitario = Decimal("0.00")
+            
+            db.add(
+                ReservaItem(
+                    reserva_id=nueva.id,
+                    producto_id=item_data.producto_id,
+                    descripcion=item_data.descripcion,
+                    cantidad=item_data.cantidad,
+                    monto_unitario=monto_unitario,
+                    monto_total=monto_total,
+                    tipo_item=item_data.tipo_item,
+                )
+            )
+            total += monto_total
+        if dias >= 7:
+            total *= Decimal("0.9")
+        nueva.total = total.quantize(Decimal("0.01"))
+        _registrar_historial(db, nueva.id, nueva.estado, "admin", estado_anterior=None)
+        db.commit()
+        db.refresh(nueva)
+        _enriquecer_reserva(db, nueva)
+        log_event("reservas", "admin", "Crear reserva", f"id={nueva.id}")
+        return nueva
+    except HTTPException:
+        db.rollback()
+        raise
+    except IntegrityError as e:
+        db.rollback()
+        log_event("reservas", "admin", "Error de integridad al crear reserva", f"error={str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Violación de restricción de integridad en la base de datos"
+        )
+    except SQLAlchemyError as e:
+        db.rollback()
+        log_event("reservas", "admin", "Error al crear reserva", f"error={str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error al crear la reserva en la base de datos"
+        )
+    except Exception as e:
+        db.rollback()
+        # Imprimir el error completo en consola para debugging
+        import traceback
+        print(f"ERROR COMPLETO AL CREAR RESERVA:")
+        print(traceback.format_exc())
+        log_event("reservas", "admin", "Error inesperado al crear reserva", f"error={str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error inesperado al procesar la reserva: {str(e)}"
+        )
 
 
 @router.put("/{reserva_id}", response_model=ReservaRead)
@@ -288,14 +453,7 @@ def actualizar_reserva(
         dias = (checkout - checkin).days
         if dias <= 0:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="La estadia debe tener al menos una noche")
-        total = Decimal("0")
-        for habitacion in reserva_db.habitaciones:
-            total += Decimal(habitacion.precio_noche) * dias
-        for item in reserva_db.items:
-            total += Decimal(item.monto_total)
-        if dias >= 7:
-            total *= Decimal("0.9")
-        reserva_db.total = total.quantize(Decimal("0.01"))
+        _recalcular_totales(reserva_db, dias)
         reserva_db.fecha_checkin = checkin
         reserva_db.fecha_checkout = checkout
         datos.pop("fecha_checkin", None)
@@ -303,11 +461,12 @@ def actualizar_reserva(
     estado_anterior = reserva_db.estado
     if "estado" in datos and datos["estado"] != estado_anterior:
         reserva_db.estado = datos.pop("estado")
-        _registrar_historial(db, reserva_db.id, reserva_db.estado, "admin")
+        _registrar_historial(db, reserva_db.id, reserva_db.estado, "admin", estado_anterior=estado_anterior)
     for campo, valor in datos.items():
         setattr(reserva_db, campo, valor)
     db.commit()
     db.refresh(reserva_db)
+    _enriquecer_reserva(db, reserva_db)
     log_event("reservas", "admin", "Actualizar reserva", f"id={reserva_id}")
     return reserva_db
 
@@ -323,11 +482,70 @@ def actualizar_estado_reserva(
     if not reserva:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reserva no encontrada")
     if reserva.estado != nuevo_estado:
+        estado_anterior = reserva.estado
         reserva.estado = nuevo_estado
-        _registrar_historial(db, reserva.id, nuevo_estado, usuario)
+        _registrar_historial(db, reserva.id, nuevo_estado, usuario, estado_anterior=estado_anterior)
         db.commit()
         db.refresh(reserva)
+        _enriquecer_reserva(db, reserva)
         log_event("reservas", usuario, "Actualizar estado reserva", f"id={reserva_id} estado={nuevo_estado}")
+    return reserva
+
+
+@router.patch("/{reserva_id}/mover", response_model=ReservaRead)
+def mover_reserva(
+    cambios: ReservaMove,
+    reserva_id: int = Path(..., gt=0),
+    db: Session = Depends(conexion.get_db),
+):
+    reserva = _buscar_reserva(db, reserva_id)
+    if not reserva:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reserva no encontrada")
+
+    relacion = next((h for h in reserva.habitaciones if h.id == cambios.reserva_habitacion_id), None)
+    if not relacion:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Habitación no asociada a la reserva")
+
+    nueva_habitacion_id = cambios.nueva_habitacion_id or relacion.habitacion_id
+    habitaciones_ids = [h.habitacion_id if h.id != relacion.id else nueva_habitacion_id for h in reserva.habitaciones]
+
+    _obtener_habitaciones_validas(db, habitaciones_ids)
+    _verificar_disponibilidad_habitaciones(
+        db,
+        habitaciones_ids,
+        cambios.fecha_checkin,
+        cambios.fecha_checkout,
+        reserva_id_excluir=reserva_id,
+    )
+
+    # Aplicar cambios
+    relacion.habitacion_id = nueva_habitacion_id
+    dias = (cambios.fecha_checkout - cambios.fecha_checkin).days
+    if dias <= 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="La estadia debe tener al menos una noche")
+
+    reserva.fecha_checkin = cambios.fecha_checkin
+    reserva.fecha_checkout = cambios.fecha_checkout
+    _recalcular_totales(reserva, dias)
+
+    _registrar_historial(
+        db,
+        reserva.id,
+        reserva.estado,
+        cambios.usuario,
+        estado_anterior=reserva.estado,
+        motivo=cambios.motivo or "Reprogramación drag and drop",
+    )
+
+    db.commit()
+    db.refresh(reserva)
+    _enriquecer_reserva(db, reserva)
+    log_event(
+        "reservas",
+        cambios.usuario,
+        "Mover reserva",
+        f"id={reserva_id} hab_rel_id={relacion.id} nueva_hab={nueva_habitacion_id}",
+    )
     return reserva
 
 
@@ -339,6 +557,16 @@ def eliminar_reserva(
     reserva = _buscar_reserva(db, reserva_id)
     if not reserva:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reserva no encontrada")
+    
+    # Restaurar habitaciones a disponible si la reserva no está finalizada
+    if reserva.estado != "finalizada":
+        for reserva_habitacion in reserva.habitaciones:
+            habitacion = db.query(Habitacion).filter(
+                Habitacion.id == reserva_habitacion.habitacion_id
+            ).first()
+            if habitacion and habitacion.estado in ["ocupada", "reservado"]:
+                habitacion.estado = "disponible"
+    
     reserva.deleted = True
     db.commit()
     log_event("reservas", "admin", "Baja logica reserva", f"id={reserva_id}")
@@ -356,6 +584,7 @@ def restaurar_reserva(
     reserva.deleted = False
     db.commit()
     db.refresh(reserva)
+    _enriquecer_reserva(db, reserva)
     log_event("reservas", "admin", "Restaurar reserva", f"id={reserva_id}")
     return reserva
 

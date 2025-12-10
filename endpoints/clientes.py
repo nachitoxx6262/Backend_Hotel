@@ -1,7 +1,9 @@
 from typing import List, Optional
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
 from database import conexion
 from models.cliente import Cliente
@@ -61,9 +63,16 @@ def _tiene_reservas_activas(db: Session, cliente_id: int) -> bool:
     response_model=List[ClienteRead],
 )
 def listar_clientes_eliminados(db: Session = Depends(conexion.get_db)):
-    clientes = db.query(Cliente).filter(Cliente.deleted.is_(True)).all()
-    log_event("clientes", "admin", "Listar clientes eliminados", f"total={len(clientes)}")
-    return clientes
+    try:
+        clientes = db.query(Cliente).filter(Cliente.deleted.is_(True)).all()
+        log_event("clientes", "admin", "Listar clientes eliminados", f"total={len(clientes)}")
+        return clientes
+    except SQLAlchemyError as e:
+        log_event("clientes", "admin", "Error al listar clientes eliminados", f"error={str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error al consultar la base de datos"
+        )
 
 
 @router.delete(
@@ -75,20 +84,30 @@ def eliminar_cliente_logico(
     cliente_id: int = Path(..., gt=0),
     db: Session = Depends(conexion.get_db),
 ):
-    cliente = _buscar_cliente(db, cliente_id)
-    if not cliente:
-        log_event("clientes", "admin", "Intento eliminar cliente inexistente", f"id={cliente_id}")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cliente no encontrado")
-    if _tiene_reservas_activas(db, cliente_id):
-        log_event("clientes", "admin", "Intento eliminar cliente con reservas activas", f"id={cliente_id}")
+    try:
+        cliente = _buscar_cliente(db, cliente_id)
+        if not cliente:
+            log_event("clientes", "admin", "Intento eliminar cliente inexistente", f"id={cliente_id}")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cliente no encontrado")
+        if _tiene_reservas_activas(db, cliente_id):
+            log_event("clientes", "admin", "Intento eliminar cliente con reservas activas", f"id={cliente_id}")
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="No se puede eliminar un cliente con reservas activas",
+            )
+        cliente.deleted = True
+        db.commit()
+        log_event("clientes", "admin", "Baja logica cliente", f"id={cliente_id}")
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        db.rollback()
+        log_event("clientes", "admin", "Error al eliminar cliente", f"id={cliente_id} error={str(e)}")
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="No se puede eliminar un cliente con reservas activas",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error al procesar la eliminación del cliente"
         )
-    cliente.deleted = True
-    db.commit()
-    log_event("clientes", "admin", "Baja logica cliente", f"id={cliente_id}")
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.put(
@@ -339,33 +358,79 @@ def obtener_cliente(
     status_code=status.HTTP_201_CREATED,
 )
 def crear_cliente(cliente: ClienteCreate, db: Session = Depends(conexion.get_db)):
-    existe = (
-        db.query(Cliente)
-        .filter(
-            Cliente.tipo_documento == cliente.tipo_documento,
-            Cliente.numero_documento == cliente.numero_documento,
-            Cliente.deleted.is_(False),
+    try:
+        # Validaciones de integridad
+        if not cliente.nombre.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El nombre del cliente no puede estar vacío"
+            )
+        if not cliente.apellido.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El apellido del cliente no puede estar vacío"
+            )
+        if cliente.genero and cliente.genero not in ["M", "F", "O"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El género debe ser M, F u O"
+            )
+        
+        # Verificar duplicados de documento
+        existe = (
+            db.query(Cliente)
+            .filter(
+                Cliente.tipo_documento == cliente.tipo_documento,
+                Cliente.numero_documento == cliente.numero_documento,
+                Cliente.deleted.is_(False),
+            )
+            .first()
         )
-        .first()
-    )
-    if existe:
-        log_event(
-            "clientes",
-            "admin",
-            "Intento crear cliente duplicado",
-            f"doc={cliente.tipo_documento}-{cliente.numero_documento}",
+        if existe:
+            log_event(
+                "clientes",
+                "admin",
+                "Intento crear cliente duplicado",
+                f"doc={cliente.tipo_documento}-{cliente.numero_documento}",
+            )
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Ya existe un cliente activo con ese tipo y número de documento"
+            )
+        
+        # Validar empresa si se proporciona
+        _validar_empresa_existente(db, cliente.empresa_id)
+        
+        # Crear cliente con valores por defecto
+        nuevo_cliente = Cliente(
+            **cliente.dict(exclude_unset=True),
+            activo=True,
+            deleted=False,
+            blacklist=False
         )
+        
+        db.add(nuevo_cliente)
+        db.commit()
+        db.refresh(nuevo_cliente)
+        log_event("clientes", "admin", "Crear cliente", f"id={nuevo_cliente.id} doc={cliente.tipo_documento}-{cliente.numero_documento}")
+        return nuevo_cliente
+        
+    except HTTPException:
+        raise
+    except IntegrityError as e:
+        db.rollback()
+        log_event("clientes", "admin", "Error de integridad al crear cliente", f"error={str(e)}")
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Ya existe un cliente con ese tipo y numero de documento",
+            detail="Violación de restricción de integridad (posible email duplicado)"
         )
-    _validar_empresa_existente(db, cliente.empresa_id)
-    nuevo_cliente = Cliente(**cliente.dict())
-    db.add(nuevo_cliente)
-    db.commit()
-    db.refresh(nuevo_cliente)
-    log_event("clientes", "admin", "Crear cliente", f"id={nuevo_cliente.id}")
-    return nuevo_cliente
+    except SQLAlchemyError as e:
+        db.rollback()
+        log_event("clientes", "admin", "Error de BD al crear cliente", f"error={str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error al crear el cliente en la base de datos"
+        )
 
 
 @router.put(
@@ -378,36 +443,78 @@ def actualizar_cliente(
     cliente_id: int = Path(..., gt=0),
     db: Session = Depends(conexion.get_db),
 ):
-    cliente_db = _buscar_cliente(db, cliente_id)
-    if not cliente_db:
-        log_event("clientes", "admin", "Intento actualizar cliente inexistente", f"id={cliente_id}")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cliente no encontrado")
-    datos = cliente.dict(exclude_unset=True)
-    nuevo_tipo = datos.get("tipo_documento", cliente_db.tipo_documento)
-    nuevo_numero = datos.get("numero_documento", cliente_db.numero_documento)
-    if (nuevo_tipo, nuevo_numero) != (cliente_db.tipo_documento, cliente_db.numero_documento):
-        existe = (
-            db.query(Cliente)
-            .filter(
-                Cliente.tipo_documento == nuevo_tipo,
-                Cliente.numero_documento == nuevo_numero,
-                Cliente.id != cliente_id,
-                Cliente.deleted.is_(False),
-            )
-            .first()
-        )
-        if existe:
-            log_event("clientes", "admin", "Intento duplicar documento en actualizacion", f"id={cliente_id}")
+    try:
+        cliente_db = _buscar_cliente(db, cliente_id)
+        if not cliente_db:
+            log_event("clientes", "admin", "Intento actualizar cliente inexistente", f"id={cliente_id}")
             raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Ya existe un cliente con ese tipo y numero de documento",
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Cliente no encontrado"
             )
-    if "empresa_id" in datos:
-        _validar_empresa_existente(db, datos["empresa_id"])
-    for campo, valor in datos.items():
-        setattr(cliente_db, campo, valor)
-    db.commit()
-    db.refresh(cliente_db)
-    log_event("clientes", "admin", "Actualizar cliente", f"id={cliente_id}")
-    return cliente_db
+        
+        datos = cliente.dict(exclude_unset=True)
+        
+        # Validar cambios de documento
+        if "tipo_documento" in datos or "numero_documento" in datos:
+            nuevo_tipo = datos.get("tipo_documento", cliente_db.tipo_documento)
+            nuevo_numero = datos.get("numero_documento", cliente_db.numero_documento)
+            
+            if (nuevo_tipo, nuevo_numero) != (cliente_db.tipo_documento, cliente_db.numero_documento):
+                existe = (
+                    db.query(Cliente)
+                    .filter(
+                        Cliente.tipo_documento == nuevo_tipo,
+                        Cliente.numero_documento == nuevo_numero,
+                        Cliente.id != cliente_id,
+                        Cliente.deleted.is_(False),
+                    )
+                    .first()
+                )
+                if existe:
+                    log_event("clientes", "admin", "Intento duplicar documento en actualización", f"id={cliente_id}")
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="Ya existe otro cliente con ese tipo y número de documento"
+                    )
+        
+        # Validar género si se proporciona
+        if "genero" in datos and datos["genero"] and datos["genero"] not in ["M", "F", "O"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El género debe ser M, F u O"
+            )
+        
+        # Validar empresa si se proporciona
+        if "empresa_id" in datos:
+            _validar_empresa_existente(db, datos["empresa_id"])
+        
+        # Actualizar solo los campos proporcionados
+        for campo, valor in datos.items():
+            if valor is not None or campo in ["telefono_alternativo", "nota_interna", "preferencias"]:
+                setattr(cliente_db, campo, valor)
+        
+        # Actualizar marca de tiempo
+        cliente_db.actualizado_en = datetime.utcnow()
+        
+        db.commit()
+        db.refresh(cliente_db)
+        log_event("clientes", "admin", "Actualizar cliente", f"id={cliente_id} campos={len(datos)}")
+        return cliente_db
+        
+    except HTTPException:
+        raise
+    except IntegrityError as e:
+        db.rollback()
+        log_event("clientes", "admin", "Error de integridad al actualizar cliente", f"id={cliente_id} error={str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Error de integridad (posible email duplicado)"
+        )
+    except SQLAlchemyError as e:
+        db.rollback()
+        log_event("clientes", "admin", "Error de BD al actualizar cliente", f"id={cliente_id} error={str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error al actualizar el cliente en la base de datos"
+        )
 

@@ -19,7 +19,9 @@ Base = declarative_base()
 
 # ✅ IMPORTANTE: NO pongas create_all aquí directamente si estás importando este archivo desde otros lados.
 # Hacelo desde main.py luego de importar los modelos
+# Base.metadata.drop_all(bind=engine)
 # Base.metadata.create_all(bind=engine)
+
 
 # Función para obtener la sesión
 def get_db():
