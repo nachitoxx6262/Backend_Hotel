@@ -2,16 +2,21 @@
 Endpoints para gestión de check-in y check-out
 """
 from datetime import date, datetime, timedelta
+import re
 from decimal import Decimal
 from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from pydantic import BaseModel, Field, condecimal, constr, PositiveInt
+from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy.exc import SQLAlchemyError
 
 from database import conexion
 from models.reserva import Reserva, HistorialReserva, ReservaItem
+from models.reserva import Reserva, HistorialReserva, ReservaItem, ReservaHabitacion
+from sqlalchemy.orm import Session, selectinload
+from models.cliente import Cliente, ClienteVisita
 from models.habitacion import Habitacion
 from models.housekeeping import HousekeepingTarea, HousekeepingTareaTemplate
 from schemas.reservas import ReservaRead
@@ -24,8 +29,16 @@ router = APIRouter(prefix="/checkin-checkout", tags=["Check-In/Check-Out"])
 
 class CheckInGuest(BaseModel):
     nombre: constr(strip_whitespace=True, min_length=2, max_length=120)
+    apellido: Optional[constr(strip_whitespace=True, min_length=1, max_length=120)] = None
     documento: Optional[constr(strip_whitespace=True, max_length=50)] = None
+    tipo_documento: Optional[constr(strip_whitespace=True, max_length=20)] = "DNI"
+    email: Optional[constr(strip_whitespace=True, max_length=120)] = None
+    telefono: Optional[constr(strip_whitespace=True, max_length=30)] = None
     habitacion_id: Optional[int] = None
+    nacionalidad: Optional[constr(strip_whitespace=True, max_length=60)] = None
+    fecha_nacimiento: Optional[date] = None
+    genero: Optional[constr(strip_whitespace=True, max_length=10)] = None
+    direccion: Optional[constr(strip_whitespace=True, max_length=200)] = None
 
 
 class CheckInItem(BaseModel):
@@ -107,6 +120,93 @@ def _crear_tareas_limpieza(db: Session, habitacion: Habitacion, reserva: Reserva
     db.add(tarea)
 
 
+def _normalize_doc(value: Optional[str]) -> str:
+    if not value:
+        return ""
+    return re.sub(r"\D+", "", value)
+
+
+def _resolver_cliente_desde_checkin(db: Session, reserva: Reserva, huesped: CheckInGuest) -> Cliente:
+    """Obtiene o crea un cliente a partir del huésped principal y lo vincula a la reserva."""
+    numero_doc = _normalize_doc(huesped.documento)
+    if not numero_doc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Se requiere el documento del huésped para registrar el check-in"
+        )
+    if not huesped.apellido:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Se requiere el apellido del huésped para registrar el check-in"
+        )
+    tipo_doc = (huesped.tipo_documento or "DNI").strip()
+
+    cliente = db.query(Cliente).filter(
+        Cliente.tipo_documento == tipo_doc,
+        Cliente.numero_documento == numero_doc,
+        Cliente.deleted.is_(False)
+    ).first()
+
+    if cliente:
+        # Actualizar datos básicos si llegan y antes no estaban
+        if huesped.nombre and huesped.nombre.strip() and cliente.nombre != huesped.nombre.strip():
+            cliente.nombre = huesped.nombre.strip()
+        if huesped.apellido and huesped.apellido.strip() and cliente.apellido != huesped.apellido.strip():
+            cliente.apellido = huesped.apellido.strip()
+        if huesped.email and huesped.email.strip():
+            cliente.email = huesped.email.strip()
+        if huesped.telefono and huesped.telefono.strip():
+            cliente.telefono = huesped.telefono.strip()
+        if huesped.nacionalidad and huesped.nacionalidad.strip():
+            cliente.nacionalidad = huesped.nacionalidad.strip()
+        if huesped.fecha_nacimiento:
+            cliente.fecha_nacimiento = huesped.fecha_nacimiento
+        if huesped.genero and huesped.genero.strip():
+            cliente.genero = huesped.genero.strip()
+        if huesped.direccion and huesped.direccion.strip():
+            cliente.direccion = huesped.direccion.strip()
+        cliente.actualizado_en = datetime.utcnow()
+    else:
+        cliente = Cliente(
+            nombre=huesped.nombre.strip(),
+            apellido=huesped.apellido.strip() if huesped.apellido else "",
+            tipo_documento=tipo_doc,
+            numero_documento=numero_doc,
+            nacionalidad=huesped.nacionalidad.strip() if (huesped.nacionalidad and huesped.nacionalidad.strip()) else None,
+            email=huesped.email.strip() if (huesped.email and huesped.email.strip()) else None,
+            telefono=huesped.telefono.strip() if (huesped.telefono and huesped.telefono.strip()) else None,
+            fecha_nacimiento=huesped.fecha_nacimiento,
+            genero=huesped.genero.strip() if (huesped.genero and huesped.genero.strip()) else None,
+            direccion=huesped.direccion.strip() if (huesped.direccion and huesped.direccion.strip()) else None,
+            activo=True,
+            deleted=False,
+            blacklist=False,
+        )
+        db.add(cliente)
+        db.flush()
+
+    reserva.cliente_id = cliente.id
+    return cliente
+
+
+def _registrar_visita_cliente(db: Session, cliente: Cliente, reserva: Reserva) -> ClienteVisita:
+    """Crea un registro de visita del cliente asociado a la reserva."""
+    habitacion_id = None
+    if reserva.habitaciones:
+        habitacion_id = reserva.habitaciones[0].habitacion_id
+
+    total_actual = Decimal(reserva.total) if reserva.total is not None else Decimal("0")
+    visita = ClienteVisita(
+        cliente_id=cliente.id,
+        reserva_id=reserva.id,
+        habitacion_id=habitacion_id,
+        fecha_checkin=datetime.utcnow(),
+        total_gastado=total_actual
+    )
+    db.add(visita)
+    return visita
+
+
 
 
 def _registrar_historial(db: Session, reserva_id: int, estado: str, usuario: str, estado_anterior: Optional[str] = None) -> None:
@@ -134,7 +234,7 @@ def listar_pendientes_checkin(
             fecha = date.today()
         
         reservas = db.query(Reserva).options(
-            selectinload(Reserva.habitaciones),
+            selectinload(Reserva.habitaciones).selectinload(ReservaHabitacion.habitacion),
             selectinload(Reserva.items),
             selectinload(Reserva.historial)
         ).filter(
@@ -145,6 +245,11 @@ def listar_pendientes_checkin(
         
         log_event("checkin", "admin", "Listar pendientes de check-in", f"fecha={fecha} total={len(reservas)}")
         
+        # Enriquecer con numero de habitacion si esta disponible
+        for r in reservas:
+            for hab in r.habitaciones or []:
+                if hasattr(hab, "habitacion") and hab.habitacion:
+                    hab.habitacion_numero = getattr(hab.habitacion, "numero", None)
         return reservas
         
     except SQLAlchemyError as e:
@@ -168,7 +273,7 @@ def listar_pendientes_checkout(
             fecha = date.today()
         
         reservas = db.query(Reserva).options(
-            selectinload(Reserva.habitaciones),
+            selectinload(Reserva.habitaciones).selectinload(ReservaHabitacion.habitacion),
             selectinload(Reserva.items),
             selectinload(Reserva.historial)
         ).filter(
@@ -179,6 +284,11 @@ def listar_pendientes_checkout(
         
         log_event("checkout", "admin", "Listar pendientes de check-out", f"fecha={fecha} total={len(reservas)}")
         
+        # Enriquecer con numero de habitacion si esta disponible
+        for r in reservas:
+            for hab in r.habitaciones or []:
+                if hasattr(hab, "habitacion") and hab.habitacion:
+                    hab.habitacion_numero = getattr(hab.habitacion, "numero", None)
         return reservas
         
     except SQLAlchemyError as e:
@@ -230,6 +340,19 @@ def realizar_checkin(
                 detail=f"El check-in solo puede realizarse a partir del {reserva.fecha_checkin}"
             )
         
+        if not datos.huespedes or len(datos.huespedes) == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Debe registrar al menos un huésped con nombre, apellido y documento para el check-in"
+            )
+
+        # Vincular cliente principal a la reserva usando el primer huésped
+        cliente_asociado = None
+        if datos.huespedes and len(datos.huespedes) > 0:
+            cliente_asociado = _resolver_cliente_desde_checkin(db, reserva, datos.huespedes[0])
+        elif reserva.cliente_id:
+            cliente_asociado = db.query(Cliente).filter(Cliente.id == reserva.cliente_id).first()
+
         estado_anterior = reserva.estado
         reserva.estado = "ocupada"
         
@@ -287,6 +410,10 @@ def realizar_checkin(
         
         # Registrar en historial
         _registrar_historial(db, reserva.id, "ocupada", datos.usuario, estado_anterior=estado_anterior)
+
+        # Registrar visita del cliente
+        if cliente_asociado:
+            _registrar_visita_cliente(db, cliente_asociado, reserva)
         
         db.commit()
         db.refresh(reserva)
@@ -410,6 +537,28 @@ def realizar_checkout(
 
                 crear_cycle(payload=cycle_payload, db=db)
         
+        # Actualizar visita del cliente (gasto y checkout)
+        if reserva.cliente_id:
+            visita = db.query(ClienteVisita).filter(ClienteVisita.reserva_id == reserva.id).order_by(ClienteVisita.id.desc()).first()
+            total_final = Decimal(reserva.total) if reserva.total is not None else Decimal("0")
+            if visita:
+                visita.total_gastado = total_final
+                visita.fecha_checkout = datetime.utcnow()
+            else:
+                cliente = db.query(Cliente).filter(Cliente.id == reserva.cliente_id, Cliente.deleted.is_(False)).first()
+                habitacion_id = reserva.habitaciones[0].habitacion_id if reserva.habitaciones else None
+                if cliente:
+                    db.add(
+                        ClienteVisita(
+                            cliente_id=cliente.id,
+                            reserva_id=reserva.id,
+                            habitacion_id=habitacion_id,
+                            fecha_checkin=datetime.utcnow(),
+                            fecha_checkout=datetime.utcnow(),
+                            total_gastado=total_final,
+                        )
+                    )
+
         # Registrar en historial
         _registrar_historial(db, reserva.id, "finalizada", datos.usuario, estado_anterior=estado_anterior)
         
@@ -498,7 +647,6 @@ def obtener_resumen_checkin_checkout(
         ).count()
         
         # Check-outs completados
-        from sqlalchemy import func
         checkouts_completados = db.query(HistorialReserva).join(Reserva).filter(
             HistorialReserva.estado == "finalizada",
             func.date(HistorialReserva.fecha) == fecha,

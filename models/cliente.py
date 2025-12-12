@@ -4,7 +4,7 @@ Incluye: Más campos de información, preferencias, auditoría completa
 """
 
 from sqlalchemy import (
-    Column, Integer, String, ForeignKey, Date, DateTime, Boolean, 
+    Column, Integer, String, ForeignKey, Date, DateTime, Boolean,
     Numeric, Text, UniqueConstraint, Index
 )
 from sqlalchemy.orm import relationship
@@ -26,15 +26,15 @@ class Cliente(Base):
     # Información personal
     nombre = Column(String(60), nullable=False)
     apellido = Column(String(60), nullable=False)
-    tipo_documento = Column(String(20), nullable=False)
+    tipo_documento = Column(String(20), nullable=False, default="DNI")
     numero_documento = Column(String(40), nullable=False)
     fecha_nacimiento = Column(Date, nullable=True)
-    nacionalidad = Column(String(60), nullable=False)
+    nacionalidad = Column(String(60), nullable=True)
     genero = Column(String(10), nullable=True)  # M, F, O
     
     # Contacto
-    email = Column(String(100), nullable=False)
-    telefono = Column(String(30), nullable=False)
+    email = Column(String(100), nullable=True)
+    telefono = Column(String(30), nullable=True)
     telefono_alternativo = Column(String(30), nullable=True)
     
     # Dirección
@@ -65,6 +65,29 @@ class Cliente(Base):
     # Relaciones
     empresa = relationship("Empresa", back_populates="clientes")
     reservas = relationship("Reserva", back_populates="cliente")
+    visitas = relationship("ClienteVisita", back_populates="cliente", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Cliente(id={self.id}, nombre='{self.nombre} {self.apellido}')>"
+
+
+class ClienteVisita(Base):
+    __tablename__ = "cliente_visitas"
+    __table_args__ = (
+        Index('idx_cliente_visita_cliente', 'cliente_id'),
+        Index('idx_cliente_visita_reserva', 'reserva_id'),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    cliente_id = Column(Integer, ForeignKey("clientes.id", ondelete="CASCADE"), nullable=False)
+    reserva_id = Column(Integer, ForeignKey("reservas.id", ondelete="SET NULL"), nullable=True)
+    habitacion_id = Column(Integer, nullable=True)
+    fecha_checkin = Column(DateTime, default=datetime.utcnow, nullable=False)
+    fecha_checkout = Column(DateTime, nullable=True)
+    total_gastado = Column(Numeric(12, 2), nullable=False, default=0)
+    notas = Column(Text, nullable=True)
+
+    cliente = relationship("Cliente", back_populates="visitas")
+
+    def __repr__(self):
+        return f"<ClienteVisita(cliente_id={self.cliente_id}, reserva_id={self.reserva_id})>"

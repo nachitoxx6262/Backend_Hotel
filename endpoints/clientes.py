@@ -17,6 +17,26 @@ router = APIRouter()
 ACTIVE_RESERVATION_STATES = ("reservada", "ocupada")
 
 
+def _empty_to_none(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+    v = value.strip()
+    return None if v == "" else value
+
+
+def _normalize_cliente_response(c: Cliente) -> Cliente:
+    c.nacionalidad = _empty_to_none(c.nacionalidad)
+    c.email = _empty_to_none(c.email)
+    c.telefono = _empty_to_none(c.telefono)
+    c.telefono_alternativo = _empty_to_none(c.telefono_alternativo)
+    c.direccion = _empty_to_none(c.direccion)
+    c.ciudad = _empty_to_none(c.ciudad)
+    c.provincia = _empty_to_none(c.provincia)
+    c.codigo_postal = _empty_to_none(c.codigo_postal)
+    c.genero = _empty_to_none(c.genero)
+    return c
+
+
 def _buscar_cliente(db: Session, cliente_id: int, include_deleted: bool = False) -> Optional[Cliente]:
     query = db.query(Cliente).filter(Cliente.id == cliente_id)
     if not include_deleted:
@@ -65,6 +85,7 @@ def _tiene_reservas_activas(db: Session, cliente_id: int) -> bool:
 def listar_clientes_eliminados(db: Session = Depends(conexion.get_db)):
     try:
         clientes = db.query(Cliente).filter(Cliente.deleted.is_(True)).all()
+        clientes = [_normalize_cliente_response(c) for c in clientes]
         log_event("clientes", "admin", "Listar clientes eliminados", f"total={len(clientes)}")
         return clientes
     except SQLAlchemyError as e:
@@ -190,6 +211,7 @@ def listar_clientes_blacklist(db: Session = Depends(conexion.get_db)):
         .filter(Cliente.blacklist.is_(True), Cliente.deleted.is_(False))
         .all()
     )
+    clientes = [_normalize_cliente_response(c) for c in clientes]
     log_event("clientes", "admin", "Listar clientes en blacklist", f"total={len(clientes)}")
     return clientes
 
@@ -294,6 +316,7 @@ def listar_clientes_sin_empresa(db: Session = Depends(conexion.get_db)):
         .filter(Cliente.empresa_id.is_(None), Cliente.deleted.is_(False))
         .all()
     )
+    clientes = [_normalize_cliente_response(c) for c in clientes]
     log_event("clientes", "admin", "Listar clientes sin empresa", f"total={len(clientes)}")
     return clientes
 
@@ -301,6 +324,7 @@ def listar_clientes_sin_empresa(db: Session = Depends(conexion.get_db)):
 @router.get("/clientes", tags=["Clientes"], response_model=List[ClienteRead])
 def listar_clientes(db: Session = Depends(conexion.get_db)):
     clientes = db.query(Cliente).filter(Cliente.deleted.is_(False)).all()
+    clientes = [_normalize_cliente_response(c) for c in clientes]
     log_event("clientes", "admin", "Listar clientes", f"total={len(clientes)}")
     return clientes
 
@@ -326,6 +350,7 @@ def buscar_clientes(
     if empresa_id:
         query = query.filter(Cliente.empresa_id == empresa_id)
     resultados = query.all()
+    resultados = [_normalize_cliente_response(c) for c in resultados]
     log_event(
         "clientes",
         "admin",
@@ -347,6 +372,7 @@ def obtener_cliente(
     cliente = _buscar_cliente(db, cliente_id)
     if not cliente:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cliente no encontrado")
+    cliente = _normalize_cliente_response(cliente)
     log_event("clientes", "admin", "Obtener cliente", f"id={cliente_id}")
     return cliente
 
@@ -375,13 +401,17 @@ def crear_cliente(cliente: ClienteCreate, db: Session = Depends(conexion.get_db)
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="El género debe ser M, F u O"
             )
+
+        # Defaults mínimos para check-in rápido
+        tipo_doc = (cliente.tipo_documento or "DNI").strip()
+        numero_doc = cliente.numero_documento.strip()
         
         # Verificar duplicados de documento
         existe = (
             db.query(Cliente)
             .filter(
-                Cliente.tipo_documento == cliente.tipo_documento,
-                Cliente.numero_documento == cliente.numero_documento,
+                Cliente.tipo_documento == tipo_doc,
+                Cliente.numero_documento == numero_doc,
                 Cliente.deleted.is_(False),
             )
             .first()
@@ -391,7 +421,7 @@ def crear_cliente(cliente: ClienteCreate, db: Session = Depends(conexion.get_db)
                 "clientes",
                 "admin",
                 "Intento crear cliente duplicado",
-                f"doc={cliente.tipo_documento}-{cliente.numero_documento}",
+                f"doc={tipo_doc}-{numero_doc}",
             )
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -403,7 +433,24 @@ def crear_cliente(cliente: ClienteCreate, db: Session = Depends(conexion.get_db)
         
         # Crear cliente con valores por defecto
         nuevo_cliente = Cliente(
-            **cliente.dict(exclude_unset=True),
+            nombre=cliente.nombre.strip(),
+            apellido=cliente.apellido.strip(),
+            tipo_documento=tipo_doc,
+            numero_documento=numero_doc,
+            nacionalidad=cliente.nacionalidad.strip() if cliente.nacionalidad else None,
+            email=cliente.email,
+            telefono=cliente.telefono,
+            telefono_alternativo=cliente.telefono_alternativo,
+            fecha_nacimiento=cliente.fecha_nacimiento,
+            genero=cliente.genero,
+            direccion=cliente.direccion,
+            ciudad=cliente.ciudad,
+            provincia=cliente.provincia,
+            codigo_postal=cliente.codigo_postal,
+            tipo_cliente=cliente.tipo_cliente,
+            preferencias=cliente.preferencias,
+            nota_interna=cliente.nota_interna,
+            empresa_id=cliente.empresa_id,
             activo=True,
             deleted=False,
             blacklist=False
@@ -412,7 +459,7 @@ def crear_cliente(cliente: ClienteCreate, db: Session = Depends(conexion.get_db)
         db.add(nuevo_cliente)
         db.commit()
         db.refresh(nuevo_cliente)
-        log_event("clientes", "admin", "Crear cliente", f"id={nuevo_cliente.id} doc={cliente.tipo_documento}-{cliente.numero_documento}")
+        log_event("clientes", "admin", "Crear cliente", f"id={nuevo_cliente.id} doc={tipo_doc}-{numero_doc}")
         return nuevo_cliente
         
     except HTTPException:

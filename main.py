@@ -6,9 +6,9 @@ from fastapi.middleware.cors import CORSMiddleware
 try:
     #Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
-    print("✅ Tablas creadas (o ya existían)")
+    print("[OK] Tablas creadas (o ya existian)")
 except Exception as e:
-    print(f"❌ Error creando tablas: {e}")
+    print(f"[ERROR] Error creando tablas: {e}")
 
 app = FastAPI(debug=True)
 

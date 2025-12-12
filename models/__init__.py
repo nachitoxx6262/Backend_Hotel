@@ -1,7 +1,7 @@
 # models/__init__.py
 
 from .reserva import Reserva, ReservaItem, ReservaHabitacion
-from .cliente import Cliente
+from .cliente import Cliente, ClienteVisita
 from .empresa import Empresa
 from .habitacion import Habitacion, CategoriaHabitacion, MantenimientoHabitacion
 from .servicios import ProductoServicio

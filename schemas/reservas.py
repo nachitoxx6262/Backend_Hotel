@@ -23,6 +23,7 @@ class ReservaHabitacionRead(ReservaHabitacionCreate):
     id: int
     cantidad_noches: int
     subtotal_habitacion: condecimal(max_digits=12, decimal_places=2)
+    habitacion_numero: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 

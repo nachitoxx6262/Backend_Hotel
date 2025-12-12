@@ -101,6 +101,7 @@ class CleaningCycleCreate(BaseModel):
 
 
 class CleaningCycleList(CleaningCycleBase):
+    habitacion_numero: Optional[int] = None  # Número real de habitación
     checklist_items: List[CleaningChecklistItemBase] = []
     incidents_count: int = 0
     lost_items_count: int = 0

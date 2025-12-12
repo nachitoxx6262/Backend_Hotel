@@ -133,6 +133,10 @@ def listar_cycles(
     cycles = query.options(joinedload(CleaningCycle.checklist_items)).all()
     result = []
     for c in cycles:
+        # Obtener el número de habitación
+        habitacion = db.query(Habitacion).filter(Habitacion.id == c.habitacion_id).first()
+        habitacion_numero = habitacion.numero if habitacion else None
+        
         incidents_count = len(c.incidents)
         lost_count = len(c.lost_items)
         events_count = len(c.events)
@@ -140,6 +144,7 @@ def listar_cycles(
             CleaningCycleList(
                 id=c.id,
                 habitacion_id=c.habitacion_id,
+                habitacion_numero=habitacion_numero,
                 reserva_id=c.reserva_id,
                 estado=c.estado,
                 responsable_inicio=c.responsable_inicio,

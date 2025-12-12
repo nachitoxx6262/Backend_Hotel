@@ -7,11 +7,11 @@ from schemas.empresas import EmpresaRead
 class ClienteBase(BaseModel):
     nombre: constr(strip_whitespace=True, min_length=1, max_length=60)
     apellido: constr(strip_whitespace=True, min_length=1, max_length=60)
-    tipo_documento: constr(strip_whitespace=True, min_length=2, max_length=20)
+    tipo_documento: Optional[constr(strip_whitespace=True, min_length=2, max_length=20)] = "DNI"
     numero_documento: constr(strip_whitespace=True, min_length=2, max_length=40)
-    nacionalidad: constr(strip_whitespace=True, min_length=2, max_length=60)
-    email: EmailStr
-    telefono: constr(strip_whitespace=True, min_length=3, max_length=30)
+    nacionalidad: Optional[constr(strip_whitespace=True, min_length=2, max_length=60)] = None
+    email: Optional[EmailStr] = None
+    telefono: Optional[constr(strip_whitespace=True, min_length=3, max_length=30)] = None
     empresa_id: Optional[int] = None
 
 
@@ -57,25 +57,42 @@ class ClienteUpdate(BaseModel):
         raise ValueError("Se requiere al menos un campo para actualizar")
 
 
-class ClienteRead(ClienteBase):
+class ClienteRead(BaseModel):
+    # Campos obligatorios
     id: int
-    fecha_nacimiento: Optional[date]
-    genero: Optional[str]
-    direccion: Optional[str]
-    ciudad: Optional[str]
-    provincia: Optional[str]
-    codigo_postal: Optional[str]
+    nombre: constr(strip_whitespace=True, min_length=1, max_length=60)
+    apellido: constr(strip_whitespace=True, min_length=1, max_length=60)
+    tipo_documento: constr(strip_whitespace=True, min_length=2, max_length=20)
+    numero_documento: constr(strip_whitespace=True, min_length=2, max_length=40)
+
+    # Campos opcionales (permitir None o cadena vacía desde BD)
+    nacionalidad: Optional[str] = None
+    email: Optional[str] = None
+    telefono: Optional[str] = None
+    telefono_alternativo: Optional[str] = None
+    fecha_nacimiento: Optional[date] = None
+    genero: Optional[str] = None
+    direccion: Optional[str] = None
+    ciudad: Optional[str] = None
+    provincia: Optional[str] = None
+    codigo_postal: Optional[str] = None
+    empresa_id: Optional[int] = None
     tipo_cliente: str
-    telefono_alternativo: Optional[str]
-    preferencias: Optional[str]
-    nota_interna: Optional[str]
+    preferencias: Optional[str] = None
+    nota_interna: Optional[str] = None
+
+    # Estado
     activo: bool
     deleted: bool
     blacklist: bool
-    motivo_blacklist: Optional[str]
+    motivo_blacklist: Optional[str] = None
+
+    # Auditoría
     creado_en: datetime
     actualizado_en: datetime
     actualizado_por: Optional[str] = None
-    empresa: Optional[EmpresaRead]
+
+    # Relaciones expandidas
+    empresa: Optional[EmpresaRead] = None
 
     model_config = ConfigDict(from_attributes=True)
