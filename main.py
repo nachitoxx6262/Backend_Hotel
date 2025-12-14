@@ -23,7 +23,7 @@ app.add_middleware(
     allow_methods=["*"],         # GET, POST, PUT, DELETE...
     allow_headers=["*"],
 )
-from endpoints import clientes, empresas, reservas, habitacion, estadisticas, disponibilidad, checkin_checkout, auth
+from endpoints import clientes, empresas, reservas, habitacion, estadisticas, disponibilidad, checkin_checkout_v2, auth
 from endpoints import roles, categorias_habitacion, housekeeping, cleaning_cycle
 app.include_router(auth.router)
 app.include_router(roles.router)
@@ -34,7 +34,7 @@ app.include_router(reservas.router)
 app.include_router(habitacion.router)
 app.include_router(estadisticas.router)
 app.include_router(disponibilidad.router)
-app.include_router(checkin_checkout.router)
+app.include_router(checkin_checkout_v2.router)
 app.include_router(housekeeping.router)
 app.include_router(cleaning_cycle.router)
 

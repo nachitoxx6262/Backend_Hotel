@@ -2982,3 +2982,1151 @@ DETAIL:  La fila que falla contiene (11, Juan, Perez, DNI, 87654321, null, , nul
 2025-12-12 16:38:46,732 | INFO | CHECKOUT | Usuario: admin | Accion: Listar pendientes de check-out | Detalle: fecha=2025-12-12 total=0
 2025-12-12 16:38:46,753 | INFO | CHECKIN | Usuario: admin | Accion: Listar pendientes de check-in | Detalle: fecha=2025-12-12 total=0
 2025-12-12 16:38:46,755 | INFO | CHECKOUT | Usuario: admin | Accion: Listar pendientes de check-out | Detalle: fecha=2025-12-12 total=0
+2025-12-12 17:13:23,285 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 17:13:23,293 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 17:13:23,400 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=1
+2025-12-12 17:13:23,415 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=1
+2025-12-12 17:13:23,419 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=1
+2025-12-12 17:13:23,431 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=1
+2025-12-12 17:13:23,470 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=4
+2025-12-12 17:13:23,504 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=4
+2025-12-12 17:22:40,338 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-12 17:22:40,339 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-12 17:22:40,357 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 17:22:40,370 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 17:22:40,443 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 17:22:40,460 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 17:22:40,491 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=1
+2025-12-12 17:22:40,504 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=1
+2025-12-12 17:22:40,506 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=1
+2025-12-12 17:22:40,520 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=1
+2025-12-12 17:22:40,539 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=4
+2025-12-12 17:22:40,568 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=4
+2025-12-12 17:22:40,793 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 17:22:40,806 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 17:22:41,208 | INFO | CHECKOUT | Usuario: admin | Accion: Listar pendientes de check-out | Detalle: fecha=2025-12-12 total=0
+2025-12-12 17:22:41,210 | INFO | CHECKIN | Usuario: admin | Accion: Listar pendientes de check-in | Detalle: fecha=2025-12-12 total=0
+2025-12-12 17:22:41,231 | INFO | CHECKOUT | Usuario: admin | Accion: Listar pendientes de check-out | Detalle: fecha=2025-12-12 total=0
+2025-12-12 17:22:41,232 | INFO | CHECKIN | Usuario: admin | Accion: Listar pendientes de check-in | Detalle: fecha=2025-12-12 total=0
+2025-12-12 17:40:58,727 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=1
+2025-12-12 18:07:57,706 | INFO | AUTH | Usuario: admin | Accion: Login exitoso | Detalle: rol=admin
+2025-12-12 18:07:57,724 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:08:03,918 | INFO | CHECKIN | Usuario: admin | Accion: Error al listar pendientes check-in | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkin = %(fecha_checkin_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkin_1': datetime.date(2025, 12, 12), 'estado_1': 'reservada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:08:03,931 | INFO | CHECKIN | Usuario: admin | Accion: Error al listar pendientes check-in | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkin = %(fecha_checkin_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkin_1': datetime.date(2025, 12, 12), 'estado_1': 'reservada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:08:04,013 | INFO | CHECKOUT | Usuario: admin | Accion: Error al listar pendientes check-out | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkout = %(fecha_checkout_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkout_1': datetime.date(2025, 12, 12), 'estado_1': 'ocupada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:08:04,021 | INFO | CHECKOUT | Usuario: admin | Accion: Error al listar pendientes check-out | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkout = %(fecha_checkout_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkout_1': datetime.date(2025, 12, 12), 'estado_1': 'ocupada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:10:28,902 | INFO | CHECKIN | Usuario: admin | Accion: Error al listar pendientes check-in | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkin = %(fecha_checkin_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkin_1': datetime.date(2025, 12, 12), 'estado_1': 'reservada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:10:28,903 | INFO | CHECKOUT | Usuario: admin | Accion: Error al listar pendientes check-out | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkout = %(fecha_checkout_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkout_1': datetime.date(2025, 12, 12), 'estado_1': 'ocupada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:10:30,642 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:10:30,656 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:10:30,722 | INFO | CHECKIN | Usuario: admin | Accion: Error al listar pendientes check-in | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkin = %(fecha_checkin_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkin_1': datetime.date(2025, 12, 12), 'estado_1': 'reservada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:10:30,722 | INFO | CHECKOUT | Usuario: admin | Accion: Error al listar pendientes check-out | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkout = %(fecha_checkout_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkout_1': datetime.date(2025, 12, 12), 'estado_1': 'ocupada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:10:30,734 | INFO | CHECKIN | Usuario: admin | Accion: Error al listar pendientes check-in | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkin = %(fecha_checkin_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkin_1': datetime.date(2025, 12, 12), 'estado_1': 'reservada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:10:30,737 | INFO | CHECKOUT | Usuario: admin | Accion: Error al listar pendientes check-out | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkout = %(fecha_checkout_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkout_1': datetime.date(2025, 12, 12), 'estado_1': 'ocupada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:11:55,575 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:11:55,589 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:11:55,644 | INFO | CHECKIN | Usuario: admin | Accion: Error al listar pendientes check-in | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkin = %(fecha_checkin_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkin_1': datetime.date(2025, 12, 12), 'estado_1': 'reservada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:11:55,646 | INFO | CHECKOUT | Usuario: admin | Accion: Error al listar pendientes check-out | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkout = %(fecha_checkout_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkout_1': datetime.date(2025, 12, 12), 'estado_1': 'ocupada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:11:55,665 | INFO | CHECKIN | Usuario: admin | Accion: Error al listar pendientes check-in | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkin = %(fecha_checkin_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkin_1': datetime.date(2025, 12, 12), 'estado_1': 'reservada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:11:55,667 | INFO | CHECKOUT | Usuario: admin | Accion: Error al listar pendientes check-out | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkout = %(fecha_checkout_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkout_1': datetime.date(2025, 12, 12), 'estado_1': 'ocupada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:11:57,010 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 18:11:57,035 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 18:11:57,955 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 18:11:57,964 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 18:11:58,017 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=1
+2025-12-12 18:11:58,052 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=1
+2025-12-12 18:11:58,062 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=1
+2025-12-12 18:11:58,086 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=1
+2025-12-12 18:12:14,706 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:12:14,717 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:12:14,761 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 18:12:14,774 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 18:12:14,793 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=1
+2025-12-12 18:12:14,804 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=1
+2025-12-12 18:12:14,806 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=1
+2025-12-12 18:12:14,818 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=1
+2025-12-12 18:12:36,050 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:12:36,063 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:12:36,112 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 18:12:36,133 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 18:12:36,164 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=1
+2025-12-12 18:12:36,175 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=1
+2025-12-12 18:12:36,180 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=1
+2025-12-12 18:12:36,191 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=1
+2025-12-12 18:13:02,444 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:13:02,457 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:13:02,543 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 18:13:02,552 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 18:13:02,585 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=1
+2025-12-12 18:13:02,597 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=1
+2025-12-12 18:13:02,606 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=1
+2025-12-12 18:13:02,618 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=1
+2025-12-12 18:13:13,716 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 18:13:13,730 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 18:13:15,447 | INFO | CHECKIN | Usuario: admin | Accion: Error al listar pendientes check-in | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkin = %(fecha_checkin_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkin_1': datetime.date(2025, 12, 12), 'estado_1': 'reservada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:13:15,448 | INFO | CHECKOUT | Usuario: admin | Accion: Error al listar pendientes check-out | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkout = %(fecha_checkout_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkout_1': datetime.date(2025, 12, 12), 'estado_1': 'ocupada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:13:15,462 | INFO | CHECKOUT | Usuario: admin | Accion: Error al listar pendientes check-out | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkout = %(fecha_checkout_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkout_1': datetime.date(2025, 12, 12), 'estado_1': 'ocupada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:13:15,462 | INFO | CHECKIN | Usuario: admin | Accion: Error al listar pendientes check-in | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkin = %(fecha_checkin_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkin_1': datetime.date(2025, 12, 12), 'estado_1': 'reservada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:13:18,361 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:13:18,376 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:13:18,433 | INFO | CHECKIN | Usuario: admin | Accion: Error al listar pendientes check-in | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkin = %(fecha_checkin_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkin_1': datetime.date(2025, 12, 12), 'estado_1': 'reservada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:13:18,434 | INFO | CHECKOUT | Usuario: admin | Accion: Error al listar pendientes check-out | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkout = %(fecha_checkout_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkout_1': datetime.date(2025, 12, 12), 'estado_1': 'ocupada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:13:18,457 | INFO | CHECKIN | Usuario: admin | Accion: Error al listar pendientes check-in | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkin = %(fecha_checkin_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkin_1': datetime.date(2025, 12, 12), 'estado_1': 'reservada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:13:18,458 | INFO | CHECKOUT | Usuario: admin | Accion: Error al listar pendientes check-out | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkout = %(fecha_checkout_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkout_1': datetime.date(2025, 12, 12), 'estado_1': 'ocupada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:14:03,505 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:14:03,514 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:14:03,559 | INFO | CHECKIN | Usuario: admin | Accion: Error al listar pendientes check-in | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkin = %(fecha_checkin_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkin_1': datetime.date(2025, 12, 12), 'estado_1': 'reservada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:14:03,562 | INFO | CHECKOUT | Usuario: admin | Accion: Error al listar pendientes check-out | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkout = %(fecha_checkout_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkout_1': datetime.date(2025, 12, 12), 'estado_1': 'ocupada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:14:03,576 | INFO | CHECKIN | Usuario: admin | Accion: Error al listar pendientes check-in | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkin = %(fecha_checkin_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkin_1': datetime.date(2025, 12, 12), 'estado_1': 'reservada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:14:03,578 | INFO | CHECKOUT | Usuario: admin | Accion: Error al listar pendientes check-out | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkout = %(fecha_checkout_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkout_1': datetime.date(2025, 12, 12), 'estado_1': 'ocupada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:14:11,827 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:14:11,836 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:14:11,879 | INFO | CHECKIN | Usuario: admin | Accion: Error al listar pendientes check-in | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkin = %(fecha_checkin_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkin_1': datetime.date(2025, 12, 12), 'estado_1': 'reservada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:14:11,879 | INFO | CHECKOUT | Usuario: admin | Accion: Error al listar pendientes check-out | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkout = %(fecha_checkout_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkout_1': datetime.date(2025, 12, 12), 'estado_1': 'ocupada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:14:11,897 | INFO | CHECKIN | Usuario: admin | Accion: Error al listar pendientes check-in | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkin = %(fecha_checkin_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkin_1': datetime.date(2025, 12, 12), 'estado_1': 'reservada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:14:11,897 | INFO | CHECKOUT | Usuario: admin | Accion: Error al listar pendientes check-out | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkout = %(fecha_checkout_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkout_1': datetime.date(2025, 12, 12), 'estado_1': 'ocupada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:17:11,378 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:17:11,452 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:17:11,462 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:17:11,517 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 18:17:11,527 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 18:17:11,657 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=1
+2025-12-12 18:17:11,675 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=1
+2025-12-12 18:17:11,684 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=1
+2025-12-12 18:17:11,704 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=1
+2025-12-12 18:17:12,193 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:17:12,208 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:17:12,235 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 18:17:12,253 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 18:17:12,262 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=1
+2025-12-12 18:17:12,279 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=1
+2025-12-12 18:17:12,284 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=1
+2025-12-12 18:17:12,295 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=1
+2025-12-12 18:17:50,256 | INFO | CHECKIN | Usuario: admin | Accion: Error al listar pendientes check-in | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkin = %(fecha_checkin_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkin_1': datetime.date(2025, 12, 12), 'estado_1': 'reservada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:17:50,263 | INFO | CHECKOUT | Usuario: admin | Accion: Error al listar pendientes check-out | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkout = %(fecha_checkout_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkout_1': datetime.date(2025, 12, 12), 'estado_1': 'ocupada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:17:50,278 | INFO | CHECKIN | Usuario: admin | Accion: Error al listar pendientes check-in | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkin = %(fecha_checkin_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkin_1': datetime.date(2025, 12, 12), 'estado_1': 'reservada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:17:50,279 | INFO | CHECKOUT | Usuario: admin | Accion: Error al listar pendientes check-out | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkout = %(fecha_checkout_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkout_1': datetime.date(2025, 12, 12), 'estado_1': 'ocupada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:17:52,551 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:17:52,568 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:17:52,628 | INFO | CHECKIN | Usuario: admin | Accion: Error al listar pendientes check-in | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkin = %(fecha_checkin_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkin_1': datetime.date(2025, 12, 12), 'estado_1': 'reservada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:17:52,629 | INFO | CHECKOUT | Usuario: admin | Accion: Error al listar pendientes check-out | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkout = %(fecha_checkout_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkout_1': datetime.date(2025, 12, 12), 'estado_1': 'ocupada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:17:52,646 | INFO | CHECKOUT | Usuario: admin | Accion: Error al listar pendientes check-out | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkout = %(fecha_checkout_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkout_1': datetime.date(2025, 12, 12), 'estado_1': 'ocupada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:17:52,648 | INFO | CHECKIN | Usuario: admin | Accion: Error al listar pendientes check-in | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkin = %(fecha_checkin_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkin_1': datetime.date(2025, 12, 12), 'estado_1': 'reservada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:19:06,634 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:19:06,650 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:19:06,712 | INFO | CHECKOUT | Usuario: admin | Accion: Error al listar pendientes check-out | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkout = %(fecha_checkout_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkout_1': datetime.date(2025, 12, 12), 'estado_1': 'ocupada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:19:06,713 | INFO | CHECKIN | Usuario: admin | Accion: Error al listar pendientes check-in | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkin = %(fecha_checkin_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkin_1': datetime.date(2025, 12, 12), 'estado_1': 'reservada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:19:06,730 | INFO | CHECKOUT | Usuario: admin | Accion: Error al listar pendientes check-out | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkout = %(fecha_checkout_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkout_1': datetime.date(2025, 12, 12), 'estado_1': 'ocupada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:19:06,733 | INFO | CHECKIN | Usuario: admin | Accion: Error al listar pendientes check-in | Detalle: error=(psycopg2.errors.UndefinedColumn) no existe la columna reservas.estado_operacional
+LINE 1: ...idad_menores, reservas.estado AS reservas_estado, reservas.e...
+                                                             ^
+
+[SQL: SELECT reservas.id AS reservas_id, reservas.cliente_id AS reservas_cliente_id, reservas.empresa_id AS reservas_empresa_id, reservas.nombre_temporal AS reservas_nombre_temporal, reservas.fecha_checkin AS reservas_fecha_checkin, reservas.fecha_checkout AS reservas_fecha_checkout, reservas.fecha_checkin_real AS reservas_fecha_checkin_real, reservas.fecha_checkout_real AS reservas_fecha_checkout_real, reservas.cantidad_adultos AS reservas_cantidad_adultos, reservas.cantidad_menores AS reservas_cantidad_menores, reservas.estado AS reservas_estado, reservas.estado_operacional AS reservas_estado_operacional, reservas.subtotal AS reservas_subtotal, reservas.descuento AS reservas_descuento, reservas.impuestos AS reservas_impuestos, reservas.total AS reservas_total, reservas.monto_pagado AS reservas_monto_pagado, reservas.saldo_pendiente AS reservas_saldo_pendiente, reservas.estado_habitacion AS reservas_estado_habitacion, reservas.usuario_actual AS reservas_usuario_actual, reservas.notas_internas AS reservas_notas_internas, reservas.deleted AS reservas_deleted, reservas.notas AS reservas_notas, reservas.creado_en AS reservas_creado_en, reservas.creado_por AS reservas_creado_por, reservas.actualizado_en AS reservas_actualizado_en, reservas.actualizado_por AS reservas_actualizado_por 
+FROM reservas 
+WHERE reservas.deleted IS false AND reservas.fecha_checkin = %(fecha_checkin_1)s AND reservas.estado = %(estado_1)s]
+[parameters: {'fecha_checkin_1': datetime.date(2025, 12, 12), 'estado_1': 'reservada'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-12 18:24:52,671 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:24:52,682 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:24:52,746 | INFO | CHECKIN | Usuario: admin | Accion: Listar pendientes de check-in | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:24:52,748 | INFO | CHECKOUT | Usuario: admin | Accion: Listar pendientes de check-out | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:24:52,766 | INFO | CHECKIN | Usuario: admin | Accion: Listar pendientes de check-in | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:24:52,767 | INFO | CHECKOUT | Usuario: admin | Accion: Listar pendientes de check-out | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:24:57,666 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 18:24:57,678 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 18:24:57,705 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=1
+2025-12-12 18:24:57,716 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=1
+2025-12-12 18:24:57,722 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=1
+2025-12-12 18:24:57,733 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=1
+2025-12-12 18:27:27,660 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:27:27,673 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:27:27,727 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 18:27:27,741 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 18:27:27,885 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=1
+2025-12-12 18:27:27,905 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=1
+2025-12-12 18:27:27,912 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=1
+2025-12-12 18:27:27,930 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=1
+2025-12-12 18:33:37,127 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:33:37,137 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:33:37,184 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 18:33:37,195 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 18:33:37,213 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=1
+2025-12-12 18:33:37,221 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=1
+2025-12-12 18:33:37,224 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=1
+2025-12-12 18:33:37,230 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=1
+2025-12-12 18:33:37,267 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=4
+2025-12-12 18:33:37,306 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=4
+2025-12-12 18:33:54,776 | INFO | CHECKIN | Usuario: admin | Accion: Listar pendientes de check-in | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:33:54,777 | INFO | CHECKOUT | Usuario: admin | Accion: Listar pendientes de check-out | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:33:54,797 | INFO | CHECKIN | Usuario: admin | Accion: Listar pendientes de check-in | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:33:54,798 | INFO | CHECKOUT | Usuario: admin | Accion: Listar pendientes de check-out | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:34:01,666 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:34:01,676 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:34:01,727 | INFO | CHECKIN | Usuario: admin | Accion: Listar pendientes de check-in | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:34:01,739 | INFO | CHECKIN | Usuario: admin | Accion: Listar pendientes de check-in | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:34:01,793 | INFO | CHECKOUT | Usuario: admin | Accion: Listar pendientes de check-out | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:34:01,799 | INFO | CHECKOUT | Usuario: admin | Accion: Listar pendientes de check-out | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:34:03,871 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 18:34:03,896 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 18:34:03,908 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=1
+2025-12-12 18:34:03,936 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=1
+2025-12-12 18:34:03,938 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=1
+2025-12-12 18:34:03,959 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=1
+2025-12-12 18:34:03,994 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=4
+2025-12-12 18:34:04,037 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=4
+2025-12-12 18:34:16,089 | INFO | CHECKIN | Usuario: admin | Accion: Listar pendientes de check-in | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:34:16,090 | INFO | CHECKOUT | Usuario: admin | Accion: Listar pendientes de check-out | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:34:16,103 | INFO | CHECKIN | Usuario: admin | Accion: Listar pendientes de check-in | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:34:16,104 | INFO | CHECKOUT | Usuario: admin | Accion: Listar pendientes de check-out | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:36:03,513 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=1
+2025-12-12 18:36:03,521 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=1
+2025-12-12 18:36:03,994 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 18:36:04,001 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 18:36:04,023 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=1
+2025-12-12 18:36:04,033 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=1
+2025-12-12 18:36:04,035 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=1
+2025-12-12 18:36:04,046 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=1
+2025-12-12 18:36:04,061 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=4
+2025-12-12 18:36:04,082 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=4
+2025-12-12 18:36:11,124 | INFO | RESERVAS | Usuario: admin | Accion: Crear reserva | Detalle: id=31
+2025-12-12 18:36:11,144 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 18:36:11,168 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=1
+2025-12-12 18:36:11,177 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=1
+2025-12-12 18:36:11,203 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=5
+2025-12-12 18:36:13,500 | INFO | CHECKOUT | Usuario: admin | Accion: Listar pendientes de check-out | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:36:13,516 | INFO | CHECKIN | Usuario: admin | Accion: Listar pendientes de check-in | Detalle: fecha=2025-12-12 total=1
+2025-12-12 18:36:13,530 | INFO | CHECKOUT | Usuario: admin | Accion: Listar pendientes de check-out | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:36:13,545 | INFO | CHECKIN | Usuario: admin | Accion: Listar pendientes de check-in | Detalle: fecha=2025-12-12 total=1
+2025-12-12 18:36:27,422 | INFO | CHECKIN | Usuario: recepcion | Accion: Check-in realizado | Detalle: reserva_id=31 huespedes=1 items=0 incremento=0
+2025-12-12 18:36:27,435 | INFO | CHECKIN | Usuario: admin | Accion: Listar pendientes de check-in | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:36:27,436 | INFO | CHECKOUT | Usuario: admin | Accion: Listar pendientes de check-out | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:36:30,330 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 18:36:30,338 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 18:36:30,351 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=2
+2025-12-12 18:36:30,361 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=2
+2025-12-12 18:36:30,363 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=1
+2025-12-12 18:36:30,372 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=1
+2025-12-12 18:36:30,386 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=5
+2025-12-12 18:36:30,408 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=5
+2025-12-12 18:36:37,184 | INFO | CHECKOUT | Usuario: admin | Accion: Listar pendientes de check-out | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:36:37,184 | INFO | CHECKIN | Usuario: admin | Accion: Listar pendientes de check-in | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:36:37,202 | INFO | CHECKOUT | Usuario: admin | Accion: Listar pendientes de check-out | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:36:37,202 | INFO | CHECKIN | Usuario: admin | Accion: Listar pendientes de check-in | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:37:37,218 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:37:37,241 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:37:37,285 | INFO | CHECKIN | Usuario: admin | Accion: Listar pendientes de check-in | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:37:37,289 | INFO | CHECKOUT | Usuario: admin | Accion: Listar pendientes de check-out | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:37:37,303 | INFO | CHECKIN | Usuario: admin | Accion: Listar pendientes de check-in | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:37:37,304 | INFO | CHECKOUT | Usuario: admin | Accion: Listar pendientes de check-out | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:41:52,192 | INFO | CHECKIN | Usuario: admin | Accion: Listar pendientes de check-in | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:41:52,193 | INFO | CHECKOUT | Usuario: admin | Accion: Listar pendientes de check-out | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:41:52,211 | INFO | CHECKIN | Usuario: admin | Accion: Listar pendientes de check-in | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:41:52,212 | INFO | CHECKOUT | Usuario: admin | Accion: Listar pendientes de check-out | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:41:52,803 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 18:41:52,810 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 18:41:53,262 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 18:41:53,271 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=5
+2025-12-12 18:41:53,286 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=2
+2025-12-12 18:41:53,293 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=2
+2025-12-12 18:41:53,294 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=1
+2025-12-12 18:41:53,305 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=1
+2025-12-12 18:41:53,321 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=5
+2025-12-12 18:41:53,347 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=5
+2025-12-12 18:42:45,057 | INFO | CHECKIN | Usuario: admin | Accion: Listar pendientes de check-in | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:42:45,057 | INFO | CHECKOUT | Usuario: admin | Accion: Listar pendientes de check-out | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:42:45,073 | INFO | CHECKIN | Usuario: admin | Accion: Listar pendientes de check-in | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:42:45,074 | INFO | CHECKOUT | Usuario: admin | Accion: Listar pendientes de check-out | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:43:39,983 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-12 18:43:39,990 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-12 18:43:40,004 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:43:40,019 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:43:40,092 | INFO | CHECKIN | Usuario: admin | Accion: Listar pendientes de check-in | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:43:40,094 | INFO | CHECKOUT | Usuario: admin | Accion: Listar pendientes de check-out | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:43:40,116 | INFO | CHECKIN | Usuario: admin | Accion: Listar pendientes de check-in | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:43:40,119 | INFO | CHECKOUT | Usuario: admin | Accion: Listar pendientes de check-out | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:43:44,617 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:43:44,629 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:43:44,676 | INFO | CHECKOUT | Usuario: admin | Accion: Listar pendientes de check-out | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:43:44,677 | INFO | CHECKIN | Usuario: admin | Accion: Listar pendientes de check-in | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:43:44,691 | INFO | CHECKOUT | Usuario: admin | Accion: Listar pendientes de check-out | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:43:44,691 | INFO | CHECKIN | Usuario: admin | Accion: Listar pendientes de check-in | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:47:43,894 | INFO | AUTH | Usuario: admin | Accion: Intento de login con usuario inexistente
+2025-12-12 18:47:44,870 | INFO | AUTH | Usuario: admin | Accion: Intento de login con usuario inexistente
+2025-12-12 18:48:49,073 | INFO | AUTH | Usuario: admin | Accion: Login exitoso | Detalle: rol=admin
+2025-12-12 18:48:49,083 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-12 18:48:53,258 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=0
+2025-12-12 18:48:53,271 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=0
+2025-12-12 18:48:54,189 | INFO | CHECKIN | Usuario: admin | Accion: Listar pendientes de check-in | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:48:54,193 | INFO | CHECKOUT | Usuario: admin | Accion: Listar pendientes de check-out | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:48:54,207 | INFO | CHECKIN | Usuario: admin | Accion: Listar pendientes de check-in | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:48:54,207 | INFO | CHECKOUT | Usuario: admin | Accion: Listar pendientes de check-out | Detalle: fecha=2025-12-12 total=0
+2025-12-12 18:48:55,486 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=0
+2025-12-12 18:48:55,496 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=0
+2025-12-12 18:48:55,911 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=0
+2025-12-12 18:48:55,918 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=0
+2025-12-12 18:48:55,942 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=0
+2025-12-12 18:48:55,952 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=0
+2025-12-12 18:48:55,957 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-12 18:48:55,965 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-12 18:48:55,968 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-12 18:48:55,976 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-12 18:48:56,294 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-12 18:48:56,298 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-12 18:48:56,675 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=0
+2025-12-12 18:48:56,681 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=0
+2025-12-13 15:13:59,660 | INFO | AUTH | Usuario: admin | Accion: Intento de login con usuario inexistente
+2025-12-13 15:14:03,508 | INFO | AUTH | Usuario: admin | Accion: Intento de login con usuario inexistente
+2025-12-13 15:14:06,924 | INFO | AUTH | Usuario: admin | Accion: Intento de login con usuario inexistente
+2025-12-13 15:14:07,717 | INFO | AUTH | Usuario: admin | Accion: Intento de login con usuario inexistente
+2025-12-13 15:14:07,891 | INFO | AUTH | Usuario: admin | Accion: Intento de login con usuario inexistente
+2025-12-13 15:14:08,077 | INFO | AUTH | Usuario: admin | Accion: Intento de login con usuario inexistente
+2025-12-13 15:18:08,096 | INFO | AUTH | Usuario: admin | Accion: Login exitoso | Detalle: rol=admin
+2025-12-13 15:18:08,108 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 15:18:11,787 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=0
+2025-12-13 15:18:11,794 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=0
+2025-12-13 15:18:17,999 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=0
+2025-12-13 15:18:18,007 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=0
+2025-12-13 15:18:19,324 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 15:18:19,331 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 15:18:21,108 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=0
+2025-12-13 15:18:21,115 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=0
+2025-12-13 15:19:25,900 | INFO | CATEGORIAS | Usuario: sistema | Accion: CREATE | Detalle: Categoría: Doble Estandar (ID: 1)
+2025-12-13 15:20:14,905 | INFO | HOUSEKEEPING | Usuario: admin | Accion: Crear template | Detalle: nombre=Doble estandar
+2025-12-13 15:20:32,397 | INFO | HABITACIONES | Usuario: admin | Accion: Crear habitación | Detalle: id=1 numero=21
+2025-12-13 15:20:32,408 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 15:20:34,898 | INFO | CHECKIN | Usuario: admin | Accion: Listar pendientes de check-in | Detalle: fecha=2025-12-13 total=0
+2025-12-13 15:20:34,899 | INFO | CHECKOUT | Usuario: admin | Accion: Listar pendientes de check-out | Detalle: fecha=2025-12-13 total=0
+2025-12-13 15:20:34,912 | INFO | CHECKIN | Usuario: admin | Accion: Listar pendientes de check-in | Detalle: fecha=2025-12-13 total=0
+2025-12-13 15:20:34,912 | INFO | CHECKOUT | Usuario: admin | Accion: Listar pendientes de check-out | Detalle: fecha=2025-12-13 total=0
+2025-12-13 15:20:35,399 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 15:20:35,408 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 15:20:35,428 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=0
+2025-12-13 15:20:35,436 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=0
+2025-12-13 15:20:35,442 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 15:20:35,450 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 15:20:35,456 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 15:20:35,464 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 15:20:43,492 | INFO | RESERVAS | Usuario: admin | Accion: Crear reserva | Detalle: id=1
+2025-12-13 15:20:43,512 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 15:20:43,530 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=0
+2025-12-13 15:20:43,539 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 15:20:43,558 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 15:20:46,179 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 15:20:46,190 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 15:20:46,503 | INFO | CHECKOUT | Usuario: admin | Accion: Listar pendientes de check-out | Detalle: fecha=2025-12-13 total=0
+2025-12-13 15:20:46,514 | INFO | CHECKIN | Usuario: admin | Accion: Listar pendientes de check-in | Detalle: fecha=2025-12-13 total=1
+2025-12-13 15:20:46,526 | INFO | CHECKOUT | Usuario: admin | Accion: Listar pendientes de check-out | Detalle: fecha=2025-12-13 total=0
+2025-12-13 15:20:46,539 | INFO | CHECKIN | Usuario: admin | Accion: Listar pendientes de check-in | Detalle: fecha=2025-12-13 total=1
+2025-12-13 15:21:26,632 | INFO | CHECKIN | Usuario: recepcion | Accion: Check-in realizado | Detalle: reserva_id=1 huespedes=1 items=0 incremento=0
+2025-12-13 15:21:26,645 | INFO | CHECKIN | Usuario: admin | Accion: Listar pendientes de check-in | Detalle: fecha=2025-12-13 total=0
+2025-12-13 15:21:26,646 | INFO | CHECKOUT | Usuario: admin | Accion: Listar pendientes de check-out | Detalle: fecha=2025-12-13 total=0
+2025-12-13 15:27:08,525 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 15:27:08,534 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 15:27:08,577 | INFO | CHECKIN | Usuario: admin | Accion: Listar pendientes de check-in | Detalle: fecha=2025-12-13 total=0
+2025-12-13 15:27:08,578 | INFO | CHECKOUT | Usuario: admin | Accion: Listar pendientes de check-out | Detalle: fecha=2025-12-13 total=0
+2025-12-13 15:27:08,592 | INFO | CHECKIN | Usuario: admin | Accion: Listar pendientes de check-in | Detalle: fecha=2025-12-13 total=0
+2025-12-13 15:27:08,592 | INFO | CHECKOUT | Usuario: admin | Accion: Listar pendientes de check-out | Detalle: fecha=2025-12-13 total=0
+2025-12-13 15:28:36,118 | INFO | AUTH | Usuario: system | Accion: Error al renovar token | Detalle: error=One or more mappers failed to initialize - can't proceed with initialization of other mappers. Triggering mapper: 'Mapper[ReservaHuesped(reservas_huespedes)]'. Original exception was: Mapper 'Mapper[Reserva(reservas)]' has no property 'huespedes'.  If this property was indicated from other mappers or configure events, ensure registry.configure() has been called.
+2025-12-13 15:28:36,122 | INFO | AUTH | Usuario: system | Accion: Error al renovar token | Detalle: error=One or more mappers failed to initialize - can't proceed with initialization of other mappers. Triggering mapper: 'Mapper[ReservaHuesped(reservas_huespedes)]'. Original exception was: Mapper 'Mapper[Reserva(reservas)]' has no property 'huespedes'.  If this property was indicated from other mappers or configure events, ensure registry.configure() has been called.
+2025-12-13 15:28:37,295 | INFO | AUTH | Usuario: system | Accion: Error en login | Detalle: error=One or more mappers failed to initialize - can't proceed with initialization of other mappers. Triggering mapper: 'Mapper[ReservaHuesped(reservas_huespedes)]'. Original exception was: Mapper 'Mapper[Reserva(reservas)]' has no property 'huespedes'.  If this property was indicated from other mappers or configure events, ensure registry.configure() has been called.
+2025-12-13 15:28:40,976 | INFO | AUTH | Usuario: system | Accion: Error en login | Detalle: error=One or more mappers failed to initialize - can't proceed with initialization of other mappers. Triggering mapper: 'Mapper[ReservaHuesped(reservas_huespedes)]'. Original exception was: Mapper 'Mapper[Reserva(reservas)]' has no property 'huespedes'.  If this property was indicated from other mappers or configure events, ensure registry.configure() has been called.
+2025-12-13 15:28:42,154 | INFO | AUTH | Usuario: system | Accion: Error en login | Detalle: error=One or more mappers failed to initialize - can't proceed with initialization of other mappers. Triggering mapper: 'Mapper[ReservaHuesped(reservas_huespedes)]'. Original exception was: Mapper 'Mapper[Reserva(reservas)]' has no property 'huespedes'.  If this property was indicated from other mappers or configure events, ensure registry.configure() has been called.
+2025-12-13 15:28:42,351 | INFO | AUTH | Usuario: system | Accion: Error en login | Detalle: error=One or more mappers failed to initialize - can't proceed with initialization of other mappers. Triggering mapper: 'Mapper[ReservaHuesped(reservas_huespedes)]'. Original exception was: Mapper 'Mapper[Reserva(reservas)]' has no property 'huespedes'.  If this property was indicated from other mappers or configure events, ensure registry.configure() has been called.
+2025-12-13 15:28:42,519 | INFO | AUTH | Usuario: system | Accion: Error en login | Detalle: error=One or more mappers failed to initialize - can't proceed with initialization of other mappers. Triggering mapper: 'Mapper[ReservaHuesped(reservas_huespedes)]'. Original exception was: Mapper 'Mapper[Reserva(reservas)]' has no property 'huespedes'.  If this property was indicated from other mappers or configure events, ensure registry.configure() has been called.
+2025-12-13 15:28:42,710 | INFO | AUTH | Usuario: system | Accion: Error en login | Detalle: error=One or more mappers failed to initialize - can't proceed with initialization of other mappers. Triggering mapper: 'Mapper[ReservaHuesped(reservas_huespedes)]'. Original exception was: Mapper 'Mapper[Reserva(reservas)]' has no property 'huespedes'.  If this property was indicated from other mappers or configure events, ensure registry.configure() has been called.
+2025-12-13 15:28:42,847 | INFO | AUTH | Usuario: system | Accion: Error en login | Detalle: error=One or more mappers failed to initialize - can't proceed with initialization of other mappers. Triggering mapper: 'Mapper[ReservaHuesped(reservas_huespedes)]'. Original exception was: Mapper 'Mapper[Reserva(reservas)]' has no property 'huespedes'.  If this property was indicated from other mappers or configure events, ensure registry.configure() has been called.
+2025-12-13 15:28:43,048 | INFO | AUTH | Usuario: system | Accion: Error en login | Detalle: error=One or more mappers failed to initialize - can't proceed with initialization of other mappers. Triggering mapper: 'Mapper[ReservaHuesped(reservas_huespedes)]'. Original exception was: Mapper 'Mapper[Reserva(reservas)]' has no property 'huespedes'.  If this property was indicated from other mappers or configure events, ensure registry.configure() has been called.
+2025-12-13 15:28:43,229 | INFO | AUTH | Usuario: system | Accion: Error en login | Detalle: error=One or more mappers failed to initialize - can't proceed with initialization of other mappers. Triggering mapper: 'Mapper[ReservaHuesped(reservas_huespedes)]'. Original exception was: Mapper 'Mapper[Reserva(reservas)]' has no property 'huespedes'.  If this property was indicated from other mappers or configure events, ensure registry.configure() has been called.
+2025-12-13 15:33:50,491 | INFO | AUTH | Usuario: system | Accion: Error en login | Detalle: error=One or more mappers failed to initialize - can't proceed with initialization of other mappers. Triggering mapper: 'Mapper[ReservaHuesped(reservas_huespedes)]'. Original exception was: Mapper 'Mapper[Reserva(reservas)]' has no property 'huespedes'.  If this property was indicated from other mappers or configure events, ensure registry.configure() has been called.
+2025-12-13 15:33:51,336 | INFO | AUTH | Usuario: system | Accion: Error en login | Detalle: error=One or more mappers failed to initialize - can't proceed with initialization of other mappers. Triggering mapper: 'Mapper[ReservaHuesped(reservas_huespedes)]'. Original exception was: Mapper 'Mapper[Reserva(reservas)]' has no property 'huespedes'.  If this property was indicated from other mappers or configure events, ensure registry.configure() has been called.
+2025-12-13 15:33:51,896 | INFO | AUTH | Usuario: system | Accion: Error en login | Detalle: error=One or more mappers failed to initialize - can't proceed with initialization of other mappers. Triggering mapper: 'Mapper[ReservaHuesped(reservas_huespedes)]'. Original exception was: Mapper 'Mapper[Reserva(reservas)]' has no property 'huespedes'.  If this property was indicated from other mappers or configure events, ensure registry.configure() has been called.
+2025-12-13 15:33:52,134 | INFO | AUTH | Usuario: system | Accion: Error en login | Detalle: error=One or more mappers failed to initialize - can't proceed with initialization of other mappers. Triggering mapper: 'Mapper[ReservaHuesped(reservas_huespedes)]'. Original exception was: Mapper 'Mapper[Reserva(reservas)]' has no property 'huespedes'.  If this property was indicated from other mappers or configure events, ensure registry.configure() has been called.
+2025-12-13 15:39:28,513 | INFO | AUTH | Usuario: admin | Accion: Login exitoso | Detalle: rol=admin
+2025-12-13 15:39:28,540 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 15:39:31,646 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 15:39:31,664 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 15:39:31,867 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 15:39:31,876 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 15:39:34,005 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 15:39:34,021 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 15:39:34,096 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 15:39:34,097 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 15:39:34,116 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 15:39:34,118 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 15:40:35,902 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 15:40:35,917 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 15:40:36,008 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 15:40:36,013 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 15:40:36,035 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 15:40:36,036 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 15:41:56,141 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 15:42:44,484 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 15:42:44,495 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 15:42:44,662 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 15:42:44,693 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 15:42:44,721 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 15:42:44,738 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 15:44:04,281 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 15:44:04,292 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 15:44:04,377 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 15:44:04,396 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 15:44:04,433 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 15:44:04,459 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 15:46:18,465 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 15:46:18,472 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 15:46:18,583 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 15:46:18,596 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 15:46:18,606 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 15:46:18,612 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 15:53:29,069 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 15:53:29,077 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 15:53:29,168 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=1
+2025-12-13 15:53:29,180 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=1
+2025-12-13 15:53:29,184 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 15:53:29,194 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 15:53:29,231 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 15:53:29,265 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 16:03:44,644 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 16:03:44,655 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 16:03:44,717 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 16:03:44,732 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 16:03:44,769 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=1
+2025-12-13 16:03:44,777 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=1
+2025-12-13 16:03:44,792 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 16:03:44,799 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 16:03:44,915 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 16:03:44,945 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 16:03:46,664 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:03:46,678 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 16:03:46,695 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:03:46,714 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 16:04:10,736 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 16:04:10,758 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 16:04:11,032 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 16:04:11,088 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 16:04:11,143 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:04:11,156 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:06:06,235 | INFO | CHECKIN | Usuario: recepcion | Accion: Check-in completado: Reserva 1 | Detalle: Huéspedes: 1
+2025-12-13 16:06:06,262 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:06:06,338 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:06:18,066 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 16:06:18,080 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 16:06:18,092 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=2
+2025-12-13 16:06:18,112 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 16:06:18,113 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=2
+2025-12-13 16:06:18,128 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 16:06:18,146 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 16:06:18,171 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 16:06:21,497 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 16:06:21,504 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 16:06:22,395 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=2
+2025-12-13 16:06:22,401 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=2
+2025-12-13 16:06:26,827 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:06:26,828 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:06:26,841 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:06:26,842 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:13:40,017 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:13:40,018 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:13:42,213 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-13 16:13:42,213 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-13 16:13:42,227 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 16:13:42,236 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 16:13:42,289 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:13:42,290 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:13:42,310 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:13:42,311 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:13:50,605 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 16:13:50,620 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 16:13:50,687 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:13:50,712 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 16:13:50,715 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:13:50,747 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 16:13:50,833 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:13:50,849 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:16:11,001 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 16:16:11,014 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 16:16:11,068 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:16:11,073 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:16:11,085 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 16:16:11,092 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:16:11,103 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:16:11,116 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 16:22:48,265 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 16:22:48,279 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 16:22:48,357 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:22:48,373 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:22:48,514 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:22:48,527 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:22:48,535 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:22:48,548 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:26:26,413 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:26:26,613 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:26:26,626 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:27:25,062 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 16:27:25,090 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 16:27:25,129 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=2
+2025-12-13 16:27:25,157 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=2
+2025-12-13 16:27:25,165 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 16:27:25,184 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 16:27:25,252 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 16:27:25,305 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 16:27:28,845 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 16:27:28,868 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 16:27:28,909 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 16:27:28,923 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 16:27:28,947 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=2
+2025-12-13 16:27:28,965 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=2
+2025-12-13 16:27:28,973 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 16:27:28,992 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 16:27:29,022 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 16:27:29,065 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 16:33:41,166 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 16:33:41,181 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 16:33:41,225 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 16:33:41,237 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 16:33:41,266 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=2
+2025-12-13 16:33:41,280 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=2
+2025-12-13 16:33:41,296 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 16:33:41,310 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 16:33:41,332 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 16:33:41,358 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 16:34:56,958 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 16:34:56,972 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 16:34:57,024 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 16:34:57,036 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 16:34:57,074 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=2
+2025-12-13 16:34:57,087 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=2
+2025-12-13 16:34:57,093 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 16:34:57,110 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 16:34:57,129 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 16:34:57,156 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 16:35:04,141 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:35:04,147 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:35:04,149 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:35:04,174 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:35:04,175 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:35:04,176 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 16:35:05,396 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 16:35:05,407 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 16:35:07,840 | INFO | HABITACIONES | Usuario: admin | Accion: Actualizar habitación | Detalle: id=1 campos=11
+2025-12-13 16:35:07,865 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 16:35:08,609 | INFO | HABITACIONES | Usuario: admin | Accion: Actualizar habitación | Detalle: id=1 campos=11
+2025-12-13 16:35:08,624 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 16:35:10,079 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 16:35:10,093 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 16:35:10,114 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=2
+2025-12-13 16:35:10,128 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=2
+2025-12-13 16:35:10,131 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 16:35:10,151 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 16:35:10,162 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 16:35:10,187 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 17:13:06,741 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-13 17:13:06,759 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 17:13:06,831 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-13 17:13:06,906 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 17:13:14,103 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:13:14,130 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:13:14,162 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=2
+2025-12-13 17:13:14,187 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=2
+2025-12-13 17:13:14,195 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 17:13:14,216 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 17:13:14,235 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:13:14,259 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:13:57,038 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:13:57,051 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:13:57,071 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=2
+2025-12-13 17:13:57,082 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=2
+2025-12-13 17:13:57,091 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 17:13:57,101 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 17:13:57,107 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:13:57,118 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:14:34,245 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 17:14:34,261 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 17:14:34,314 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:14:34,326 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:14:34,351 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=2
+2025-12-13 17:14:34,368 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=2
+2025-12-13 17:14:34,375 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 17:14:34,399 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 17:14:34,401 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:14:34,418 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:14:55,938 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 17:14:55,953 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 17:14:56,002 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:14:56,015 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:14:56,036 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=2
+2025-12-13 17:14:56,050 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=2
+2025-12-13 17:14:56,056 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 17:14:56,070 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 17:14:56,075 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:14:56,091 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:15:42,540 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:15:42,550 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:15:44,478 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 17:15:44,500 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 17:15:44,566 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:15:44,577 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:23:04,956 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:23:16,796 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:23:25,504 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 17:23:25,516 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 17:23:25,568 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:23:25,577 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:23:37,016 | INFO | HABITACIONES | Usuario: admin | Accion: Actualizar habitación | Detalle: id=1 campos=11
+2025-12-13 17:23:37,028 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:23:37,656 | INFO | HABITACIONES | Usuario: admin | Accion: Actualizar habitación | Detalle: id=1 campos=11
+2025-12-13 17:23:37,663 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:23:38,954 | INFO | HABITACIONES | Usuario: admin | Accion: Actualizar habitación | Detalle: id=1 campos=11
+2025-12-13 17:23:38,964 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:23:43,334 | INFO | HABITACIONES | Usuario: admin | Accion: Actualizar habitación | Detalle: id=1 campos=11
+2025-12-13 17:23:43,345 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:23:43,819 | INFO | HABITACIONES | Usuario: admin | Accion: Actualizar habitación | Detalle: id=1 campos=11
+2025-12-13 17:23:43,828 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:23:44,929 | INFO | HABITACIONES | Usuario: admin | Accion: Actualizar habitación | Detalle: id=1 campos=11
+2025-12-13 17:23:44,939 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:24:41,532 | INFO | HABITACIONES | Usuario: admin | Accion: Historial habitacion | Detalle: id=1
+2025-12-13 17:24:44,520 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:24:44,522 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:24:44,537 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:24:44,538 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:24:44,631 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:24:44,641 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:24:45,539 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:24:45,558 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:24:45,837 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:24:45,845 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:24:45,869 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=2
+2025-12-13 17:24:45,883 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 17:24:45,884 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=2
+2025-12-13 17:24:45,897 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:24:45,903 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 17:24:45,914 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:25:00,564 | INFO | RESERVAS | Usuario: admin | Accion: Crear reserva | Detalle: id=2
+2025-12-13 17:25:00,594 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:25:00,614 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=2
+2025-12-13 17:25:00,626 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 17:25:00,657 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 17:25:05,732 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:25:05,734 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:25:05,737 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 17:25:05,755 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:25:05,760 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:25:05,771 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 17:25:48,702 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 17:25:48,717 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 17:25:48,812 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:25:48,821 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 17:25:48,822 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:25:48,840 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:25:48,852 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:25:48,859 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 17:26:16,720 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 17:26:16,745 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 17:26:16,823 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:26:16,831 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:26:16,842 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 17:26:16,858 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:26:16,864 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:26:16,890 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 17:27:35,516 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:27:35,524 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:27:40,303 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:27:40,308 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:27:40,311 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 17:27:40,325 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:27:40,327 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:27:40,331 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 17:30:31,840 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 17:30:31,851 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 17:30:31,910 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:30:31,914 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:30:31,917 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 17:30:31,940 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:30:31,943 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:30:31,961 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 17:31:58,082 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 17:31:58,096 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 17:31:58,196 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:31:58,198 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:31:58,208 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 17:31:58,230 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:31:58,234 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:31:58,253 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 17:36:30,029 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 17:36:30,043 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 17:36:30,133 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:36:30,137 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:36:30,146 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 17:36:30,170 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:36:30,173 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:36:30,190 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 17:37:35,778 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 17:37:35,788 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 17:37:35,873 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:37:35,875 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:37:35,880 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 17:37:35,907 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:37:35,908 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:37:36,037 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 17:39:52,728 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 17:39:52,740 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 17:39:52,884 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 17:39:52,917 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 17:39:52,950 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:39:52,956 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:39:52,958 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:39:52,966 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:40:23,382 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 17:40:23,407 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 17:40:23,505 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:40:23,506 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:40:23,532 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 17:40:23,533 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:40:23,547 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:40:23,582 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 17:42:34,965 | INFO | CHECKIN | Usuario: recepcion | Accion: Check-in completado: Reserva 2 | Detalle: Huéspedes: 1
+2025-12-13 17:42:34,997 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:42:35,093 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:42:35,131 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 17:42:56,836 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 17:42:56,856 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 17:42:56,906 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:42:56,911 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:42:56,939 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 17:42:56,950 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:42:56,951 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:42:56,980 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 17:43:14,746 | INFO | CHECKOUT | Usuario: recepcion | Accion: Cerrar reserva | Detalle: reserva_id=2
+2025-12-13 17:43:14,780 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:43:14,782 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:43:14,783 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-13 17:43:19,050 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:43:19,068 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:43:19,097 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=3
+2025-12-13 17:43:19,116 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=3
+2025-12-13 17:43:19,121 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 17:43:19,135 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 17:43:19,147 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 17:43:19,174 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 17:43:19,949 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 17:43:19,960 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 17:43:21,485 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:43:21,494 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:43:21,510 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=3
+2025-12-13 17:43:21,518 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=3
+2025-12-13 17:43:21,520 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 17:43:21,533 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 17:43:21,547 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 17:43:21,567 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 17:43:22,003 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:43:22,015 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:44:27,431 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:44:27,443 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:44:27,463 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=3
+2025-12-13 17:44:27,474 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=3
+2025-12-13 17:44:27,477 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 17:44:27,490 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 17:44:27,504 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 17:44:27,525 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 17:44:29,416 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-13 17:44:29,420 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-13 17:44:29,442 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 17:44:29,455 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 17:44:29,512 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:44:29,526 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:44:29,556 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=3
+2025-12-13 17:44:29,568 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=3
+2025-12-13 17:44:29,570 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 17:44:29,584 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 17:44:29,607 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 17:44:29,631 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 17:44:31,521 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 17:44:31,528 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 17:44:32,067 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:44:32,074 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:44:32,087 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=3
+2025-12-13 17:44:32,099 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=3
+2025-12-13 17:44:32,101 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 17:44:32,112 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 17:44:32,121 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 17:44:32,138 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 17:44:32,496 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:44:32,505 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:45:27,296 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 17:45:27,308 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-13 17:45:27,371 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:45:27,384 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:45:28,790 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:45:28,801 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-13 17:45:28,818 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=3
+2025-12-13 17:45:28,829 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=3
+2025-12-13 17:45:28,830 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 17:45:28,840 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-13 17:45:28,851 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-13 17:45:28,873 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-14 14:41:23,994 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-14 14:41:24,019 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-14 14:41:24,050 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-14 14:41:24,075 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-14 14:41:26,363 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-14 14:41:26,376 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-14 14:41:26,394 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=3
+2025-12-14 14:41:26,407 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=3
+2025-12-14 14:41:26,411 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-14 14:41:26,419 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-14 14:41:26,449 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-14 14:41:26,475 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-14 14:41:28,436 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-14 14:41:28,441 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-14 14:41:30,423 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-14 14:41:30,424 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-14 14:41:30,432 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-14 14:41:30,433 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-14 14:41:30,477 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-14 14:41:30,482 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-14 14:41:32,841 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-14 14:41:32,853 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-14 14:41:32,868 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-14 14:41:32,868 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-14 14:41:32,869 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-14 14:41:32,883 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-14 14:41:32,883 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-14 14:41:32,883 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=0
+2025-12-14 14:41:33,424 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-14 14:41:33,430 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-14 14:41:35,238 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-14 14:41:35,245 | INFO | HABITACIONES | Usuario: admin | Accion: Listar habitaciones | Detalle: total=1
+2025-12-14 14:41:35,255 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=3
+2025-12-14 14:41:35,261 | INFO | CLIENTES | Usuario: admin | Accion: Listar clientes | Detalle: total=3
+2025-12-14 14:41:35,262 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-14 14:41:35,271 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
+2025-12-14 14:41:35,273 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-14 14:41:35,283 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1

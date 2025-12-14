@@ -1,6 +1,7 @@
 # models/__init__.py
 
 from .reserva import Reserva, ReservaItem, ReservaHabitacion
+from .reserva_eventos import ReservaHuesped, ReservaEvento, ReservaPago, ReservaRoomMove
 from .cliente import Cliente, ClienteVisita
 from .empresa import Empresa
 from .habitacion import Habitacion, CategoriaHabitacion, MantenimientoHabitacion

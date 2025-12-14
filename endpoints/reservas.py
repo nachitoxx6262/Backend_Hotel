@@ -22,8 +22,15 @@ from schemas.reservas import (
 from utils.logging_utils import log_event
 
 
+from models.reserva import EstadoReservaEnum
+
 router = APIRouter(prefix="/reservas", tags=["Reservas"])
-ACTIVE_RESERVATION_STATES = ("reservada", "ocupada")
+# Estados activos: reservas pendientes, en proceso, o en checkout
+ACTIVE_RESERVATION_STATES = (
+    EstadoReservaEnum.PENDIENTE_CHECKIN,
+    EstadoReservaEnum.OCUPADA,
+    EstadoReservaEnum.PENDIENTE_CHECKOUT
+)
 
 
 def _recalcular_totales(reserva: Reserva, dias: int) -> None:
@@ -60,10 +67,22 @@ def _enriquecer_reserva(db: Session, reserva: Reserva) -> None:
         reserva.cliente_nombre = reserva.nombre_temporal or "Sin asignar"
 
     if reserva.habitaciones:
+        # Asignar numero de la primera habitación como alias de reserva
         primera = reserva.habitaciones[0]
         habitacion = db.query(Habitacion).filter(Habitacion.id == primera.habitacion_id).first()
         if habitacion:
             reserva.habitacion_numero = str(habitacion.numero)
+
+        # Enriquecer cada relación ReservaHabitacion con el número
+        for rh in reserva.habitaciones:
+            try:
+                hab = db.query(Habitacion).filter(Habitacion.id == rh.habitacion_id).first()
+                if hab:
+                    # Atributo dinámico para serialización en schema
+                    rh.habitacion_numero = str(hab.numero)
+            except Exception:
+                # Evitar que un fallo puntual rompa la respuesta completa
+                pass
 
 
 def _buscar_reserva(db: Session, reserva_id: int, include_deleted: bool = False) -> Optional[Reserva]:
@@ -116,7 +135,7 @@ def _verificar_disponibilidad_habitaciones(db, habitacion_ids, start_date, end_d
         .filter(
             ReservaHabitacion.habitacion_id.in_(habitacion_ids),
             Reserva.deleted.is_(False),
-            Reserva.estado.in_(["reservada", "ocupada"]),  # Solo verificar reservas activas
+            Reserva.estado_operacional.in_(ACTIVE_RESERVATION_STATES),  # Solo verificar reservas activas
             # NO hay conflicto si: existente.checkin >= nueva.checkout O existente.checkout <= nueva.checkin
             # HAY conflicto si: existente.checkin < nueva.checkout AND existente.checkout > nueva.checkin
             Reserva.fecha_checkin < end_date,
@@ -173,11 +192,15 @@ def _validar_referencias(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El cliente pertenece a otra empresa")
 
 
-def _registrar_historial(db: Session, reserva_id: int, estado_nuevo: str, usuario: str, estado_anterior: Optional[str] = None, motivo: Optional[str] = None) -> None:
+def _registrar_historial(db: Session, reserva_id: int, estado_nuevo, usuario: str, estado_anterior=None, motivo: Optional[str] = None) -> None:
+    # Convertir enum a string si es necesario
+    estado_nuevo_str = estado_nuevo.value if hasattr(estado_nuevo, 'value') else str(estado_nuevo)
+    estado_anterior_str = estado_anterior.value if hasattr(estado_anterior, 'value') else (str(estado_anterior) if estado_anterior else None)
+    
     historial = HistorialReserva(
         reserva_id=reserva_id,
-        estado_anterior=estado_anterior,
-        estado_nuevo=estado_nuevo,
+        estado_anterior=estado_anterior_str,
+        estado_nuevo=estado_nuevo_str,
         usuario=usuario,
         fecha=datetime.utcnow(),
         motivo=motivo,
@@ -236,7 +259,7 @@ def listar_reservas(
         .filter(Reserva.deleted.is_(False))
     )
     if estado:
-        query = query.filter(Reserva.estado == estado)
+        query = query.filter(Reserva.estado_operacional == estado)
     if cliente_id:
         query = query.filter(Reserva.cliente_id == cliente_id)
     if empresa_id:
@@ -335,7 +358,8 @@ def crear_reserva(reserva: ReservaCreate, db: Session = Depends(conexion.get_db)
             nombre_temporal=reserva.nombre_temporal,
             fecha_checkin=reserva.fecha_checkin,
             fecha_checkout=reserva.fecha_checkout,
-            estado=reserva.estado,
+            estado=EstadoReservaEnum.PENDIENTE_CHECKIN.value,  # Compatibilidad backwards
+            estado_operacional=EstadoReservaEnum.PENDIENTE_CHECKIN,
             notas=reserva.notas,
         )
         db.add(nueva)
@@ -399,7 +423,7 @@ def crear_reserva(reserva: ReservaCreate, db: Session = Depends(conexion.get_db)
         if dias >= 7:
             total *= Decimal("0.9")
         nueva.total = total.quantize(Decimal("0.01"))
-        _registrar_historial(db, nueva.id, nueva.estado, "admin", estado_anterior=None)
+        _registrar_historial(db, nueva.id, nueva.estado_operacional, "admin", estado_anterior=None)
         db.commit()
         db.refresh(nueva)
         _enriquecer_reserva(db, nueva)
@@ -458,10 +482,18 @@ def actualizar_reserva(
         reserva_db.fecha_checkout = checkout
         datos.pop("fecha_checkin", None)
         datos.pop("fecha_checkout", None)
-    estado_anterior = reserva_db.estado
-    if "estado" in datos and datos["estado"] != estado_anterior:
-        reserva_db.estado = datos.pop("estado")
-        _registrar_historial(db, reserva_db.id, reserva_db.estado, "admin", estado_anterior=estado_anterior)
+    estado_anterior = reserva_db.estado_operacional
+    if "estado" in datos:
+        try:
+            nuevo_estado_enum = EstadoReservaEnum[datos.pop("estado").upper()]
+            if reserva_db.estado_operacional != nuevo_estado_enum:
+                reserva_db.estado_operacional = nuevo_estado_enum
+                reserva_db.estado = nuevo_estado_enum.value
+                reserva_db.actualizado_por = "admin"
+                reserva_db.actualizado_en = datetime.utcnow()
+                _registrar_historial(db, reserva_db.id, nuevo_estado_enum, "admin", estado_anterior=estado_anterior)
+        except KeyError:
+            pass  # Ignorar estado inválido
     for campo, valor in datos.items():
         setattr(reserva_db, campo, valor)
     db.commit()
@@ -474,17 +506,27 @@ def actualizar_reserva(
 @router.put("/{reserva_id}/estado", response_model=ReservaRead)
 def actualizar_estado_reserva(
     reserva_id: int = Path(..., gt=0),
-    nuevo_estado: str = Query(..., min_length=1, max_length=20, strip_whitespace=True),
+    nuevo_estado: str = Query(..., min_length=1, max_length=50, strip_whitespace=True),
     usuario: str = Query("admin", min_length=1, max_length=50, strip_whitespace=True),
     db: Session = Depends(conexion.get_db),
 ):
     reserva = _buscar_reserva(db, reserva_id)
     if not reserva:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reserva no encontrada")
-    if reserva.estado != nuevo_estado:
-        estado_anterior = reserva.estado
-        reserva.estado = nuevo_estado
-        _registrar_historial(db, reserva.id, nuevo_estado, usuario, estado_anterior=estado_anterior)
+    
+    try:
+        nuevo_estado_enum = EstadoReservaEnum[nuevo_estado.upper()]
+    except KeyError:
+        valores_validos = ", ".join([e.name for e in EstadoReservaEnum])
+        raise HTTPException(status_code=400, detail=f"Estado inválido. Usa: {valores_validos}")
+    
+    if reserva.estado_operacional != nuevo_estado_enum:
+        estado_anterior = reserva.estado_operacional
+        reserva.estado_operacional = nuevo_estado_enum
+        reserva.estado = nuevo_estado_enum.value
+        reserva.actualizado_por = usuario
+        reserva.actualizado_en = datetime.utcnow()
+        _registrar_historial(db, reserva.id, nuevo_estado_enum, usuario, estado_anterior=estado_anterior)
         db.commit()
         db.refresh(reserva)
         _enriquecer_reserva(db, reserva)
@@ -531,9 +573,9 @@ def mover_reserva(
     _registrar_historial(
         db,
         reserva.id,
-        reserva.estado,
+        reserva.estado_operacional,
         cambios.usuario,
-        estado_anterior=reserva.estado,
+        estado_anterior=reserva.estado_operacional,
         motivo=cambios.motivo or "Reprogramación drag and drop",
     )
 
@@ -558,8 +600,8 @@ def eliminar_reserva(
     if not reserva:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reserva no encontrada")
     
-    # Restaurar habitaciones a disponible si la reserva no está finalizada
-    if reserva.estado != "finalizada":
+    # Restaurar habitaciones a disponible si la reserva no está cerrada
+    if reserva.estado_operacional != EstadoReservaEnum.CERRADA:
         for reserva_habitacion in reserva.habitaciones:
             habitacion = db.query(Habitacion).filter(
                 Habitacion.id == reserva_habitacion.habitacion_id
