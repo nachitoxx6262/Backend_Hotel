@@ -156,11 +156,16 @@ class Reservation(Base):
     fecha_checkout = Column(Date, nullable=False)
 
     # Estado de reserva (negocio)
-    # draft | confirmada | cancelada | no_show | convertida (cuando crea estadía)
+    # draft | confirmada | ocupada | cancelada | no_show | cerrada
     estado = Column(String(20), nullable=False, default="confirmada")
 
     origen = Column(String(30), nullable=True)  # walkin, whatsapp, booking, etc.
     notas = Column(Text, nullable=True)
+    
+    # Cancelación (soft delete)
+    cancel_reason = Column(Text, nullable=True)
+    cancelled_at = Column(DateTime, nullable=True)
+    cancelled_by = Column(Integer, nullable=True)  # ID del usuario que canceló
 
     # Snapshot opcional: datos para reconstruir rápido sin 50 joins
     meta = Column(JSONB, nullable=True)
@@ -172,6 +177,25 @@ class Reservation(Base):
     empresa = relationship("Empresa")
     rooms = relationship("ReservationRoom", back_populates="reservation", cascade="all, delete-orphan")
     guests = relationship("ReservationGuest", back_populates="reservation", cascade="all, delete-orphan")
+
+    def can_checkin(self):
+        """Verifica si la reserva puede hacer check-in"""
+        invalid_states = ["cancelada", "no_show", "cerrada"]
+        return self.estado not in invalid_states
+
+    def is_editable(self):
+        """Verifica si la reserva puede ser editada"""
+        # Una reserva no se puede editar si está ocupada (tiene Stay activo), cerrada, cancelada o no-show
+        non_editable_states = ["ocupada", "cerrada", "cancelada", "no_show"]
+        return self.estado not in non_editable_states
+
+    def is_cancelled_or_noshow(self):
+        """Verifica si está cancelada o no-show"""
+        return self.estado in ["cancelada", "no_show"]
+
+    def is_draft_or_confirmed(self):
+        """Verifica si está en draft o confirmada (puede hacer checkin)"""
+        return self.estado in ["draft", "confirmada"]
 
 
 class ReservationRoom(Base):
@@ -240,6 +264,44 @@ class Stay(Base):
     occupancies = relationship("StayRoomOccupancy", back_populates="stay", cascade="all, delete-orphan")
     charges = relationship("StayCharge", back_populates="stay", cascade="all, delete-orphan")
     payments = relationship("StayPayment", back_populates="stay", cascade="all, delete-orphan")
+
+    def get_active_occupancy(self):
+        """Retorna la ocupación activa (hasta IS NULL), o None"""
+        if self.occupancies:
+            active = [o for o in self.occupancies if o.hasta is None]
+            return active[0] if active else None
+        return None
+
+    def has_active_occupancy(self):
+        """Verifica si hay ocupación activa"""
+        return self.get_active_occupancy() is not None
+
+    def calculate_total_charges(self):
+        """Calcula total de cargos"""
+        from decimal import Decimal
+        return sum(Decimal(str(c.monto_total)) for c in self.charges) if self.charges else Decimal("0")
+
+    def calculate_total_payments(self):
+        """Calcula total de pagos (excluyendo reversos)"""
+        from decimal import Decimal
+        return sum(
+            Decimal(str(p.monto)) for p in self.payments 
+            if self.payments and not p.es_reverso
+        ) if self.payments else Decimal("0")
+
+    def calculate_balance(self):
+        """Calcula saldo pendiente (cargos - pagos)"""
+        total_charges = self.calculate_total_charges()
+        total_payments = self.calculate_total_payments()
+        return total_charges - total_payments
+
+    def is_closed(self):
+        """Verifica si Stay está cerrada"""
+        return self.estado == "cerrada"
+
+    def is_active(self):
+        """Verifica si Stay está activa (no cerrada, no pendiente)"""
+        return self.estado in ["ocupada", "pendiente_checkout"]
 
 
 class StayRoomOccupancy(Base):

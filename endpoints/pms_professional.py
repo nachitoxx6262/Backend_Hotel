@@ -19,6 +19,7 @@ from models.core import (
     DailyRate, RatePlan, HKCycle, HKTemplate, AuditEvent, Cliente, Empresa
 )
 from utils.logging_utils import log_event
+from utils.invoice_engine import compute_invoice
 
 
 router = APIRouter(prefix="/api/pms", tags=["PMS Professional"])
@@ -146,7 +147,7 @@ class CheckoutRequest(BaseModel):
 # 1️⃣ CALENDARIO (CORE)
 # ========================================================================
 
-def _parse_date(date_str: str) -> date:
+def parse_to_date(date_str: str) -> date:
     """Convertir string ISO a date"""
     if isinstance(date_str, str):
         return datetime.fromisoformat(date_str.split('T')[0]).date()
@@ -161,7 +162,7 @@ def _format_date(d: date) -> str:
 def _can_move_block(block_kind: str, block_status: str) -> bool:
     """Validar si un bloque puede moverse"""
     if block_kind == "reservation":
-        return block_status not in ["cancelada", "no_show", "convertida"]
+        return block_status not in ["cancelada", "no_show", "ocupada"]
     elif block_kind == "stay":
         return block_status not in ["cerrada"]
     return False
@@ -201,7 +202,7 @@ def _build_blocks(db: Session, from_date: date, to_date: date) -> List[BlockUI]:
             joinedload(Reservation.empresa)
         )
         .filter(
-            Reservation.estado.in_(["confirmada", "draft", "convertida"]),
+            Reservation.estado.in_(["confirmada", "draft"]),  # Excluir ocupada (ya tiene Stay)
             Reservation.fecha_checkin < to_date,
             Reservation.fecha_checkout > from_date
         )
@@ -303,8 +304,8 @@ def get_calendar(
     - Valida can_move, can_resize automáticamente
     - Frontend NO calcula, solo renderiza
     """
-    desde = _parse_date(from_date)
-    hasta = _parse_date(to_date)
+    desde = parse_to_date(from_date)
+    hasta = parse_to_date(to_date)
 
     if hasta <= desde:
         raise HTTPException(400, "Rango de fechas inválido")
@@ -360,7 +361,7 @@ def _check_availability(
         .join(ReservationRoom)
         .filter(
             ReservationRoom.room_id == room_id,
-            Reservation.estado.in_(["confirmada", "convertida"]),
+            Reservation.estado.in_(["confirmada", "draft"]),  # No ocupada (su ocupación está en Stays)
             Reservation.fecha_checkin < to_date,
             Reservation.fecha_checkout > from_date,
             Reservation.id != (exclude_reservation_id or -1)
@@ -422,8 +423,8 @@ def move_block(
             raise HTTPException(409, f"Reserva en estado {res.estado} no puede moverse")
 
         # Parsear nuevas fechas
-        nueva_checkin = _parse_date(req.fecha_checkin) if req.fecha_checkin else res.fecha_checkin
-        nueva_checkout = _parse_date(req.fecha_checkout) if req.fecha_checkout else res.fecha_checkout
+        nueva_checkin = parse_to_date(req.fecha_checkin) if req.fecha_checkin else res.fecha_checkin
+        nueva_checkout = parse_to_date(req.fecha_checkout) if req.fecha_checkout else res.fecha_checkout
 
         if nueva_checkout <= nueva_checkin:
             raise HTTPException(400, "Fechas inválidas")
@@ -538,8 +539,8 @@ def create_reservation(
     """
     Crear reserva (QuickBook)
     """
-    desde = _parse_date(req.fecha_checkin)
-    hasta = _parse_date(req.fecha_checkout)
+    desde = parse_to_date(req.fecha_checkin)
+    hasta = parse_to_date(req.fecha_checkout)
 
     if hasta <= desde:
         raise HTTPException(400, "Fechas inválidas")
@@ -700,8 +701,8 @@ def checkin_from_reservation(
         room = res_room.room
         room.estado_operativo = "ocupada"
 
-    # Marcar reserva como convertida
-    res.estado = "convertida"
+    # Marcar reserva como ocupada (check-in realizado)
+    res.estado = "ocupada"
 
     # Registrar huéspedes
     for huesped_data in req.huespedes:
@@ -911,11 +912,15 @@ def invoice_preview(
     db: Session = Depends(get_db)
 ):
     """
-    SINGLE SOURCE OF TRUTH: Backend calcula TODO
+    REFACTORIZADO: Usa motor compartido (invoice_engine.compute_invoice)
     
+    SINGLE SOURCE OF TRUTH: Backend calcula TODO
     Frontend pasa sugerencias, backend valida y retorna valores finales.
     """
     stay = db.query(Stay).options(
+        joinedload(Stay.reservation).joinedload(Reservation.cliente),
+        joinedload(Stay.reservation).joinedload(Reservation.empresa),
+        joinedload(Stay.occupancies).joinedload(StayRoomOccupancy.room).joinedload(Room.tipo),
         joinedload(Stay.charges),
         joinedload(Stay.payments)
     ).filter(Stay.id == id).first()
@@ -923,47 +928,37 @@ def invoice_preview(
     if not stay:
         raise HTTPException(404, "Estadía no encontrada")
 
-    # Calcular noches
-    nights_planned = (stay.reservation.fecha_checkout - stay.reservation.fecha_checkin).days
-    nights_charge = nights_to_charge if nights_to_charge else nights_planned
+    # Calcular usando motor compartido
+    try:
+        calc = compute_invoice(
+            stay=stay,
+            db=db,
+            nights_override=nights_to_charge,
+            tarifa_override=nightly_rate,
+        )
+    except Exception as e:
+        log_event("invoice_preview", "sistema", "Error de cálculo", f"stay_id={id} error={str(e)}")
+        raise HTTPException(
+            500,
+            f"Error al calcular invoice: {str(e)}"
+        )
 
-    # Tarifa por noche (sugerencia del frontend, validada)
-    rate = nightly_rate if nightly_rate else 20000  # Default
-
-    # Subtotal noches
-    subtotal_noches = Decimal(str(nights_charge * rate))
-
-    # Cargos (consumos)
-    charges_total = sum(c.monto_total for c in stay.charges)
-
-    # Taxes & discounts (hardcoded por ahora, luego configurables)
-    tax_pct = 0.21  # IVA 21%
-    taxes = (subtotal_noches + charges_total) * Decimal(str(tax_pct))
-
-    # Total
-    total = subtotal_noches + charges_total + taxes
-
-    # Pagos
-    payments_total = sum(p.monto for p in stay.payments if not p.es_reverso)
-
-    # Saldo
-    balance = total - payments_total
-
+    # Retornar en formato compatible
     return InvoicePreviewResponse(
         nights={
-            "planned": nights_planned,
-            "to_charge": nights_charge
+            "planned": calc.planned_nights,
+            "to_charge": calc.final_nights
         },
         pricing={
-            "nightly_rate": float(rate),
-            "subtotal": float(subtotal_noches),
-            "taxes": [{"name": "IVA 21%", "amount": float(taxes)}],
+            "nightly_rate": float(calc.nightly_rate),
+            "subtotal": float(calc.room_subtotal),
+            "taxes": [{"name": "Impuestos", "amount": float(calc.taxes_total)}],
             "discounts": []
         },
-        charges_total=float(charges_total),
-        payments_total=float(payments_total),
-        total=float(total),
-        balance=float(balance)
+        charges_total=float(calc.charges_total),
+        payments_total=float(calc.payments_total),
+        total=float(calc.grand_total),
+        balance=float(calc.balance)
     )
 
 
@@ -978,10 +973,21 @@ def checkout_stay(
     db: Session = Depends(get_db)
 ):
     """
-    🚪 CHECK-OUT: Cierre definitivo + housekeeping automático
+    🚪 CHECK-OUT PROFESIONAL
+    
+    REFACTORIZADO: Usa motor compartido (invoice_engine.compute_invoice)
+    - Actualiza Reservation a "finalizada"
+    - Usa cálculo financiero consistente
+    - Maneja housekeeping
+    - Idempotencia completa
     """
+    # =====================================================================
+    # 1) CARGAR STAY
+    # =====================================================================
     stay = db.query(Stay).options(
-        joinedload(Stay.occupancies),
+        joinedload(Stay.reservation).joinedload(Reservation.cliente),
+        joinedload(Stay.reservation).joinedload(Reservation.empresa),
+        joinedload(Stay.occupancies).joinedload(StayRoomOccupancy.room).joinedload(Room.tipo),
         joinedload(Stay.charges),
         joinedload(Stay.payments)
     ).filter(Stay.id == id).first()
@@ -989,73 +995,181 @@ def checkout_stay(
     if not stay:
         raise HTTPException(404, "Estadía no encontrada")
 
+    reservation = stay.reservation
+    if not reservation:
+        raise HTTPException(400, "Stay sin reserva asociada")
+
+    # =====================================================================
+    # 2) IDEMPOTENCIA
+    # =====================================================================
+    if stay.estado == "cerrada":
+        try:
+            calc = compute_invoice(stay, db)
+            log_event("stays", "sistema", "Check-out - Idempotencia", f"stay_id={id} ya cerrada")
+            
+            return {
+                "id": stay.id,
+                "estado": "cerrada",
+                "checkout_real": stay.checkout_real.isoformat() if stay.checkout_real else None,
+                "reservation_estado": reservation.estado,
+                "total": float(calc.grand_total),
+                "paid": float(calc.payments_total),
+                "balance": float(calc.balance),
+                "message": "Stay ya estaba cerrada",
+            }
+        except Exception as e:
+            log_event("stays", "sistema", "Check-out - Idempotencia (calc error)", f"stay_id={id} error={str(e)}")
+            return {
+                "id": stay.id,
+                "estado": "cerrada",
+                "message": "Stay ya estaba cerrada",
+            }
+
+    # =====================================================================
+    # 3) VALIDACIONES
+    # =====================================================================
     if stay.estado not in ["ocupada", "pendiente_checkout"]:
-        raise HTTPException(409, f"No puede hacer checkout en estado {stay.estado}")
+        raise HTTPException(
+            409,
+            f"No puede hacer checkout en estado {stay.estado}. Estados válidos: ocupada, pendiente_checkout"
+        )
 
-    # Validar si puede cerrar con deuda
-    charges_total = sum(c.monto_total for c in stay.charges)
-    payments_total = sum(p.monto for p in stay.payments if not p.es_reverso)
-    balance = charges_total - payments_total
+    # =====================================================================
+    # 4) CÁLCULO FINANCIERO (motor compartido)
+    # =====================================================================
+    try:
+        calc = compute_invoice(
+            stay=stay,
+            db=db,
+            checkout_date_override=req.checkout_real if hasattr(req, "checkout_real") and req.checkout_real else None,
+        )
+    except Exception as e:
+        log_event("stays", "sistema", "Check-out - Error de cálculo", f"stay_id={id} error={str(e)}")
+        raise HTTPException(
+            500,
+            f"Error al calcular totales: {str(e)}"
+        )
 
-    if balance > 0 and not req.allow_close_with_debt:
-        raise HTTPException(409, f"Saldo pendiente: {balance}. Habilita cerrar con deuda.")
+    # =====================================================================
+    # 5) VALIDAR SALDO
+    # =====================================================================
+    if calc.balance > 0 and not req.allow_close_with_debt:
+        raise HTTPException(
+            409,
+            f"Saldo pendiente: ${float(calc.balance):.2f}. Habilita allow_close_with_debt=true"
+        )
 
-    # Cerrar ocupaciones
+    # =====================================================================
+    # 6) CERRAR OCUPACIONES
+    # =====================================================================
     ahora = datetime.utcnow()
+    closed_rooms = []
+
     for occ in stay.occupancies:
-        if not occ.hasta:
+        if not occ.hasta:  # Ocupación activa
             occ.hasta = ahora
 
-            # Marcar habitación como disponible (o "limpieza" si housekeeping)
-            room = occ.room
-            room.estado_operativo = "limpieza" if req.housekeeping else "disponible"
+            # Actualizar estado de habitación
+            room = db.query(Room).filter(Room.id == occ.room_id).first()
+            if room:
+                room.estado_operativo = "limpieza" if req.housekeeping else "disponible"
+                room.updated_at = ahora
+                closed_rooms.append({
+                    "room_id": room.id,
+                    "numero": room.numero,
+                    "estado_nuevo": room.estado_operativo
+                })
 
-    # Actualizar stay
+    # =====================================================================
+    # 7) ACTUALIZAR STAY
+    # =====================================================================
     stay.estado = "cerrada"
     stay.checkout_real = datetime.fromisoformat(req.checkout_real) if req.checkout_real else ahora
+
     if req.notas:
-        stay.notas_internas = (stay.notas_internas or "") + "\n" + req.notas
+        stay.notas_internas = (stay.notas_internas or "") + f"\n[Checkout {ahora.date()}] {req.notas}"
+
     stay.updated_at = ahora
 
-    # Crear ciclo de housekeeping si se solicita
+    # =====================================================================
+    # 8) ACTUALIZAR RESERVATION A "FINALIZADA"
+    # =====================================================================
+    if reservation.estado == "ocupada":
+        reservation.estado = "finalizada"
+        reservation.updated_at = ahora
+        log_event("reservations", "sistema", "Reservation finalizada por checkout", f"reservation_id={reservation.id}")
+
+    # =====================================================================
+    # 9) CREAR HOUSEKEEPING CYCLE
+    # =====================================================================
+    hk_cycle_id = None
     if req.housekeeping and stay.occupancies:
         primary_room = stay.occupancies[0].room
-        hk_cycle = HKCycle(
-            room_id=primary_room.id,
-            stay_id=stay.id,
-            estado="pending",
-            motivo=f"Limpieza post-checkout stay {id}",
-            creado_por="sistema"
-        )
-        db.add(hk_cycle)
 
-    # Auditoría
+        # Evitar duplicados
+        existing_hk = db.query(HKCycle).filter(
+            HKCycle.stay_id == stay.id,
+            HKCycle.room_id == primary_room.id
+        ).first()
+
+        if not existing_hk:
+            hk_cycle = HKCycle(
+                room_id=primary_room.id,
+                stay_id=stay.id,
+                estado="pending",
+                motivo=f"Limpieza post-checkout stay #{id}",
+                creado_por="sistema",
+                created_at=ahora
+            )
+            db.add(hk_cycle)
+            db.flush()
+            hk_cycle_id = hk_cycle.id
+            log_event("housekeeping", "sistema", "HKCycle creado", f"stay_id={id} room_id={primary_room.id}")
+
+    # =====================================================================
+    # 10) AUDITORÍA
+    # =====================================================================
     audit = AuditEvent(
         entity_type="stay",
         entity_id=stay.id,
         action="CHECKOUT",
         usuario="sistema",
-        descripcion="Check-out realizado",
+        descripcion="Check-out completado",
         payload={
-            "charges": float(charges_total),
-            "payments": float(payments_total),
-            "balance": float(balance)
+            "reservation_id": reservation.id,
+            "reservation_estado_nuevo": reservation.estado,
+            "charges": float(calc.charges_total),
+            "payments": float(calc.payments_total),
+            "balance": float(calc.balance),
+            "housekeeping_cycle_id": hk_cycle_id,
+            "closed_rooms": closed_rooms,
         }
     )
     db.add(audit)
 
+    # =====================================================================
+    # 11) COMMIT
+    # =====================================================================
     db.commit()
     db.refresh(stay)
+    db.refresh(reservation)
 
-    log_event("stays", "usuario", "Check-out", f"stay_id={id} balance={balance}")
+    log_event("stays", "usuario", "Check-out exitoso", f"stay_id={id} balance={float(calc.balance):.2f}")
 
+    # =====================================================================
+    # 12) RESPUESTA
+    # =====================================================================
     return {
         "id": stay.id,
         "estado": stay.estado,
         "checkout_real": stay.checkout_real.isoformat(),
-        "total": float(charges_total),
-        "paid": float(payments_total),
-        "balance": float(balance)
+        "reservation_id": reservation.id,
+        "reservation_estado": reservation.estado,
+        "total": float(calc.grand_total),
+        "paid": float(calc.payments_total),
+        "balance": float(calc.balance),
+        "housekeeping_cycle_id": hk_cycle_id,
+        "closed_rooms": closed_rooms,
     }
 
 
@@ -1071,8 +1185,8 @@ def check_availability(
     db: Session = Depends(get_db)
 ):
     """Validar disponibilidad antes de mover"""
-    desde = _parse_date(from_date)
-    hasta = _parse_date(to_date)
+    desde = parse_to_date(from_date)
+    hasta = parse_to_date(to_date)
 
     if hasta <= desde:
         return {"available": False, "reason": "invalid_dates"}
