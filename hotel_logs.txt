@@ -4318,3 +4318,5 @@ WHERE reservas.deleted IS false AND reservas.fecha_checkin = %(fecha_checkin_1)s
 2025-12-15 22:39:04,941 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
 2025-12-15 22:39:04,979 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
 2025-12-15 22:40:52,157 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 22:41:18,332 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 22:41:32,866 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
