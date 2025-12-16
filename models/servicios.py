@@ -33,8 +33,8 @@ class ProductoServicio(Base):
     actualizado_en = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     actualizado_por = Column(String(50), nullable=True)
     
-    # Relaciones
-    reserva_items = relationship("ReservaItem", back_populates="producto")
+    # Nota: En el nuevo modelo, los cargos se manejan a través de StayCharge
+    # La relación directa se eliminó para simplificar la arquitectura
 
     def __repr__(self):
         return f"<ProductoServicio(id={self.id}, nombre='{self.nombre}', tipo='{self.tipo}')>"

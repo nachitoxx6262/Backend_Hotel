@@ -4130,3 +4130,191 @@ WHERE reservas.deleted IS false AND reservas.fecha_checkin = %(fecha_checkin_1)s
 2025-12-14 14:41:35,271 | INFO | EMPRESAS | Usuario: admin | Accion: Listar empresas | Detalle: total=0
 2025-12-14 14:41:35,273 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
 2025-12-14 14:41:35,283 | INFO | RESERVAS | Usuario: admin | Accion: Listar reservas | Detalle: total=1
+2025-12-15 13:02:25,245 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-15 13:02:25,257 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 13:02:25,296 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-15 13:02:25,310 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 14:15:31,576 | INFO | AUTH | Usuario: system | Accion: Error al renovar token | Detalle: error=When initializing mapper Mapper[ProductoServicio(productos_servicios)], expression 'ReservaItem' failed to locate a name ('ReservaItem'). If this is a class name, consider adding this relationship() to the <class 'models.servicios.ProductoServicio'> class after both dependent classes have been defined.
+2025-12-15 14:15:31,579 | INFO | AUTH | Usuario: system | Accion: Error al renovar token | Detalle: error=One or more mappers failed to initialize - can't proceed with initialization of other mappers. Triggering mapper: 'Mapper[ProductoServicio(productos_servicios)]'. Original exception was: When initializing mapper Mapper[ProductoServicio(productos_servicios)], expression 'ReservaItem' failed to locate a name ('ReservaItem'). If this is a class name, consider adding this relationship() to the <class 'models.servicios.ProductoServicio'> class after both dependent classes have been defined.
+2025-12-15 14:15:31,590 | INFO | AUTH | Usuario: system | Accion: Error al renovar token | Detalle: error=One or more mappers failed to initialize - can't proceed with initialization of other mappers. Triggering mapper: 'Mapper[ProductoServicio(productos_servicios)]'. Original exception was: When initializing mapper Mapper[ProductoServicio(productos_servicios)], expression 'ReservaItem' failed to locate a name ('ReservaItem'). If this is a class name, consider adding this relationship() to the <class 'models.servicios.ProductoServicio'> class after both dependent classes have been defined.
+2025-12-15 14:15:31,591 | INFO | AUTH | Usuario: system | Accion: Error al renovar token | Detalle: error=One or more mappers failed to initialize - can't proceed with initialization of other mappers. Triggering mapper: 'Mapper[ProductoServicio(productos_servicios)]'. Original exception was: When initializing mapper Mapper[ProductoServicio(productos_servicios)], expression 'ReservaItem' failed to locate a name ('ReservaItem'). If this is a class name, consider adding this relationship() to the <class 'models.servicios.ProductoServicio'> class after both dependent classes have been defined.
+2025-12-15 14:19:01,246 | INFO | AUTH | Usuario: admin | Accion: Login exitoso | Detalle: rol=admin
+2025-12-15 14:19:01,255 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 14:19:05,922 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=0
+2025-12-15 14:19:05,931 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=0
+2025-12-15 14:19:08,081 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 14:19:08,086 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 14:19:08,105 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=0
+2025-12-15 14:19:08,117 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=0
+2025-12-15 14:33:51,347 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=0
+2025-12-15 14:34:01,025 | INFO | AUTH | Usuario: admin | Accion: Intento de login con usuario inexistente
+2025-12-15 14:34:35,643 | INFO | AUTH | Usuario: admin | Accion: Login exitoso | Detalle: rol=admin
+2025-12-15 14:34:35,652 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 14:34:39,289 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=0
+2025-12-15 14:34:39,301 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=0
+2025-12-15 14:49:45,639 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 14:49:45,649 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 14:49:45,733 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=0
+2025-12-15 14:49:45,747 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=0
+2025-12-15 15:15:09,565 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-15 15:15:09,577 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 15:15:09,610 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-15 15:15:09,636 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 15:15:09,662 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=0
+2025-12-15 15:15:09,687 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=0
+2025-12-15 15:22:34,933 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 15:22:34,940 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 15:23:21,725 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 15:23:21,731 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 15:23:22,833 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 15:23:22,840 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 15:24:33,478 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 15:24:33,487 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 15:26:13,747 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 15:26:13,752 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 15:32:12,752 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=0
+2025-12-15 15:32:12,769 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=0
+2025-12-15 15:32:36,658 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=0
+2025-12-15 15:32:36,668 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=0
+2025-12-15 15:32:44,787 | INFO | RESERVATIONS | Usuario: usuario | Accion: Crear reserva | Detalle: id=1
+2025-12-15 15:32:44,803 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=1
+2025-12-15 15:32:48,240 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 15:32:48,249 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 15:32:48,290 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=1
+2025-12-15 15:32:48,303 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=1
+2025-12-15 15:43:14,613 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 15:43:14,621 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 15:43:14,678 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=1
+2025-12-15 15:43:14,693 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=1
+2025-12-15 15:44:27,780 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 15:44:27,789 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 15:44:27,844 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=1
+2025-12-15 15:44:27,860 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=1
+2025-12-15 15:54:02,126 | INFO | STAYS | Usuario: usuario | Accion: Check-in | Detalle: stay_id=1 reservation_id=1
+2025-12-15 15:54:02,150 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 16:04:04,283 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-15 16:04:04,327 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 16:04:04,398 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-15 16:04:04,431 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 16:04:04,469 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 16:04:04,498 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 16:06:54,038 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 16:06:54,047 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 16:06:54,122 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 16:06:54,134 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 16:21:16,240 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 16:21:16,251 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 16:21:18,923 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 16:21:18,932 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 16:25:59,519 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-11-15 to=2026-01-14 blocks=2
+2025-12-15 16:26:27,421 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 16:26:27,429 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 16:26:34,149 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-11-15 to=2026-01-14 blocks=2
+2025-12-15 16:27:14,182 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-11-15 to=2026-01-14 blocks=2
+2025-12-15 16:27:32,231 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 16:27:32,238 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 16:28:15,376 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 16:28:15,384 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 16:28:34,134 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 16:28:34,141 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 16:29:51,148 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 16:29:51,155 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 16:31:13,518 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 16:31:13,524 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 16:31:13,596 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 16:31:13,608 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 16:35:01,758 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-15 16:35:01,770 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 16:35:01,813 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 16:35:01,829 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-15 16:35:01,829 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 16:35:01,884 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 16:35:14,671 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 16:35:14,678 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 16:35:14,758 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 16:35:14,773 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 16:36:47,573 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 16:36:47,580 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 16:36:47,641 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 16:36:47,656 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 16:38:06,053 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 16:38:06,065 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 16:50:46,324 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 16:50:46,334 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 16:59:54,865 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-11-15 to=2026-01-14 blocks=2
+2025-12-15 17:02:48,220 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 17:02:48,226 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 17:02:48,276 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 17:02:48,291 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 17:17:02,791 | INFO | AUTH | Usuario: admin | Accion: Login exitoso | Detalle: rol=admin
+2025-12-15 17:17:02,813 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 17:17:45,178 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 17:17:45,187 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 17:17:45,280 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 17:17:45,297 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 18:53:01,450 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-15 18:53:01,450 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-15 18:53:01,460 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 18:53:01,465 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 18:53:01,524 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 18:53:01,539 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 18:53:29,813 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 18:53:29,821 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 18:53:29,863 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 18:53:29,896 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 19:01:22,201 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 19:01:45,184 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 19:01:51,205 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 19:05:18,187 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 19:06:53,199 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 19:07:17,283 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 19:11:39,218 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 19:16:50,208 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 20:42:00,461 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 20:50:50,813 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-15 20:50:50,838 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 20:50:50,946 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-15 20:50:50,951 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 20:50:50,970 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 20:50:50,995 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 20:56:07,223 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 20:56:28,737 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 20:59:45,306 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 21:08:08,753 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 21:08:08,798 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 21:08:08,913 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 21:08:08,946 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 21:08:39,945 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 21:11:07,209 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 21:11:16,208 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 21:18:18,163 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 21:18:18,172 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 21:18:18,211 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 21:18:18,224 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 21:19:51,200 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 21:19:58,202 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 21:20:15,183 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 21:20:29,193 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 21:20:39,171 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 21:20:50,191 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 21:21:15,194 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 21:21:36,188 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 21:21:49,197 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 21:54:00,846 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 21:54:09,037 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 22:01:51,183 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 22:02:00,164 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 22:05:11,172 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 22:05:45,187 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 22:05:59,179 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 22:06:11,172 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 22:06:56,870 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 22:06:57,314 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 22:09:09,221 | INFO | STAYS | Usuario: usuario | Accion: Registrar pago | Detalle: stay_id=1 metodo=efectivo monto=24200.0
+2025-12-15 22:39:04,799 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-15 22:39:04,817 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 22:39:04,901 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-15 22:39:04,928 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-15 22:39:04,941 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 22:39:04,979 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
+2025-12-15 22:40:52,157 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-15 to=2026-01-13 blocks=2
