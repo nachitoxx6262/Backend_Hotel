@@ -16,7 +16,7 @@ try:
     from sqlalchemy import text, inspect
     
     # Leer el archivo de migración
-    migration_file = project_root / "migrations" / "migrate_housekeeping_tareas.sql"
+    migration_file = project_root / "migrations" / "003_daily_clean_logs.sql"
     
     if not migration_file.exists():
         print(f"✗ Archivo de migración no encontrado: {migration_file}")
@@ -61,35 +61,20 @@ try:
                     connection.rollback()
                     # No lanzamos excepción para permite que continúe
     
-    # Verificar que las columnas existen
-    print("\nVerificando columnas...")
+    # Verificar que la tabla existe
+    print("\nVerificando tablas...")
     inspector = inspect(engine)
-    
-    # Verificar housekeeping_tareas
-    if 'housekeeping_tareas' in inspector.get_table_names():
-        columns = [c['name'] for c in inspector.get_columns('housekeeping_tareas')]
-        required_cols = ['template_id', 'es_padre', 'tarea_padre_id']
+
+    if 'housekeeping_tasks' in inspector.get_table_names():
+        columns = [c['name'] for c in inspector.get_columns('housekeeping_tasks')]
+        required_cols = ['id','room_id','task_type','status','task_date']
         missing = [c for c in required_cols if c not in columns]
         if missing:
-            print(f"✗ Columnas faltantes en housekeeping_tareas: {missing}")
+            print(f"✗ Columnas faltantes en housekeeping_tasks: {missing}")
         else:
-            print("✓ housekeeping_tareas tiene todas las columnas requeridas")
-    
-    # Verificar habitaciones
-    if 'habitaciones' in inspector.get_table_names():
-        columns = [c['name'] for c in inspector.get_columns('habitaciones')]
-        required_cols = ['template_tareas_id', 'num_camas', 'tipo_camas', 'particularidades']
-        missing = [c for c in required_cols if c not in columns]
-        if missing:
-            print(f"✗ Columnas faltantes en habitaciones: {missing}")
-        else:
-            print("✓ habitaciones tiene todas las columnas requeridas")
-    
-    # Verificar tabla de templates
-    if 'housekeeping_tareas_templates' in inspector.get_table_names():
-        print("✓ Tabla housekeeping_tareas_templates existe")
+            print("✓ housekeeping_tasks creada y verificada")
     else:
-        print("✗ Tabla housekeeping_tareas_templates no existe")
+        print("✗ Tabla housekeeping_tasks no existe")
     
     print("\n✓ Migración completada")
     

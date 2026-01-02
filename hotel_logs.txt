@@ -4838,3 +4838,506 @@ WHERE reservas.deleted IS false AND reservas.fecha_checkin = %(fecha_checkin_1)s
 2025-12-16 16:38:31,712 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14 include_history=True
 2025-12-16 16:38:31,719 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14
 2025-12-16 16:38:31,721 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=1 history=True cancelled=False no_show=False
+2025-12-16 16:39:16,380 | INFO | RESERVATIONS | Usuario: usuario | Accion: Crear reserva | Detalle: id=9
+2025-12-16 16:39:16,393 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 16:39:16,395 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14
+2025-12-16 16:39:16,396 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=2 history=True cancelled=False no_show=False
+2025-12-16 16:39:52,190 | INFO | STAYS | Usuario: usuario | Accion: Check-in | Detalle: stay_id=9 reservation_id=9
+2025-12-16 16:39:52,201 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 16:39:52,204 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14
+2025-12-16 16:39:52,205 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=2 history=True cancelled=False no_show=False
+2025-12-16 16:40:20,102 | INFO | STAYS | Usuario: usuario | Accion: Registrar pago | Detalle: stay_id=9 metodo=efectivo monto=24200.0
+2025-12-16 16:40:25,833 | INFO | RESERVATIONS | Usuario: sistema | Accion: Reservation finalizada por checkout | Detalle: reservation_id=9
+2025-12-16 16:40:25,869 | INFO | STAYS | Usuario: usuario | Accion: Check-out exitoso | Detalle: stay_id=9 balance=0.00 reservation_estado=finalizada
+2025-12-16 16:40:25,879 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 16:40:25,882 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14
+2025-12-16 16:40:25,882 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=2 history=True cancelled=False no_show=False
+2025-12-16 16:41:49,722 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 16:41:49,725 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14
+2025-12-16 16:41:49,726 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=2 history=True cancelled=False no_show=False
+2025-12-16 16:42:24,169 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 16:42:24,172 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14
+2025-12-16 16:42:24,173 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=2 history=True cancelled=False no_show=False
+2025-12-16 16:44:32,836 | INFO | RESERVATIONS | Usuario: usuario | Accion: Crear reserva | Detalle: id=10
+2025-12-16 16:44:32,847 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 16:44:32,849 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14
+2025-12-16 16:44:32,850 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=3 history=True cancelled=False no_show=False
+2025-12-16 16:58:11,738 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 16:58:11,743 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14
+2025-12-16 16:58:11,745 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=3 history=True cancelled=False no_show=False
+2025-12-16 16:58:23,720 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 16:58:23,723 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14
+2025-12-16 16:58:23,724 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=3 history=True cancelled=False no_show=False
+2025-12-16 16:58:35,204 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 16:58:35,208 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14
+2025-12-16 16:58:35,210 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=3 history=True cancelled=False no_show=False
+2025-12-16 17:01:15,778 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 17:01:15,782 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14
+2025-12-16 17:01:15,784 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=3 history=True cancelled=False no_show=False
+2025-12-16 17:20:39,158 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 17:20:39,169 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14
+2025-12-16 17:20:39,173 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=3 history=True cancelled=False no_show=False
+2025-12-16 17:21:38,483 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-16 17:21:38,496 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 17:21:38,532 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 17:21:38,535 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14
+2025-12-16 17:21:38,536 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=3 history=True cancelled=False no_show=False
+2025-12-16 17:21:38,539 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-16 17:21:38,549 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 17:21:38,551 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 17:21:38,554 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14
+2025-12-16 17:21:38,555 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=3 history=True cancelled=False no_show=False
+2025-12-16 17:22:04,337 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 17:22:04,340 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14
+2025-12-16 17:22:04,341 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=3 history=True cancelled=False no_show=False
+2025-12-16 17:22:40,295 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 17:22:40,297 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14
+2025-12-16 17:22:40,298 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=3 history=True cancelled=False no_show=False
+2025-12-16 17:24:40,926 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 17:24:40,930 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14
+2025-12-16 17:24:40,931 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=3 history=True cancelled=False no_show=False
+2025-12-16 17:24:49,685 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 17:24:49,690 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14
+2025-12-16 17:24:49,692 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=3 history=True cancelled=False no_show=False
+2025-12-16 17:25:28,589 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 17:25:28,594 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 17:25:28,615 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 17:25:28,618 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14
+2025-12-16 17:25:28,620 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=3 history=True cancelled=False no_show=False
+2025-12-16 17:25:28,631 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 17:25:28,634 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14
+2025-12-16 17:25:28,635 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=3 history=True cancelled=False no_show=False
+2025-12-16 17:25:43,765 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 17:25:43,774 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 17:25:43,843 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 17:25:43,850 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14
+2025-12-16 17:25:43,853 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=3 history=True cancelled=False no_show=False
+2025-12-16 17:25:43,869 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 17:25:43,875 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14
+2025-12-16 17:25:43,878 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=3 history=True cancelled=False no_show=False
+2025-12-16 17:27:05,735 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 17:27:05,739 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14
+2025-12-16 17:27:05,740 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=3 history=True cancelled=False no_show=False
+2025-12-16 17:27:34,534 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 17:27:34,538 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14
+2025-12-16 17:27:34,540 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=3 history=True cancelled=False no_show=False
+2025-12-16 17:27:36,068 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 17:27:36,071 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14
+2025-12-16 17:27:36,072 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=3 history=True cancelled=False no_show=False
+2025-12-16 17:27:40,253 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 17:27:40,256 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14
+2025-12-16 17:27:40,257 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=3 history=True cancelled=False no_show=False
+2025-12-16 17:28:34,375 | INFO | STAYS | Usuario: usuario | Accion: Check-in | Detalle: stay_id=10 reservation_id=10
+2025-12-16 17:28:34,399 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=3 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 17:28:34,402 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14
+2025-12-16 17:28:34,403 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=3 history=True cancelled=False no_show=False
+2025-12-16 17:28:51,844 | INFO | STAYS | Usuario: usuario | Accion: Registrar pago | Detalle: stay_id=10 metodo=efectivo monto=24200.0
+2025-12-16 17:28:53,415 | INFO | RESERVATIONS | Usuario: sistema | Accion: Reservation finalizada por checkout | Detalle: reservation_id=10
+2025-12-16 17:28:53,448 | INFO | STAYS | Usuario: usuario | Accion: Check-out exitoso | Detalle: stay_id=10 balance=0.00 reservation_estado=finalizada
+2025-12-16 17:28:53,461 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=3 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 17:28:53,465 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14
+2025-12-16 17:28:53,466 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=3 history=True cancelled=False no_show=False
+2025-12-16 17:29:02,148 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=3 from=2025-11-16 to=2025-12-15 include_history=True
+2025-12-16 17:29:02,163 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-11-16 to=2025-12-15
+2025-12-16 17:29:02,164 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-11-16 to=2025-12-15 blocks=0 history=True cancelled=False no_show=False
+2025-12-16 17:29:08,183 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=3 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 17:29:08,185 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14
+2025-12-16 17:29:08,186 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=3 history=True cancelled=False no_show=False
+2025-12-16 17:29:28,493 | INFO | RESERVATIONS | Usuario: usuario | Accion: Crear reserva | Detalle: id=11
+2025-12-16 17:29:28,505 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=3 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 17:29:28,510 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14
+2025-12-16 17:29:28,511 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=4 history=True cancelled=False no_show=False
+2025-12-16 17:29:41,858 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=3 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 17:29:41,861 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14
+2025-12-16 17:29:41,862 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=4 history=True cancelled=False no_show=False
+2025-12-16 17:41:39,719 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=3 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 17:41:39,722 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14
+2025-12-16 17:41:39,723 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=4 history=True cancelled=False no_show=False
+2025-12-16 17:41:45,700 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 17:41:45,705 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 17:41:45,730 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=3 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 17:41:45,732 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14
+2025-12-16 17:41:45,733 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=4 history=True cancelled=False no_show=False
+2025-12-16 17:41:45,741 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=3 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 17:41:45,744 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14
+2025-12-16 17:41:45,746 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=4 history=True cancelled=False no_show=False
+2025-12-16 17:46:04,620 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=3 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 17:46:04,625 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14
+2025-12-16 17:46:04,627 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=4 history=True cancelled=False no_show=False
+2025-12-16 17:46:14,940 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 17:46:14,947 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 17:46:14,985 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=3 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 17:46:14,989 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14
+2025-12-16 17:46:14,990 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=4 history=True cancelled=False no_show=False
+2025-12-16 17:46:15,000 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=3 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 17:46:15,006 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14
+2025-12-16 17:46:15,008 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=4 history=True cancelled=False no_show=False
+2025-12-16 17:46:31,439 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=3 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 17:46:31,443 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14
+2025-12-16 17:46:31,444 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=4 history=True cancelled=False no_show=False
+2025-12-16 17:46:47,046 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=3 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 17:46:47,050 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14
+2025-12-16 17:46:47,051 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=4 history=True cancelled=False no_show=False
+2025-12-16 17:57:11,709 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=3 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 17:57:11,712 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14
+2025-12-16 17:57:11,712 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=4 history=True cancelled=False no_show=False
+2025-12-16 17:58:02,351 | INFO | STAYS | Usuario: usuario | Accion: Check-in | Detalle: stay_id=11 reservation_id=11
+2025-12-16 17:58:02,365 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=4 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 17:58:02,368 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14
+2025-12-16 17:58:02,370 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=4 history=True cancelled=False no_show=False
+2025-12-16 17:58:09,444 | INFO | STAYS | Usuario: usuario | Accion: Registrar pago | Detalle: stay_id=11 metodo=efectivo monto=24200.0
+2025-12-16 17:58:10,606 | INFO | RESERVATIONS | Usuario: sistema | Accion: Reservation finalizada por checkout | Detalle: reservation_id=11
+2025-12-16 17:58:10,618 | INFO | STAYS | Usuario: usuario | Accion: Check-out exitoso | Detalle: stay_id=11 balance=0.00 reservation_estado=finalizada
+2025-12-16 17:58:10,630 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=4 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 17:58:10,633 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14
+2025-12-16 17:58:10,634 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=4 history=True cancelled=False no_show=False
+2025-12-16 17:58:22,350 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-16 17:58:22,351 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-16 17:58:22,362 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 17:58:22,368 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 17:58:22,408 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=4 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 17:58:22,413 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14
+2025-12-16 17:58:22,414 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=4 history=True cancelled=False no_show=False
+2025-12-16 17:58:22,427 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=4 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 17:58:22,430 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14
+2025-12-16 17:58:22,431 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=4 history=True cancelled=False no_show=False
+2025-12-16 17:58:33,997 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 17:58:34,006 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 17:58:34,042 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 17:58:34,045 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14
+2025-12-16 17:58:34,046 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=0 history=True cancelled=False no_show=False
+2025-12-16 17:58:34,062 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 17:58:34,067 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14
+2025-12-16 17:58:34,069 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=0 history=True cancelled=False no_show=False
+2025-12-16 18:02:55,736 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 18:02:55,741 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14
+2025-12-16 18:02:55,742 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=0 history=True cancelled=False no_show=False
+2025-12-16 19:00:57,811 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-16 19:00:57,827 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 19:00:57,869 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-16 19:00:57,900 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 19:00:57,914 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 19:00:57,926 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14
+2025-12-16 19:00:57,929 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=0 history=True cancelled=False no_show=False
+2025-12-16 19:00:57,949 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 19:00:57,951 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14
+2025-12-16 19:00:57,952 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=0 history=True cancelled=False no_show=False
+2025-12-16 19:02:38,839 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 19:02:38,843 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14
+2025-12-16 19:02:38,845 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=0 history=True cancelled=False no_show=False
+2025-12-16 19:02:38,857 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 19:02:38,861 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14
+2025-12-16 19:02:38,862 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=0 history=True cancelled=False no_show=False
+2025-12-16 19:02:53,865 | INFO | RESERVATIONS | Usuario: usuario | Accion: Crear reserva | Detalle: id=12
+2025-12-16 19:02:53,875 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 19:02:53,878 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14
+2025-12-16 19:02:53,879 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=1 history=True cancelled=False no_show=False
+2025-12-16 19:03:14,459 | INFO | STAYS | Usuario: usuario | Accion: Check-in | Detalle: stay_id=12 reservation_id=12
+2025-12-16 19:03:14,477 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 19:03:14,487 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14
+2025-12-16 19:03:14,488 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=1 history=True cancelled=False no_show=False
+2025-12-16 19:03:21,824 | INFO | STAYS | Usuario: usuario | Accion: Registrar pago | Detalle: stay_id=12 metodo=efectivo monto=24200.0
+2025-12-16 19:03:23,604 | INFO | RESERVATIONS | Usuario: sistema | Accion: Reservation finalizada por checkout | Detalle: reservation_id=12
+2025-12-16 19:03:23,642 | INFO | STAYS | Usuario: usuario | Accion: Check-out exitoso | Detalle: stay_id=12 balance=0.00 reservation_estado=finalizada
+2025-12-16 19:03:23,653 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 19:03:23,655 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14
+2025-12-16 19:03:23,656 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=1 history=True cancelled=False no_show=False
+2025-12-16 19:04:38,625 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 19:04:38,633 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 19:27:28,773 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 19:27:28,780 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 19:40:51,222 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-16 19:40:51,236 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 19:40:51,402 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-16 19:40:51,477 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 19:40:51,486 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 19:42:51,715 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 19:42:51,724 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 19:44:17,274 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 19:44:17,281 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 19:44:49,753 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 19:44:49,762 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 19:45:47,960 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 19:45:47,972 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14
+2025-12-16 19:45:47,974 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=1 history=True cancelled=False no_show=False
+2025-12-16 19:45:47,995 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 19:45:47,999 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14
+2025-12-16 19:45:48,000 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=1 history=True cancelled=False no_show=False
+2025-12-16 19:58:30,376 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 19:58:30,386 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 19:58:31,270 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 19:58:31,277 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 19:58:41,169 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 19:58:41,181 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14
+2025-12-16 19:58:41,182 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=1 history=True cancelled=False no_show=False
+2025-12-16 19:58:41,194 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 19:58:41,199 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14
+2025-12-16 19:58:41,200 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=1 history=True cancelled=False no_show=False
+2025-12-16 19:58:53,023 | INFO | RESERVATIONS | Usuario: usuario | Accion: Crear reserva | Detalle: id=13
+2025-12-16 19:58:53,039 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 19:58:53,044 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-16 to=2026-01-14
+2025-12-16 19:58:53,046 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=2 history=True cancelled=False no_show=False
+2025-12-16 19:59:11,953 | INFO | STAYS | Usuario: usuario | Accion: Check-in | Detalle: stay_id=13 reservation_id=13
+2025-12-16 19:59:11,974 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 19:59:11,978 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14
+2025-12-16 19:59:11,980 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=2 history=True cancelled=False no_show=False
+2025-12-16 19:59:50,725 | INFO | STAYS | Usuario: usuario | Accion: Registrar pago | Detalle: stay_id=13 metodo=efectivo monto=24200.0
+2025-12-16 19:59:53,696 | INFO | RESERVATIONS | Usuario: sistema | Accion: Reservation finalizada por checkout | Detalle: reservation_id=13
+2025-12-16 19:59:53,731 | INFO | STAYS | Usuario: usuario | Accion: Check-out exitoso | Detalle: stay_id=13 balance=0.00 reservation_estado=finalizada
+2025-12-16 19:59:53,741 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 19:59:53,744 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14
+2025-12-16 19:59:53,745 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=2 history=True cancelled=False no_show=False
+2025-12-16 20:00:14,450 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 20:00:14,454 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14
+2025-12-16 20:00:14,455 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=2 history=True cancelled=False no_show=False
+2025-12-16 20:00:14,467 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 20:00:14,471 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14
+2025-12-16 20:00:14,473 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=2 history=True cancelled=False no_show=False
+2025-12-16 20:06:40,601 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 20:06:40,603 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14
+2025-12-16 20:06:40,604 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=2 history=True cancelled=False no_show=False
+2025-12-16 20:06:40,613 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 20:06:40,616 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14
+2025-12-16 20:06:40,617 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=2 history=True cancelled=False no_show=False
+2025-12-16 20:06:46,284 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 20:06:46,286 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14
+2025-12-16 20:06:46,287 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=2 history=True cancelled=False no_show=False
+2025-12-16 20:06:46,297 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 20:06:46,300 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14
+2025-12-16 20:06:46,300 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=2 history=True cancelled=False no_show=False
+2025-12-16 21:45:52,275 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 21:45:52,282 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14
+2025-12-16 21:45:52,285 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=2 history=True cancelled=False no_show=False
+2025-12-16 21:45:52,308 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 21:45:52,317 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14
+2025-12-16 21:45:52,319 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=2 history=True cancelled=False no_show=False
+2025-12-16 21:45:58,286 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 21:45:58,295 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14
+2025-12-16 21:45:58,298 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=2 history=True cancelled=False no_show=False
+2025-12-16 21:45:58,322 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-16 to=2026-01-14 include_history=True
+2025-12-16 21:45:58,330 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-16 to=2026-01-14
+2025-12-16 21:45:58,332 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-16 to=2026-01-14 blocks=2 history=True cancelled=False no_show=False
+2025-12-16 23:19:40,555 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-16 23:19:40,556 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-16 23:19:40,572 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 23:19:40,584 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 23:19:45,493 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 23:19:45,504 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 23:20:26,830 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 23:20:26,844 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 23:20:38,501 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 23:20:38,516 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 23:20:39,499 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 23:20:39,510 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 23:20:47,915 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 23:20:47,935 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 23:21:29,504 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-16 23:21:29,516 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-17 06:38:04,398 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-17 06:38:04,411 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-17 06:38:04,454 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-17 06:38:04,519 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-17 11:29:29,997 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-17 11:29:30,018 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-17 11:29:30,107 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-17 11:29:30,227 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-17 11:29:41,537 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-17 11:29:41,554 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-17 11:30:19,214 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-17 11:30:19,233 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-17 11:31:17,469 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-17 11:31:17,490 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-17 11:31:18,046 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-17 11:31:18,066 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-17 11:33:03,358 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-17 to=2026-01-15 include_history=True
+2025-12-17 11:33:03,370 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-17 to=2026-01-15
+2025-12-17 11:33:03,372 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-17 to=2026-01-15 blocks=0 history=True cancelled=False no_show=False
+2025-12-17 11:33:03,400 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-17 to=2026-01-15 include_history=True
+2025-12-17 11:33:03,404 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-17 to=2026-01-15
+2025-12-17 11:33:03,406 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-17 to=2026-01-15 blocks=0 history=True cancelled=False no_show=False
+2025-12-17 11:33:14,936 | INFO | RESERVATIONS | Usuario: usuario | Accion: Crear reserva | Detalle: id=14
+2025-12-17 11:33:14,951 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=2 from=2025-12-17 to=2026-01-15 include_history=True
+2025-12-17 11:33:14,955 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-17 to=2026-01-15
+2025-12-17 11:33:14,956 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-17 to=2026-01-15 blocks=1 history=True cancelled=False no_show=False
+2025-12-17 11:33:36,940 | INFO | STAYS | Usuario: usuario | Accion: Check-in | Detalle: stay_id=14 reservation_id=14
+2025-12-17 11:33:36,966 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=3 from=2025-12-17 to=2026-01-15 include_history=True
+2025-12-17 11:33:36,984 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-17 to=2026-01-15
+2025-12-17 11:33:36,986 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-17 to=2026-01-15 blocks=1 history=True cancelled=False no_show=False
+2025-12-17 11:33:44,026 | INFO | STAYS | Usuario: usuario | Accion: Registrar pago | Detalle: stay_id=14 metodo=efectivo monto=24200.0
+2025-12-17 11:33:45,722 | INFO | RESERVATIONS | Usuario: sistema | Accion: Reservation finalizada por checkout | Detalle: reservation_id=14
+2025-12-17 11:33:45,785 | INFO | STAYS | Usuario: usuario | Accion: Check-out exitoso | Detalle: stay_id=14 balance=0.00 reservation_estado=finalizada
+2025-12-17 11:33:45,804 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=3 from=2025-12-17 to=2026-01-15 include_history=True
+2025-12-17 11:33:45,810 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-17 to=2026-01-15
+2025-12-17 11:33:45,811 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-17 to=2026-01-15 blocks=1 history=True cancelled=False no_show=False
+2025-12-26 13:58:33,482 | INFO | AUTH | Usuario: n4ch1t0p3n@gmail.com | Accion: Intento de login con usuario inexistente
+2025-12-26 13:58:36,973 | INFO | AUTH | Usuario: admin | Accion: Login exitoso | Detalle: rol=admin
+2025-12-26 13:58:36,983 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 13:58:40,275 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=3 from=2025-12-26 to=2026-01-24 include_history=True
+2025-12-26 13:58:40,295 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-26 to=2026-01-24
+2025-12-26 13:58:40,299 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-26 to=2026-01-24 blocks=0 history=True cancelled=False no_show=False
+2025-12-26 13:58:40,313 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=3 from=2025-12-26 to=2026-01-24 include_history=True
+2025-12-26 13:58:40,317 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-26 to=2026-01-24
+2025-12-26 13:58:40,319 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-26 to=2026-01-24 blocks=0 history=True cancelled=False no_show=False
+2025-12-26 13:58:54,632 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=3 from=2025-12-26 to=2026-01-24 include_history=True
+2025-12-26 13:58:54,636 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-26 to=2026-01-24
+2025-12-26 13:58:54,637 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-26 to=2026-01-24 blocks=0 history=True cancelled=False no_show=False
+2025-12-26 13:58:54,667 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=3 from=2025-12-26 to=2026-01-24 include_history=True
+2025-12-26 13:58:54,673 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-26 to=2026-01-24
+2025-12-26 13:58:54,675 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-26 to=2026-01-24 blocks=0 history=True cancelled=False no_show=False
+2025-12-26 13:59:02,834 | INFO | RESERVATIONS | Usuario: usuario | Accion: Crear reserva | Detalle: id=15
+2025-12-26 13:59:02,847 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=3 from=2025-12-26 to=2026-01-24 include_history=True
+2025-12-26 13:59:02,849 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-26 to=2026-01-24
+2025-12-26 13:59:02,850 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-26 to=2026-01-24 blocks=1 history=True cancelled=False no_show=False
+2025-12-26 13:59:11,414 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=3 from=2025-12-26 to=2026-01-24 include_history=True
+2025-12-26 13:59:11,418 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-26 to=2026-01-24
+2025-12-26 13:59:11,419 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-26 to=2026-01-24 blocks=1 history=True cancelled=False no_show=False
+2025-12-26 13:59:11,435 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=3 from=2025-12-26 to=2026-01-24 include_history=True
+2025-12-26 13:59:11,439 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=1 from=2025-12-26 to=2026-01-24
+2025-12-26 13:59:11,443 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-26 to=2026-01-24 blocks=1 history=True cancelled=False no_show=False
+2025-12-26 14:00:33,387 | INFO | STAYS | Usuario: usuario | Accion: Check-in | Detalle: stay_id=15 reservation_id=15
+2025-12-26 14:00:33,427 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=4 from=2025-12-26 to=2026-01-24 include_history=True
+2025-12-26 14:00:33,442 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-26 to=2026-01-24
+2025-12-26 14:00:33,445 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-26 to=2026-01-24 blocks=1 history=True cancelled=False no_show=False
+2025-12-26 14:01:19,227 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=4 from=2025-12-26 to=2026-01-24 include_history=True
+2025-12-26 14:01:19,232 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-26 to=2026-01-24
+2025-12-26 14:01:19,234 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-26 to=2026-01-24 blocks=1 history=True cancelled=False no_show=False
+2025-12-26 14:01:19,248 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=4 from=2025-12-26 to=2026-01-24 include_history=True
+2025-12-26 14:01:19,252 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-26 to=2026-01-24
+2025-12-26 14:01:19,253 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-26 to=2026-01-24 blocks=1 history=True cancelled=False no_show=False
+2025-12-26 14:01:54,438 | INFO | STAYS | Usuario: usuario | Accion: Registrar pago | Detalle: stay_id=15 metodo=efectivo monto=116.0
+2025-12-26 14:03:06,109 | INFO | STAYS | Usuario: usuario | Accion: Registrar pago | Detalle: stay_id=15 metodo=efectivo monto=5.0
+2025-12-26 14:03:13,245 | INFO | RESERVATIONS | Usuario: sistema | Accion: Reservation finalizada por checkout | Detalle: reservation_id=15
+2025-12-26 14:03:13,303 | INFO | STAYS | Usuario: usuario | Accion: Check-out exitoso | Detalle: stay_id=15 balance=0.00 reservation_estado=finalizada
+2025-12-26 14:03:13,319 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=4 from=2025-12-26 to=2026-01-24 include_history=True
+2025-12-26 14:03:13,323 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-26 to=2026-01-24
+2025-12-26 14:03:13,326 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-26 to=2026-01-24 blocks=1 history=True cancelled=False no_show=False
+2025-12-26 14:03:37,369 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=4 from=2025-12-26 to=2026-01-24 include_history=True
+2025-12-26 14:03:37,374 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-26 to=2026-01-24
+2025-12-26 14:03:37,376 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-26 to=2026-01-24 blocks=1 history=True cancelled=False no_show=False
+2025-12-26 14:03:37,399 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=4 from=2025-12-26 to=2026-01-24 include_history=True
+2025-12-26 14:03:37,406 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-26 to=2026-01-24
+2025-12-26 14:03:37,408 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-26 to=2026-01-24 blocks=1 history=True cancelled=False no_show=False
+2025-12-26 14:50:29,674 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-26 14:50:29,675 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-26 14:50:29,709 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 14:50:29,724 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 14:51:04,811 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 14:51:04,822 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 14:51:57,848 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 14:51:57,872 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 14:53:40,415 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 14:53:40,426 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 14:55:32,651 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=4 from=2025-12-26 to=2026-01-24 include_history=True
+2025-12-26 14:55:32,706 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-26 to=2026-01-24
+2025-12-26 14:55:32,711 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-26 to=2026-01-24 blocks=1 history=True cancelled=False no_show=False
+2025-12-26 14:55:32,766 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=4 from=2025-12-26 to=2026-01-24 include_history=True
+2025-12-26 14:55:32,776 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-26 to=2026-01-24
+2025-12-26 14:55:32,779 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-26 to=2026-01-24 blocks=1 history=True cancelled=False no_show=False
+2025-12-26 14:59:14,529 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 14:59:14,580 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 15:00:04,003 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 15:00:04,021 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 15:00:06,552 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 15:00:06,569 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 15:04:12,176 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 15:04:12,192 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 15:12:00,927 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 15:12:00,946 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 15:20:49,894 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=4 from=2025-12-26 to=2026-01-24 include_history=True
+2025-12-26 15:20:49,902 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-26 to=2026-01-24
+2025-12-26 15:20:49,904 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-26 to=2026-01-24 blocks=1 history=True cancelled=False no_show=False
+2025-12-26 15:20:49,924 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=4 from=2025-12-26 to=2026-01-24 include_history=True
+2025-12-26 15:20:49,932 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-26 to=2026-01-24
+2025-12-26 15:20:49,935 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-26 to=2026-01-24 blocks=1 history=True cancelled=False no_show=False
+2025-12-26 15:20:53,005 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=4 from=2025-12-26 to=2026-01-24 include_history=True
+2025-12-26 15:20:53,012 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-26 to=2026-01-24
+2025-12-26 15:20:53,015 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-26 to=2026-01-24 blocks=1 history=True cancelled=False no_show=False
+2025-12-26 15:20:53,040 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=4 from=2025-12-26 to=2026-01-24 include_history=True
+2025-12-26 15:20:53,046 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-26 to=2026-01-24
+2025-12-26 15:20:53,049 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-26 to=2026-01-24 blocks=1 history=True cancelled=False no_show=False
+2025-12-26 15:20:59,123 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=4 from=2025-12-26 to=2026-01-24 include_history=True
+2025-12-26 15:20:59,130 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-26 to=2026-01-24
+2025-12-26 15:20:59,133 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-26 to=2026-01-24 blocks=1 history=True cancelled=False no_show=False
+2025-12-26 15:20:59,182 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=4 from=2025-12-26 to=2026-01-24 include_history=True
+2025-12-26 15:20:59,190 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-26 to=2026-01-24
+2025-12-26 15:20:59,192 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-26 to=2026-01-24 blocks=1 history=True cancelled=False no_show=False
+2025-12-26 15:47:16,978 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-26 15:47:16,983 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-26 15:47:16,997 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 15:47:17,008 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 15:48:43,007 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 15:48:43,014 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 15:48:45,512 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 15:48:45,520 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 15:49:51,050 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 15:49:51,060 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 15:49:54,229 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 15:49:54,239 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 15:49:57,641 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 15:49:57,652 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 15:49:59,273 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 15:49:59,282 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 15:50:02,862 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 15:50:02,869 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 15:50:30,858 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 15:50:30,867 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 15:51:16,944 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 15:51:16,951 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 15:54:06,028 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 15:54:06,040 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 15:54:07,340 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 15:54:07,351 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 15:55:03,543 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 15:55:03,559 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 15:55:05,756 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 15:55:05,771 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 16:08:09,505 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 16:08:09,531 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 16:57:09,873 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-26 16:57:09,875 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-26 16:57:09,885 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 16:57:09,893 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 16:57:50,102 | INFO | AUTH | Usuario: admin | Accion: Login exitoso | Detalle: rol=admin
+2025-12-26 16:57:50,113 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 16:57:55,668 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=4 from=2025-12-26 to=2026-01-24 include_history=True
+2025-12-26 16:57:55,683 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-26 to=2026-01-24
+2025-12-26 16:57:55,685 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-26 to=2026-01-24 blocks=1 history=True cancelled=False no_show=False
+2025-12-26 16:57:55,710 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=4 from=2025-12-26 to=2026-01-24 include_history=True
+2025-12-26 16:57:55,715 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-26 to=2026-01-24
+2025-12-26 16:57:55,716 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-26 to=2026-01-24 blocks=1 history=True cancelled=False no_show=False
+2025-12-26 17:03:51,348 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=4 from=2025-12-26 to=2026-01-24 include_history=True
+2025-12-26 17:03:51,351 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-26 to=2026-01-24
+2025-12-26 17:03:51,353 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-26 to=2026-01-24 blocks=1 history=True cancelled=False no_show=False
+2025-12-26 17:03:51,366 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=4 from=2025-12-26 to=2026-01-24 include_history=True
+2025-12-26 17:03:51,372 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-26 to=2026-01-24
+2025-12-26 17:03:51,374 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-26 to=2026-01-24 blocks=1 history=True cancelled=False no_show=False
+2025-12-26 17:04:28,456 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 17:04:28,472 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 17:12:15,505 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=4 from=2025-12-26 to=2026-01-24 include_history=True
+2025-12-26 17:12:15,508 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-26 to=2026-01-24
+2025-12-26 17:12:15,509 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-26 to=2026-01-24 blocks=1 history=True cancelled=False no_show=False
+2025-12-26 17:12:15,521 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=4 from=2025-12-26 to=2026-01-24 include_history=True
+2025-12-26 17:12:15,526 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2025-12-26 to=2026-01-24
+2025-12-26 17:12:15,528 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2025-12-26 to=2026-01-24 blocks=1 history=True cancelled=False no_show=False
+2025-12-26 17:55:28,434 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-26 17:55:28,436 | INFO | AUTH | Usuario: admin | Accion: Token renovado
+2025-12-26 17:55:28,452 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 17:55:28,466 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 17:59:18,102 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 17:59:18,117 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 18:08:58,514 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 18:08:58,528 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 18:09:31,845 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 18:09:31,863 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 18:10:03,711 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 18:10:03,720 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 18:10:36,185 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 18:10:36,196 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 18:10:38,839 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 18:10:38,853 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 18:14:42,859 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 18:14:42,869 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 18:15:53,285 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2025-12-26 18:15:53,301 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2026-01-02 13:48:37,919 | INFO | AUTH | Usuario: admin | Accion: Login exitoso | Detalle: rol=admin
+2026-01-02 13:48:37,929 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil

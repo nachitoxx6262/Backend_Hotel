@@ -34,6 +34,7 @@ from .core import (
     StayRoomOccupancy,
     StayCharge,
     StayPayment,
+    HousekeepingTask,
     HKTemplate,
     HKCycle,
     HKIncident,
@@ -50,6 +51,7 @@ __all__ = [
     "Empresa", "Cliente", "RoomType", "Room", "RatePlan", "DailyRate",
     "Reservation", "ReservationRoom", "ReservationGuest",
     "Stay", "StayRoomOccupancy", "StayCharge", "StayPayment",
+    "HousekeepingTask",
     "HKTemplate", "HKCycle", "HKIncident", "HKLostItem",
     "MaintenanceTicket", "AuditEvent"
 ]

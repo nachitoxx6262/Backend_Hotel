@@ -17,7 +17,7 @@ from database.conexion import get_db
 from models.core import (
     Reservation, ReservationRoom, ReservationGuest,
     Stay, StayRoomOccupancy, StayCharge, StayPayment,
-    Room, RoomType, Cliente, Empresa, AuditEvent
+    Room, RoomType, Cliente, Empresa, AuditEvent, HousekeepingTask
 )
 from utils.logging_utils import log_event
 from utils.dependencies import get_current_user_optional
@@ -283,6 +283,11 @@ def _check_room_availability(
     exclude_stay_id: Optional[int] = None
 ) -> bool:
     """Verificar disponibilidad de habitación en rango de fechas"""
+
+    room = db.query(Room).filter(Room.id == room_id).first()
+    # Si no existe o está en limpieza, no permitir asignaciones
+    if not room or room.estado_operativo == "limpieza":
+        return False
     
     # Verificar conflictos en reservas confirmadas
     reservations_query = (
@@ -324,6 +329,49 @@ def _check_room_availability(
         return False
     
     return True
+
+
+def upsert_checkout_task(db: Session, stay: Stay, room: Room) -> HousekeepingTask:
+    """Crea o devuelve la tarea de checkout para la estadía (idempotente)."""
+    today = datetime.utcnow().date()
+
+    existing = (
+        db.query(HousekeepingTask)
+        .filter(
+            HousekeepingTask.task_type == "checkout",
+            HousekeepingTask.stay_id == stay.id,
+        )
+        .first()
+    )
+
+    if existing:
+        # Asegurar datos básicos actualizados sin cambiar status/done_at
+        updated = False
+        if existing.room_id != room.id:
+            existing.room_id = room.id
+            updated = True
+        if existing.reservation_id != stay.reservation_id:
+            existing.reservation_id = stay.reservation_id
+            updated = True
+        if existing.task_date is None:
+            existing.task_date = today
+            updated = True
+        if updated:
+            existing.updated_at = datetime.utcnow()
+        return existing
+
+    task = HousekeepingTask(
+        room_id=room.id,
+        stay_id=stay.id,
+        reservation_id=stay.reservation_id,
+        task_date=today,
+        task_type="checkout",
+        status="pending",
+        meta={"source": "checkout"},
+    )
+    db.add(task)
+    db.flush()
+    return task
 
 
 # ========================================================================
@@ -1295,7 +1343,7 @@ def checkout_stay(
     Estados finales:
     - Stay: "cerrada"
     - Reservation: "finalizada" (si estaba "ocupada")
-    - Room: "limpieza" (si housekeeping=true) o "disponible"
+    - Room: "limpieza" hasta que housekeeping cierre la tarea de checkout
     """
     # =====================================================================
     # 1) CARGAR STAY CON RELACIONES
@@ -1324,6 +1372,15 @@ def checkout_stay(
     # 2) IDEMPOTENCIA: Si ya está cerrada, retornar datos sin modificar
     # =====================================================================
     if stay.estado == "cerrada":
+        existing_task = (
+            db.query(HousekeepingTask)
+            .filter(
+                HousekeepingTask.task_type == "checkout",
+                HousekeepingTask.stay_id == stay.id,
+            )
+            .first()
+        )
+        hk_task_id = existing_task.id if existing_task else None
         try:
             calc = compute_invoice(stay, db)
             log_event("stays", "sistema", "Check-out - Idempotencia", f"stay_id={stay_id} ya cerrada")
@@ -1342,6 +1399,7 @@ def checkout_stay(
                     "payments_total": float(calc.payments_total),
                     "balance": float(calc.balance),
                 },
+                "housekeeping_task_id": hk_task_id,
                 "message": "Stay ya estaba cerrada (idempotencia)",
             }
         except Exception as e:
@@ -1351,6 +1409,7 @@ def checkout_stay(
                 "id": stay.id,
                 "estado": "cerrada",
                 "checkout_real": stay.checkout_real.isoformat() if stay.checkout_real else None,
+                "housekeeping_task_id": hk_task_id,
                 "message": "Stay ya estaba cerrada",
             }
     
@@ -1369,6 +1428,9 @@ def checkout_stay(
             status_code=400,
             detail="No hay ocupación activa. No se puede hacer checkout sin habitación asignada"
         )
+
+    active_occ = stay.get_active_occupancy()
+    primary_room = active_occ.room if active_occ else (stay.occupancies[0].room if stay.occupancies else None)
     
     # =====================================================================
     # 4) CÁLCULO FINANCIERO (usando motor compartido)
@@ -1435,9 +1497,7 @@ def checkout_stay(
             # Actualizar estado de la habitación
             room = db.query(Room).filter(Room.id == occ.room_id).first()
             if room:
-                # Si housekeeping está habilitado, marcar como "limpieza"; sino "disponible"
-                housekeeping_enabled = getattr(req, "housekeeping", False)
-                room.estado_operativo = "limpieza" if housekeeping_enabled else "disponible"
+                room.estado_operativo = "limpieza"
                 room.updated_at = ahora
                 closed_rooms.append({
                     "room_id": room.id,
@@ -1467,31 +1527,12 @@ def checkout_stay(
         log_event("reservations", "sistema", "Reservation finalizada por checkout", f"reservation_id={reservation.id}")
     
     # =====================================================================
-    # 10) CREAR CICLO DE HOUSEKEEPING (si se solicita)
+    # 10) CREAR TAREA DE HOUSEKEEPING (CHECKOUT) - IDEMPOTENTE
     # =====================================================================
-    hk_cycle_id = None
-    if getattr(req, "housekeeping", False) and stay.occupancies:
-        primary_room = stay.occupancies[0].room
-        
-        # Verificar si ya existe HKCycle para esta estadía (evitar duplicados)
-        existing_hk = db.query(HKCycle).filter(
-            HKCycle.stay_id == stay.id,
-            HKCycle.room_id == primary_room.id
-        ).first()
-        
-        if not existing_hk:
-            hk_cycle = HKCycle(
-                room_id=primary_room.id,
-                stay_id=stay.id,
-                estado="pending",
-                motivo=f"Limpieza post-checkout stay #{stay_id}",
-                creado_por="sistema",
-                created_at=ahora
-            )
-            db.add(hk_cycle)
-            db.flush()
-            hk_cycle_id = hk_cycle.id
-            log_event("housekeeping", "sistema", "HKCycle creado", f"stay_id={stay_id} room_id={primary_room.id}")
+    hk_task_id = None
+    if primary_room:
+        hk_task = upsert_checkout_task(db, stay, primary_room)
+        hk_task_id = hk_task.id
     
     # =====================================================================
     # 11) AUDITORÍA
@@ -1513,7 +1554,7 @@ def checkout_stay(
             "payments_total": float(calc.payments_total),
             "balance": float(calc.balance),
             "final_nights": calc.final_nights,
-            "housekeeping_cycle_id": hk_cycle_id,
+            "housekeeping_task_id": hk_task_id,
             "closed_rooms": closed_rooms,
         }
     )
@@ -1549,7 +1590,7 @@ def checkout_stay(
             "balance": float(calc.balance),
         },
         "nights_charged": calc.final_nights,
-        "housekeeping_cycle_id": hk_cycle_id,
+        "housekeeping_task_id": hk_task_id,
         "warnings": calc.warnings,
         "closed_rooms": closed_rooms,
     }
@@ -1657,7 +1698,8 @@ def get_stay_summary(
             "metodo": p.metodo,
             "notas": p.notas,
             "es_reverso": p.es_reverso,
-            "created_at": p.created_at.isoformat() if p.created_at else None
+            # Los pagos usan la columna timestamp (no created_at) para el momento de registro
+            "created_at": p.timestamp.isoformat() if getattr(p, "timestamp", None) else None
         }
         for p in stay.payments
     ]

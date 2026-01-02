@@ -1,5 +1,20 @@
 from datetime import datetime, date
-from sqlalchemy import Column, Integer, String, Date, DateTime, Boolean, ForeignKey, Text, UniqueConstraint, Index, Numeric,JSON
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Date,
+    DateTime,
+    Boolean,
+    ForeignKey,
+    Text,
+    UniqueConstraint,
+    Index,
+    Numeric,
+    JSON,
+    CheckConstraint,
+    text,
+)
 from sqlalchemy.orm import relationship
 from database.conexion import Base
 from sqlalchemy.dialects.postgresql import JSONB
@@ -397,6 +412,47 @@ class HKTemplate(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class HousekeepingTask(Base):
+    __tablename__ = "housekeeping_tasks"
+    __table_args__ = (
+        Index("idx_hk_task_room_date", "room_id", "task_date"),
+        Index("idx_hk_task_status_date", "status", "task_date"),
+        # Una sola limpieza diaria por habitación y día
+        UniqueConstraint("room_id", "task_date", "task_type", name="uq_hk_task_daily"),
+        # Una sola limpieza de checkout por estadía
+        Index(
+            "uq_hk_task_checkout_stay",
+            "stay_id",
+            unique=True,
+            postgresql_where=text("task_type = 'checkout'"),
+        ),
+        # Constraints removidos para flexibilidad: task_type y status son libres
+    )
+
+    id = Column(Integer, primary_key=True)
+    room_id = Column(Integer, ForeignKey("rooms.id", ondelete="RESTRICT"), nullable=False)
+    stay_id = Column(Integer, ForeignKey("stays.id", ondelete="SET NULL"), nullable=True)
+    reservation_id = Column(Integer, ForeignKey("reservations.id", ondelete="SET NULL"), nullable=True)
+
+    task_date = Column(Date, nullable=False)
+    task_type = Column(String(50), nullable=False)  # Liberado de 20 a 50
+    status = Column(String(30), nullable=False, default="pending")  # Liberado de 20 a 30
+    priority = Column(String(20), nullable=False, default="media")  # baja | media | alta | urgente
+
+    assigned_to_user_id = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
+    started_at = Column(DateTime, nullable=True) # Para métricas de tiempo
+    done_at = Column(DateTime, nullable=True)
+    notes = Column(Text, nullable=True)
+    meta = Column(JSONB, nullable=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    room = relationship("Room")
+    stay = relationship("Stay")
+    reservation = relationship("Reservation")
+
+
 class HKCycle(Base):
     """
     Reemplaza CleaningCycle + HousekeepingTarea en un solo flujo.
@@ -518,3 +574,25 @@ class AuditEvent(Base):
     descripcion = Column(Text, nullable=True)
     payload = Column(JSONB, nullable=True)
     ip_address = Column(String(45), nullable=True)
+
+
+class DailyCleanLog(Base):
+    """
+    Registro ligero de limpieza diaria completada.
+    No crea tareas persistidas, solo audita cuándo y por quién se realizó.
+    """
+    __tablename__ = "daily_clean_logs"
+    __table_args__ = (
+        UniqueConstraint("room_id", "date", name="uq_daily_clean_room_date"),
+        Index("idx_daily_clean_room", "room_id"),
+        Index("idx_daily_clean_date", "date"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    room_id = Column(Integer, ForeignKey("rooms.id", ondelete="RESTRICT"), nullable=False)
+    date = Column(Date, nullable=False)
+    user_id = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
+    completed_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    notes = Column(Text, nullable=True)
+
+    room = relationship("Room")
