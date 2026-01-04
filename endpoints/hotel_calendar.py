@@ -19,6 +19,7 @@ from models.core import (
     Stay, StayRoomOccupancy, StayCharge, StayPayment,
     Room, RoomType, Cliente, Empresa, AuditEvent, HousekeepingTask
 )
+from models.servicios import ProductoServicio
 from utils.logging_utils import log_event
 from utils.dependencies import get_current_user_optional
 from utils.invoice_engine import compute_invoice
@@ -110,10 +111,65 @@ class CheckinRequest(BaseModel):
 
 
 class CheckoutRequest(BaseModel):
-    """Request para check-out"""
-    notas: Optional[str] = None
-    pago_monto: Optional[float] = None
-    pago_metodo: Optional[str] = None
+    """Request para checkout (preview y confirm)"""
+    # Overrides para cálculo de factura
+    nights_override: Optional[int] = Field(None, ge=1, description="Override de noches a cobrar")
+    tarifa_override: Optional[float] = Field(None, ge=0, description="Override de tarifa por noche")
+    discount_override_pct: Optional[float] = Field(None, ge=0, le=100, description="Descuento adicional %")
+    tax_override_mode: Optional[str] = Field(None, description="normal|exento|custom")
+    tax_override_value: Optional[float] = Field(None, ge=0, description="Impuesto manual si mode=custom")
+
+    # Opciones de Confirmación
+    housekeeping: bool = Field(False, description="Generar tarea de limpieza")
+    allow_close_with_debt: bool = Field(False, description="Permitir cerrar con saldo pendiente")
+    debt_reason: Optional[str] = Field(None, description="Motivo de deuda (obligatorio si hay deuda)")
+    notes: Optional[str] = Field(None, description="Notas finales del checkout")
+
+    # Idempotencia (opcional, por ahora no persistida pero buen hook)
+    idempotency_key: Optional[str] = None
+
+
+class CheckoutResult(BaseModel):
+    """Resultado del checkout confirmado"""
+    success: bool
+    message: str
+    stay_id: int
+    stay_status: str
+    reservation_status: str
+    invoice: "InvoicePreviewResponse"
+    housekeeping_task_id: Optional[int] = None
+
+
+
+
+class ProductoServicioBase(BaseModel):
+    nombre: str
+    tipo: str
+    descripcion: Optional[str] = None
+    precio_unitario: float
+    activo: Optional[bool] = True
+
+
+class ProductoServicioCreate(ProductoServicioBase):
+    pass
+
+
+class ProductoServicioUpdate(BaseModel):
+    nombre: Optional[str] = None
+    tipo: Optional[str] = None
+    descripcion: Optional[str] = None
+    precio_unitario: Optional[float] = None
+    activo: Optional[bool] = None
+
+
+class ProductoServicioResponse(ProductoServicioBase):
+    id: int
+    creado_en: datetime
+    actualizado_en: datetime
+    actualizado_por: Optional[str] = None
+
+    class Config:
+        from_attributes = True
 
 
 class ChargeRequest(BaseModel):
@@ -1762,7 +1818,6 @@ def list_charges(
         raise HTTPException(404, "Estadía no encontrada")
     
     charges = db.query(StayCharge).filter(StayCharge.stay_id == stay_id).all()
-    
     return {
         "stay_id": stay_id,
         "charges": [
@@ -1827,13 +1882,56 @@ def add_charge(
     db.refresh(charge)
     
     log_event("stays", "usuario", "Agregar cargo", f"stay_id={stay_id} tipo={req.tipo} monto={req.monto_total}")
-    
+
     return {
         "id": charge.id,
         "tipo": charge.tipo,
         "monto_total": float(charge.monto_total),
         "created_at": charge.created_at.isoformat()
     }
+
+
+@router.delete("/stays/{stay_id}/charges/{charge_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_charge(
+    stay_id: int = Path(..., gt=0),
+    charge_id: int = Path(..., gt=0),
+    db: Session = Depends(get_db)
+):
+    """
+    Eliminar un cargo (Hard Delete).
+    Solo si la estadía NO está cerrada.
+    """
+    stay = db.query(Stay).filter(Stay.id == stay_id).first()
+    if not stay:
+        raise HTTPException(404, "Estadía no encontrada")
+    
+    if stay.estado == "cerrada":
+        raise HTTPException(409, "No se pueden eliminar cargos de una estadía cerrada")
+    
+    charge = db.query(StayCharge).filter(StayCharge.id == charge_id, StayCharge.stay_id == stay_id).first()
+    if not charge:
+        raise HTTPException(404, "Cargo no encontrado")
+    
+    # Auditoría antes de borrar
+    audit = AuditEvent(
+        entity_type="stay",
+        entity_id=stay_id,
+        action="DELETE_CHARGE",
+        usuario="sistema",
+        descripcion=f"Cargo eliminado: {charge.descripcion}",
+        payload={
+            "charge_id": charge_id,
+            "tipo": charge.tipo,
+            "monto": float(charge.monto_total)
+        }
+    )
+    db.add(audit)
+    
+    db.delete(charge)
+    db.commit()
+    
+    log_event("stays", "sistema", "Eliminar cargo", f"stay_id={stay_id} charge_id={charge_id}")
+    return None
 
 
 @router.post("/stays/{stay_id}/payments", status_code=status.HTTP_201_CREATED)
@@ -1917,6 +2015,29 @@ def _safe_int(value, default: int = 0) -> int:
 def _today_date() -> date:
     # Si más adelante querés timezone local, lo cambiás acá y no en todo el endpoint.
     return date.today()
+
+@router.post("/stays/{stay_id}/checkout/preview", response_model=InvoicePreviewResponse)
+def preview_checkout_post(
+    stay_id: int = Path(..., gt=0),
+    req: CheckoutRequest = ...,
+    db: Session = Depends(get_db),
+):
+    """
+    🧾 POST INVOICE PREVIEW (Body params)
+    
+    Versión POST para aceptar overrides complejos en el body.
+    """
+    return get_invoice_preview(
+        stay_id=stay_id,
+        checkout_date=None, # O extraer de req se existe
+        nights_override=req.nights_override,
+        tarifa_override=req.tarifa_override,
+        discount_override_pct=req.discount_override_pct,
+        tax_override_mode=req.tax_override_mode,
+        tax_override_value=req.tax_override_value,
+        include_items=True,
+        db=db
+    )
 
 @router.get("/stays/{stay_id}/invoice-preview", response_model=InvoicePreviewResponse)
 def get_invoice_preview(
@@ -2122,21 +2243,364 @@ def get_invoice_preview(
     )
 
 
+@router.post("/stays/{stay_id}/checkout/preview", response_model=InvoicePreviewResponse)
+def post_invoice_preview(
+    stay_id: int = Path(..., gt=0),
+    req: CheckoutRequest = ...,
+    db: Session = Depends(get_db),
+):
+    """
+    🧾 Invoice Preview (POST)
+    Permite enviar overrides en el body para recálculo sin persistir.
+    """
+    stay = (
+        db.query(Stay)
+        .filter(Stay.id == stay_id)
+        .options(
+            joinedload(Stay.reservation).joinedload(Reservation.cliente),
+            joinedload(Stay.reservation).joinedload(Reservation.empresa),
+            joinedload(Stay.occupancies).joinedload(StayRoomOccupancy.room).joinedload(Room.tipo),
+            joinedload(Stay.charges),
+            joinedload(Stay.payments),
+        )
+        .first()
+    )
+    if not stay:
+        raise HTTPException(404, "Stay no encontrado")
+    
+    if not stay.reservation:
+        raise HTTPException(400, "Stay sin reserva")
+
+    try:
+        calc = compute_invoice(
+            stay=stay,
+            db=db,
+            checkout_date_override=None,
+            nights_override=req.nights_override,
+            tarifa_override=req.tarifa_override,
+            discount_pct_override=req.discount_override_pct,
+            tax_mode_override=req.tax_override_mode,
+            tax_value_override=req.tax_override_value,
+        )
+    except Exception as e:
+        raise HTTPException(500, f"Error cálculo invoice: {e}")
+
+    # Construir respuesta
+    return _build_preview_response(stay, calc, req.discount_override_pct, req.tax_override_mode)
+
+
+@router.post("/stays/{stay_id}/checkout/confirm", response_model=CheckoutResult)
+def confirm_checkout(
+    stay_id: int = Path(..., gt=0),
+    req: CheckoutRequest = ...,
+    db: Session = Depends(get_db),
+):
+    """
+    ✅ CONFIRMAR CHECKOUT
+    """
+    stay = (
+        db.query(Stay)
+        .filter(Stay.id == stay_id)
+        .options(
+            joinedload(Stay.reservation),
+            joinedload(Stay.occupancies).joinedload(StayRoomOccupancy.room).joinedload(Room.tipo),
+            joinedload(Stay.charges),
+            joinedload(Stay.payments),
+        )
+        .first()
+    )
+    if not stay:
+        raise HTTPException(404, "Stay no encontrado")
+
+    # 1. Idempotencia
+    if stay.estado == "cerrada":
+        calc = compute_invoice(stay, db)
+        invoice = _build_preview_response(stay, calc, None, None)
+        return CheckoutResult(
+            success=True,
+            message="La estadía ya estaba cerrada.",
+            stay_id=stay.id,
+            stay_status=stay.estado,
+            reservation_status=stay.reservation.estado if stay.reservation else "desconocido",
+            invoice=invoice
+        )
+    
+    # 2. Validación de Estado
+    if stay.estado not in ["ocupada", "pendiente_checkout"]:
+        raise HTTPException(409, f"No se puede hacer checkout de estadía en estado '{stay.estado}'")
+
+    # 3. Recalculo con Overrides
+    try:
+        calc = compute_invoice(
+            stay=stay,
+            db=db,
+            nights_override=req.nights_override,
+            tarifa_override=req.tarifa_override,
+            discount_pct_override=req.discount_override_pct,
+            tax_mode_override=req.tax_override_mode,
+            tax_value_override=req.tax_override_value,
+        )
+    except Exception as e:
+        raise HTTPException(500, f"Error calculando totales: {e}")
+
+    # 4. Validar Warnings Bloqueantes
+    blocking = [w for w in calc.warnings if w["severity"] == "error"]
+    if blocking:
+        raise HTTPException(409, f"No se puede cerrar por errores: {blocking[0]['message']}")
+
+    # 5. Regla de Deuda (con tolerancia)
+    balance = float(calc.balance)
+    if balance > 0.01:
+        if not req.allow_close_with_debt:
+            raise HTTPException(409, f"Saldo pendiente de ${balance:.2f}. Debe pagar o autorizar cierre con deuda.")
+        if not req.debt_reason:
+            raise HTTPException(422, "Debe especificar 'debt_reason' para cerrar con deuda.")
+
+    # 6. COMMIT
+    ahora = datetime.utcnow()
+    
+    # Stay
+    stay.estado = "cerrada"
+    stay.checkout_real = ahora
+    if req.notes:
+        stay.notas_internas = (stay.notas_internas or "") + f"\n[Checkout Confirmado] {req.notes}"
+    stay.updated_at = ahora
+
+    # Ocupaciones
+    closed_rooms_info = []
+    for occ in stay.occupancies:
+        if not occ.hasta:
+            occ.hasta = ahora
+            if occ.room:
+                occ.room.estado_operativo = "limpieza"
+                occ.room.updated_at = ahora
+                closed_rooms_info.append(occ.room.numero)
+
+    # Reserva
+    if stay.reservation:
+        stay.reservation.estado = "finalizada"
+        stay.reservation.updated_at = ahora
+    
+    # Housekeeping
+    hk_task_id = None
+    if req.housekeeping and closed_rooms_info:
+        # Tarea manual simple
+        primary_occ = stay.occupancies[0] if stay.occupancies else None
+        if primary_occ:
+            new_task = HousekeepingTask(
+                room_id=primary_occ.room_id,
+                stay_id=stay.id,
+                task_date=ahora.date(),
+                task_type="checkout",
+                status="pending",
+                priority="alta"
+            )
+            db.add(new_task)
+            db.flush()
+            hk_task_id = new_task.id
+
+    # Auditoría
+    audit = AuditEvent(
+        entity_type="stay",
+        entity_id=stay.id,
+        action="CHECKOUT_CONFIRM",
+        usuario="sistema",
+        descripcion="Checkout confirmado",
+        payload={
+            "balance": balance,
+            "closed_with_debt": balance > 0.01,
+            "debt_reason": req.debt_reason,
+            "overrides": {
+                "nights": req.nights_override,
+                "rate": req.tarifa_override,
+                "discount": req.discount_override_pct
+            }
+        }
+    )
+    db.add(audit)
+
+    db.commit()
+    db.refresh(stay)
+
+    final_invoice = _build_preview_response(stay, calc, req.discount_override_pct, req.tax_override_mode)
+    
+    return CheckoutResult(
+        success=True,
+        message="Checkout realizado correctamente.",
+        stay_id=stay.id,
+        stay_status=stay.estado,
+        reservation_status=stay.reservation.estado if stay.reservation else "unknown",
+        invoice=final_invoice,
+        housekeeping_task_id=hk_task_id
+    )
+
+
+def _build_preview_response(stay, calc, discount_override_pct, tax_override_mode) -> InvoicePreviewResponse:
+    # Helper simple para no duplicar toda la lógica de construcción de respuesta
+    breakdown_lines = []
+    
+    # Room
+    breakdown_lines.append(InvoiceLineItem(
+        line_type="room",
+        description=f"Alojamiento - {calc.room_type_name} #{calc.room_numero}",
+        quantity=float(calc.final_nights),
+        unit_price=float(calc.nightly_rate),
+        total=float(calc.room_subtotal),
+        metadata={
+            "nights": calc.final_nights, 
+            "room_id": calc.room_id,
+            "rate_source": calc.rate_source
+        }
+    ))
+    
+    # Charges
+    for charge in calc.charges_breakdown:
+        breakdown_lines.append(InvoiceLineItem(
+            line_type=charge["type"],
+            description=charge["description"],
+            quantity=charge["quantity"],
+            unit_price=charge["unit_price"],
+            total=charge["total"],
+            metadata={"charge_id": charge.get("charge_id")}
+        ))
+        
+    # Taxes
+    if calc.taxes_total > 0:
+        breakdown_lines.append(InvoiceLineItem(
+            line_type="tax",
+            description="Impuestos",
+            quantity=1.0,
+            unit_price=float(calc.taxes_total),
+            total=float(calc.taxes_total),
+            metadata={"tax_mode": tax_override_mode or "auto"}
+        ))
+        
+    # Discounts
+    if calc.discounts_total > 0:
+        breakdown_lines.append(InvoiceLineItem(
+            line_type="discount",
+            description="Descuentos",
+            quantity=1.0,
+            unit_price=-float(calc.discounts_total),
+            total=-float(calc.discounts_total),
+            metadata={"discount_pct": discount_override_pct}
+        ))
+        
+    # Payments
+    for p in calc.payments_breakdown:
+        breakdown_lines.append(InvoiceLineItem(
+            line_type="payment",
+            description=f"Pago ({p['metodo']})",
+            quantity=1.0,
+            unit_price=-p['monto'],
+            total=-p['monto'],
+            metadata={"payment_id": p.get("id"), "referencia": p.get("referencia")}
+        ))
+        
+    warnings_list = [
+        InvoiceWarning(code=w["code"], message=w["message"], severity=w["severity"])
+        for w in calc.warnings
+    ]
+    
+    return InvoicePreviewResponse(
+        stay_id=stay.id,
+        reservation_id=stay.reservation_id,
+        cliente_nombre=calc.cliente_nombre,
+        currency="ARS",
+        period=InvoicePeriod(
+            checkin_real=stay.checkin_real.isoformat() if stay.checkin_real else datetime.utcnow().isoformat(),
+            checkout_candidate=calc.checkout_candidate_date.isoformat(),
+            checkout_planned=calc.checkout_planned_date.isoformat()
+        ),
+        nights=InvoiceNights(
+            planned=calc.planned_nights,
+            calculated=calc.calculated_nights,
+            suggested_to_charge=max(1, calc.calculated_nights) if not calc.readonly else max(0, calc.calculated_nights),
+            override_applied=calc.nights_override_applied,
+            override_value=None 
+        ),
+        room=InvoiceRoom(
+            room_id=calc.room_id,
+            numero=calc.room_numero,
+            room_type_name=calc.room_type_name,
+            nightly_rate=float(calc.nightly_rate),
+            rate_source=calc.rate_source
+        ),
+        breakdown_lines=breakdown_lines,
+        totals=InvoiceTotals(
+            room_subtotal=round(float(calc.room_subtotal), 2),
+            charges_total=round(float(calc.charges_total), 2),
+            taxes_total=round(float(calc.taxes_total), 2),
+            discounts_total=round(float(calc.discounts_total), 2),
+            grand_total=round(float(calc.grand_total), 2),
+            payments_total=round(float(calc.payments_total), 2),
+            balance=round(float(calc.balance), 2)
+        ),
+        payments=calc.payments_breakdown,
+        warnings=warnings_list,
+        readonly=calc.readonly,
+        generated_at=datetime.utcnow().isoformat()
+    )
+
+
 # ========================================================================
 # ENDPOINTS: PRODUCTOS/SERVICIOS (opcional)
 # ========================================================================
 
-@router.get("/productos-servicios")
-def list_productos_servicios(db: Session = Depends(get_db)):
-    """
-    Listar productos y servicios disponibles (placeholder)
-    """
-    # Esto debería venir de una tabla Productos/Servicios
-    # Por ahora devolvemos ejemplos hardcoded
-    return [
-        {"id": 1, "tipo": "product", "nombre": "Minibar - Agua", "precio": 5.00},
-        {"id": 2, "tipo": "product", "nombre": "Minibar - Gaseosa", "precio": 8.00},
-        {"id": 3, "tipo": "service", "nombre": "Lavandería", "precio": 50.00},
-        {"id": 4, "tipo": "service", "nombre": "Desayuno", "precio": 25.00},
-    ]
+@router.get("/productos-servicios", response_model=List[ProductoServicioResponse])
+def list_productos_servicios(include_inactive: bool = Query(False, description="Incluir inactivos"), db: Session = Depends(get_db)):
+    query = db.query(ProductoServicio).order_by(ProductoServicio.actualizado_en.desc())
+    if not include_inactive:
+        query = query.filter(ProductoServicio.activo.is_(True))
+    return query.all()
+
+
+@router.post("/productos-servicios", response_model=ProductoServicioResponse, status_code=status.HTTP_201_CREATED)
+def create_producto_servicio(payload: ProductoServicioCreate, db: Session = Depends(get_db), current_user=Depends(get_current_user_optional)):
+    nuevo = ProductoServicio(
+        nombre=payload.nombre,
+        tipo=payload.tipo,
+        descripcion=payload.descripcion,
+        precio_unitario=payload.precio_unitario,
+        activo=payload.activo if payload.activo is not None else True,
+        actualizado_por=getattr(current_user, "username", None),
+    )
+    db.add(nuevo)
+    db.commit()
+    db.refresh(nuevo)
+    username = getattr(current_user, "username", "sistema")
+    log_event("PRODUCTOS", username, "Crear producto/servicio", f"id={nuevo.id} nombre={nuevo.nombre}")
+    return nuevo
+
+
+@router.put("/productos-servicios/{producto_id}", response_model=ProductoServicioResponse)
+def update_producto_servicio(producto_id: int = Path(..., gt=0), payload: ProductoServicioUpdate = None, db: Session = Depends(get_db), current_user=Depends(get_current_user_optional)):
+    producto = db.query(ProductoServicio).filter(ProductoServicio.id == producto_id).first()
+    if not producto:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Producto/servicio no encontrado")
+
+    data = payload.dict(exclude_unset=True)
+    for key, value in data.items():
+        setattr(producto, key, value)
+    producto.actualizado_por = getattr(current_user, "username", None)
+
+    db.commit()
+    db.refresh(producto)
+    username = getattr(current_user, "username", "sistema")
+    log_event("PRODUCTOS", username, "Actualizar producto/servicio", f"id={producto.id}")
+    return producto
+
+
+@router.delete("/productos-servicios/{producto_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_producto_servicio(producto_id: int = Path(..., gt=0), db: Session = Depends(get_db), current_user=Depends(get_current_user_optional)):
+    producto = db.query(ProductoServicio).filter(ProductoServicio.id == producto_id).first()
+    if not producto:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Producto/servicio no encontrado")
+
+    producto.activo = False
+    producto.actualizado_por = getattr(current_user, "username", None)
+    db.commit()
+    username = getattr(current_user, "username", "sistema")
+    log_event("PRODUCTOS", username, "Eliminar producto/servicio", f"id={producto.id}")
+    return None
 

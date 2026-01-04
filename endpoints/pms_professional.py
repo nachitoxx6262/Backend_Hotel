@@ -184,47 +184,36 @@ def create_housekeeping_task(
     req: HousekeepingTaskCreateRequest,
     db: Session = Depends(get_db)
 ):
-    """Manually create or update multiple housekeeping tasks for a room (Upsert)."""
+    """Crear una tarea agrupada (un registro) con lista de sub-tareas en meta.task_list."""
     room = db.query(Room).filter(Room.id == req.room_id).first()
     if not room:
         raise HTTPException(404, "Habitación no encontrada")
 
+    if not req.task_names:
+        raise HTTPException(400, "Se requiere al menos una tarea")
+
     task_date = datetime.fromisoformat(req.task_date).date() if req.task_date else datetime.utcnow().date()
-    processed_tasks = []
 
-    for name in req.task_names:
-        # Check for existing task (Upsert Strategy)
-        existing_task = db.query(HousekeepingTask).filter(
-            HousekeepingTask.room_id == req.room_id,
-            HousekeepingTask.task_date == task_date,
-            HousekeepingTask.task_type == name
-        ).first()
+    meta = req.meta or {}
+    meta["task_list"] = req.task_names
+    if req.description:
+        meta["description"] = req.description
+    meta.setdefault("source", "supervisor_manual")
 
-        if existing_task:
-            # Update existing task
-            existing_task.status = req.status
-            existing_task.priority = req.priority
-            if req.description:
-                existing_task.notes = (existing_task.notes or "") + f"\n[Update {datetime.utcnow().isoformat()}]: {req.description}"
-            if req.meta:
-                meta = existing_task.meta or {}
-                meta.update(req.meta)
-                existing_task.meta = meta
-            processed_tasks.append(existing_task)
-        else:
-            # Create new task
-            new_task = HousekeepingTask(
-                room_id=req.room_id,
-                task_date=task_date,
-                task_type=name,
-                status=req.status,
-                priority=req.priority,
-                assigned_to_user_id=req.assigned_to_user_id,
-                notes=req.description,
-                meta=req.meta or {}
-            )
-            db.add(new_task)
-            processed_tasks.append(new_task)
+    # Siempre un solo registro por request: título amigable
+    title = req.task_names[0] if len(req.task_names) == 1 else f"{len(req.task_names)} tareas programadas"
+
+    new_task = HousekeepingTask(
+        room_id=req.room_id,
+        task_date=task_date,
+        task_type=title,
+        status=req.status,
+        priority=req.priority,
+        assigned_to_user_id=req.assigned_to_user_id,
+        notes=req.description,
+        meta=meta
+    )
+    db.add(new_task)
 
     if req.block_room and room.estado_operativo == "disponible":
         room.estado_operativo = "limpieza"
@@ -236,17 +225,15 @@ def create_housekeeping_task(
         db.rollback()
         raise HTTPException(500, f"Error al guardar tareas: {str(e)}")
     
-    return [
-        {
-            "id": t.id,
-            "task_name": t.task_type,
-            "priority": t.priority,
-            "status": t.status,
-            "room_id": t.room_id,
-            "room_numero": room.numero
-        }
-        for t in processed_tasks
-    ]
+    return {
+        "id": new_task.id,
+        "task_name": new_task.task_type,
+        "priority": new_task.priority,
+        "status": new_task.status,
+        "room_id": new_task.room_id,
+        "room_numero": room.numero,
+        "task_list": meta.get("task_list", [])
+    }
 
 # Configuración: Hora de generación de limpieza diaria (ej: 10 AM)
 HOUSEKEEPING_DAILY_GEN_HOUR = 10
@@ -284,9 +271,15 @@ def _auto_generate_daily_tasks(db: Session, target_date: date):
     )
 
     for rid, sid, resid in occ_rooms:
-        # No generar si el checkout es hoy (tendrá tarea de checkout)
+        # Lógica mejorada: Si es checkout hoy, generar tarea de CHECKOUT
         res = db.query(Reservation).filter(Reservation.id == resid).first()
+        
         if res and res.fecha_checkout <= target_date:
+            # Generar tarea de checkout anticipada (para que housekeeping sepa que hoy se van)
+            stay_obj = db.query(Stay).get(sid)
+            room_obj = db.query(Room).get(rid)
+            if stay_obj and room_obj:
+                upsert_checkout_task(db, stay_obj, room_obj)
             continue
 
         existing = (
@@ -314,6 +307,16 @@ def _auto_generate_daily_tasks(db: Session, target_date: date):
     db.commit()
 
 
+@router.post("/housekeeping/generate-daily")
+def generate_daily_tasks_endpoint(
+    date: Optional[str] = Query(None, description="YYYY-MM-DD"),
+    db: Session = Depends(get_db)
+):
+    target_date = datetime.utcnow().date() if not date else datetime.fromisoformat(date).date()
+    _auto_generate_daily_tasks(db, target_date)
+    return {"message": "Tareas generadas", "date": target_date.isoformat()}
+
+
 @router.get("/housekeeping/board")
 def housekeeping_board(
     date: Optional[str] = Query(None, description="YYYY-MM-DD"),
@@ -327,40 +330,65 @@ def housekeeping_board(
     if target_date >= datetime.utcnow().date():
         _auto_generate_daily_tasks(db, target_date)
 
-    q = db.query(HousekeepingTask).join(Room, Room.id == HousekeepingTask.room_id)
+    # Optimización: Eager load de Room para evitar N+1
+    q = db.query(HousekeepingTask, Room).join(Room, Room.id == HousekeepingTask.room_id)
 
     clauses = []
+
+    # Daily tasks for the selected date
     if type in ("all", "daily"):
         daily_clause = and_(HousekeepingTask.task_type == "daily", HousekeepingTask.task_date == target_date)
         if not include_done:
             daily_clause = and_(daily_clause, HousekeepingTask.status != "done")
         clauses.append(daily_clause)
+
+    # Checkout tasks (no date filter because checkout tasks can be open without task_date)
     if type in ("all", "checkout"):
         checkout_clause = (HousekeepingTask.task_type == "checkout")
         if not include_done:
             checkout_clause = and_(checkout_clause, HousekeepingTask.status.in_(["pending", "in_progress"]))
         clauses.append(checkout_clause)
 
+    # Manual/other tasks created by supervisor: include them by task_date for the selected day
+    if type in ("all", "manual", "other"):
+        manual_clause = and_(
+            HousekeepingTask.task_type.notin_(["daily", "checkout"]),
+            HousekeepingTask.task_date == target_date,
+        )
+        if not include_done:
+            manual_clause = and_(manual_clause, HousekeepingTask.status != "done")
+        clauses.append(manual_clause)
+
     if not clauses:
         return {"date": target_date.isoformat(), "summary": {"checkout_pending": 0, "daily_pending": 0, "in_progress": 0, "done": 0}, "tasks": []}
 
-    tasks = q.filter(or_(*clauses)).all()
+    results = q.filter(or_(*clauses)).all()
 
     # Map assigned users in batch
-    user_ids = [t.assigned_to_user_id for t in tasks if t.assigned_to_user_id]
+    user_ids = [t.assigned_to_user_id for t, r in results if t.assigned_to_user_id]
     users = {}
     if user_ids:
         for u in db.query(Usuario).filter(Usuario.id.in_(list(set(user_ids)))).all():
             users[u.id] = {"id": u.id, "username": u.username}
 
     # Build summary
-    checkout_pending = sum(1 for t in tasks if t.task_type == "checkout" and t.status == "pending")
-    daily_pending = sum(1 for t in tasks if t.task_type == "daily" and t.status == "pending")
-    in_progress = sum(1 for t in tasks if t.status == "in_progress")
-    done = sum(1 for t in tasks if t.status == "done")
+    checkout_pending = sum(1 for t, r in results if t.task_type == "checkout" and t.status == "pending")
+    daily_pending = sum(1 for t, r in results if t.task_type == "daily" and t.status == "pending")
+    # Include manual tasks in the aggregates to reflect real workload
+    in_progress = sum(1 for t, r in results if t.status == "in_progress")
+    done = sum(1 for t, r in results if t.status == "done")
 
-    def serialize_task(t: HousekeepingTask):
-        room = db.query(Room).filter(Room.id == t.room_id).first()
+    def serialize_task(t: HousekeepingTask, room: Room):
+        meta = t.meta or {}
+        if t.task_type == "checkout" and not meta.get("procedure"):
+            meta = {**meta, "procedure": [
+                "Retirar ropa de cama y toallas",
+                "Vaciar y limpiar minibar",
+                "Revisar olvidos en placard, caja fuerte y baño",
+                "Pasar aspiradora y paño húmedo",
+                "Reposición de amenities",
+                "Dejar habitación en estado 'disponible'"
+            ]}
         return {
             "id": t.id,
             "task_type": t.task_type,
@@ -374,7 +402,11 @@ def housekeeping_board(
             "notes": t.notes,
             "started_at": t.started_at.isoformat() if t.started_at else None,
             "done_at": t.done_at.isoformat() if t.done_at else None,
-            "meta": t.meta or {},
+            "meta": meta,
+            "has_incident": bool(meta.get("has_incident") or meta.get("incidents")),
+            "has_lost_item": bool(meta.get("has_lost_item") or meta.get("lost_items")),
+            "incidents": meta.get("incidents", []),
+            "lost_items": meta.get("lost_items", []),
             "created_at": t.created_at.isoformat() if t.created_at else None,
             "updated_at": t.updated_at.isoformat() if t.updated_at else None,
         }
@@ -387,7 +419,7 @@ def housekeeping_board(
             "in_progress": in_progress,
             "done": done,
         },
-        "tasks": [serialize_task(t) for t in tasks],
+        "tasks": [serialize_task(t, r) for t, r in results],
     }
 
 @router.post("/housekeeping/tasks/{task_id}/start")
@@ -410,16 +442,60 @@ def housekeeping_report_incident(
     req: IncidentReportRequest,
     db: Session = Depends(get_db)
 ):
-    """Reportar incidencia vinculada a habitación."""
-    return {"status": "reported", "room_id": req.room_id}
+    """Reportar incidencia vinculada a habitación y anclarla a la tarea."""
+    task = None
+    if req.task_id:
+        task = db.query(HousekeepingTask).filter(HousekeepingTask.id == req.task_id).first()
+        if not task:
+            raise HTTPException(404, "Tarea no encontrada para la incidencia")
+
+        meta = task.meta or {}
+        incidents = meta.get("incidents", [])
+        incidents.append({
+            "tipo": req.tipo,
+            "descripcion": req.descripcion,
+            "gravedad": req.gravedad,
+            "fecha": datetime.utcnow().isoformat(),
+            "room_id": req.room_id,
+        })
+        meta["incidents"] = incidents
+        meta["has_incident"] = True
+        task.meta = meta
+        task.updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(task)
+
+    return {"status": "reported", "room_id": req.room_id, "task_id": task.id if task else None}
+
 
 @router.post("/housekeeping/lost-items")
 def housekeeping_report_lost_item(
     req: LostItemReportRequest,
     db: Session = Depends(get_db)
 ):
-    """Reportar objeto perdido."""
-    return {"status": "reported", "room_id": req.room_id}
+    """Reportar objeto perdido y anclarlo a la tarea."""
+    task = None
+    if req.task_id:
+        task = db.query(HousekeepingTask).filter(HousekeepingTask.id == req.task_id).first()
+        if not task:
+            raise HTTPException(404, "Tarea no encontrada para el objeto extraviado")
+
+        meta = task.meta or {}
+        lost_items = meta.get("lost_items", [])
+        lost_items.append({
+            "descripcion": req.descripcion,
+            "lugar": req.lugar,
+            "fecha": datetime.utcnow().isoformat(),
+            "room_id": req.room_id,
+        })
+        meta["lost_items"] = lost_items
+        meta["has_lost_item"] = True
+        task.meta = meta
+        task.updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(task)
+
+    return {"status": "reported", "room_id": req.room_id, "task_id": task.id if task else None}
 
 
 @router.patch("/housekeeping/tasks/{task_id}")
