@@ -161,6 +161,13 @@ class CheckoutRequest(BaseModel):
     retroactive_time: Optional[str] = Field(None, description="Fecha/hora retroactiva (ISO)")
     audit_reason: Optional[str] = Field(None, description="Motivo de checkout retroactivo")
 
+    # Empresa opcional al cerrar
+    empresa_id: Optional[int] = Field(
+        None,
+        gt=0,
+        description="Asociar la reserva a una empresa durante el checkout (opcional)",
+    )
+
 
 class CheckoutResult(BaseModel):
     """Resultado del checkout confirmado"""
@@ -279,12 +286,22 @@ class InvoiceWarning(BaseModel):
     severity: str = "warning"  # "info" | "warning" | "error"
 
 
+class EmpresaContactInfo(BaseModel):
+    """Contacto básico de la empresa"""
+    nombre: Optional[str] = None
+    email: Optional[str] = None
+    telefono: Optional[str] = None
+
+
 class InvoicePreviewResponse(BaseModel):
     """Preview profesional de factura para check-out"""
     # Identificación
     stay_id: int
     reservation_id: int
     cliente_nombre: Optional[str] = None
+    empresa_id: Optional[int] = None
+    empresa_nombre: Optional[str] = None
+    empresa_contacto: Optional[EmpresaContactInfo] = None
     currency: str = "ARS"
     
     # Período y noches
@@ -368,6 +385,18 @@ def parse_to_datetime(value: Union[str, datetime]) -> datetime:
     raise TypeError(f"Unsupported datetime type: {type(value)}")
 
 
+def _get_active_empresa_or_404(db: Session, empresa_id: int) -> Empresa:
+    """Obtiene empresa activa o lanza 404 si no existe o está inactiva."""
+    empresa = (
+        db.query(Empresa)
+        .filter(Empresa.id == empresa_id, Empresa.activo == True)  # noqa: E712
+        .first()
+    )
+    if not empresa:
+        raise HTTPException(404, "Empresa no encontrada o inactiva")
+    return empresa
+
+
 def compute_render_window(start: date, end: date, view_start: date, view_end: date):
     """
     Calcula el segmento visible de un bloque respecto al rango solicitado.
@@ -416,29 +445,42 @@ def _check_room_availability(
     if exclude_reservation_id:
         reservations_query = reservations_query.filter(Reservation.id != exclude_reservation_id)
     
-    if reservations_query.first():
+    conflicting_reservation = reservations_query.first()
+    if conflicting_reservation:
         return False
     
     # Verificar conflictos en ocupaciones reales
-    occupancies_query = (
+    # NOTA: Las ocupaciones sin checkout (hasta=None) solo bloquean si se superponen con el rango solicitado
+    # considerando que la estadía abierta podría continuar indefinidamente
+    occupancies = (
         db.query(StayRoomOccupancy)
         .join(Stay)
         .filter(
             StayRoomOccupancy.room_id == room_id,
             Stay.estado.in_(["pendiente_checkin", "ocupada", "pendiente_checkout"]),
-            StayRoomOccupancy.desde < fecha_hasta,
-            or_(
-                StayRoomOccupancy.hasta.is_(None),
-                StayRoomOccupancy.hasta > fecha_desde
-            )
         )
-    )
+    ).all()
     
     if exclude_stay_id:
-        occupancies_query = occupancies_query.filter(Stay.id != exclude_stay_id)
+        occupancies = [occ for occ in occupancies if occ.stay_id != exclude_stay_id]
     
-    if occupancies_query.first():
-        return False
+    for occ in occupancies:
+        # Convertir desde a date para comparación
+        occ_desde = occ.desde.date() if isinstance(occ.desde, datetime) else occ.desde
+        occ_hasta = occ.hasta.date() if occ.hasta and isinstance(occ.hasta, datetime) else occ.hasta
+        
+        # Si la ocupación tiene hasta definido, verificar overlap normal
+        if occ_hasta:
+            # Overlap: desde < fecha_hasta AND hasta > fecha_desde
+            if occ_desde < fecha_hasta and occ_hasta > fecha_desde:
+                return False
+        else:
+            # Ocupación sin checkout (abierta): solo bloquear si el checkin solicitado 
+            # está en la fecha de inicio de la ocupación o antes de la fecha actual
+            # Permitir reservas futuras
+            if fecha_desde <= occ_desde:
+                # La reserva quiere empezar antes o en la fecha de la ocupación actual
+                return False
     
     return True
 
@@ -912,7 +954,11 @@ def get_calendar(
     # 3️⃣ CARGAR INFORMACIÓN DE HABITACIONES
     # ========================================================================
     
-    rooms_query = db.query(Room).filter(Room.activo == True)
+    rooms_query = (
+        db.query(Room)
+        .options(joinedload(Room.tipo))
+        .filter(Room.activo == True)
+    )
     
     if room_id:
         rooms_query = rooms_query.filter(Room.id == room_id)
@@ -924,6 +970,8 @@ def get_calendar(
             "numero": r.numero,
             "piso": r.piso,
             "room_type_id": r.room_type_id,
+            "room_type_nombre": r.tipo.nombre if r.tipo else None,
+            "capacidad": r.tipo.capacidad if r.tipo else None,
             "estado_operativo": r.estado_operativo
         }
         for r in rooms
@@ -1293,11 +1341,29 @@ def move_block(
             )
         
         # Verificar disponibilidad
-        if not _check_room_availability(
+        availability_result = _check_room_availability(
             db, req.room_id, nueva_checkin, nueva_checkout,
             exclude_reservation_id=req.reservation_id
-        ):
-            raise HTTPException(409, "Habitación no disponible en las nuevas fechas")
+        )
+        if not availability_result:
+            # Obtener habitación para mensaje más específico
+            target_room = db.query(Room).filter(Room.id == req.room_id).first()
+            room_label = target_room.numero if target_room else str(req.room_id)
+            
+            raise HTTPException(409, f"Habitación {room_label} no disponible en las fechas solicitadas")
+        
+        # Advertencia si hay estadía activa (sin bloquear)
+        active_stay_warning = (
+            db.query(StayRoomOccupancy)
+            .join(Stay)
+            .filter(
+                StayRoomOccupancy.room_id == req.room_id,
+                Stay.estado.in_(["pendiente_checkin", "ocupada", "pendiente_checkout"]),
+                StayRoomOccupancy.hasta.is_(None)  # Sin checkout
+            )
+            .first()
+        )
+        # Esta advertencia se podría loggear o retornar en metadata, pero por ahora solo permitimos la reserva
         
         # Actualizar fechas
         reservation.fecha_checkin = nueva_checkin
@@ -1728,6 +1794,12 @@ def checkout_stay(
     reservation = stay.reservation
     if not reservation:
         raise HTTPException(status_code=400, detail="Stay sin reserva asociada")
+
+    if req.empresa_id is not None:
+        empresa = _get_active_empresa_or_404(db, req.empresa_id)
+        reservation.empresa_id = empresa.id
+        reservation.empresa = empresa
+        reservation.updated_at = datetime.utcnow()
     
     # =====================================================================
     # 2) IDEMPOTENCIA: Si ya está cerrada, retornar datos sin modificar
@@ -2576,8 +2648,16 @@ def post_invoice_preview(
     if not stay:
         raise HTTPException(404, "Stay no encontrado")
     
-    if not stay.reservation:
+    reservation = stay.reservation
+    if not reservation:
         raise HTTPException(400, "Stay sin reserva")
+
+    original_empresa = reservation.empresa
+    original_empresa_id = reservation.empresa_id
+    if req.empresa_id is not None:
+        empresa = _get_active_empresa_or_404(db, req.empresa_id)
+        reservation.empresa_id = empresa.id
+        reservation.empresa = empresa
 
     try:
         calc = compute_invoice(
@@ -2592,6 +2672,11 @@ def post_invoice_preview(
         )
     except Exception as e:
         raise HTTPException(500, f"Error cálculo invoice: {e}")
+    finally:
+        if req.empresa_id is not None:
+            reservation.empresa_id = original_empresa_id
+            reservation.empresa = original_empresa
+            db.expire(reservation)
 
     # Construir respuesta
     return _build_preview_response(stay, calc, req.discount_override_pct, req.tax_override_mode)
@@ -2613,6 +2698,16 @@ def confirm_checkout(
         
     if stay.estado == "cerrada":
         raise HTTPException(409, "Estadía ya cerrada")
+
+    reservation = stay.reservation
+    if not reservation:
+        raise HTTPException(400, "Stay sin reserva asociada")
+
+    if req.empresa_id is not None:
+        empresa = _get_active_empresa_or_404(db, req.empresa_id)
+        reservation.empresa_id = empresa.id
+        reservation.empresa = empresa
+        reservation.updated_at = datetime.utcnow()
 
     # 2. Validar Retroactive Time
     actual_checkout_at = datetime.now() # Default server time
@@ -2709,21 +2804,116 @@ def confirm_checkout(
     )
     db.add(audit)
     
-    # 8. Housekeeping
+    # 8. Housekeeping + Estado de habitaciones
+    ahora = datetime.utcnow()
+    for occ in stay.occupancies:
+        if occ.room:
+            if req.housekeeping:
+                # Marcar habitación como "limpieza" (pendiente de housekeeping)
+                occ.room.estado_operativo = "limpieza"
+            else:
+                # Sin housekeeping: marcar como disponible
+                occ.room.estado_operativo = "disponible"
+            occ.room.updated_at = ahora
+    
+    # Generar tarea de housekeeping si está habilitada
     if req.housekeeping:
-        # Lógica de tarea
-        generate_checkout_tasks(stay, db) 
+        generate_checkout_tasks(stay, db)
 
     db.commit()
+    
+    # Convert InvoiceCalculation to InvoicePreviewResponse
+    breakdown_lines = [
+        InvoiceLineItem(
+            description=charge.get("descripcion", ""),
+            quantity=charge.get("cantidad", 1),
+            unit_price=charge.get("monto_unitario", 0),
+            total=charge.get("monto_total", 0),
+            type="charge"
+        )
+        for charge in calc.charges_breakdown
+    ]
+    
+    warnings_list = [
+        InvoiceWarning(
+            code=w.get("code", "generic_warning"),
+            message=w.get("message", ""),
+            severity=w.get("severity", "warning"),
+        )
+        for w in calc.warnings
+    ]
+    
+    nights_override = None
+    if calc.nights_override_applied:
+        nights_override = calc.final_nights
+    
+    invoice_response = InvoicePreviewResponse(
+        stay_id=stay_id,
+        reservation_id=reservation.id,
+        cliente_nombre=calc.cliente_nombre,
+        empresa_id=req.empresa_id,
+        empresa_nombre=None,
+        empresa_contacto=None,
+        currency="ARS",
+        period=InvoicePeriod(
+            checkin_real=(stay.checkin_real.isoformat() if stay.checkin_real else 
+                         datetime.combine(calc.checkin_date, datetime.min.time()).isoformat()),
+            checkout_candidate=calc.checkout_candidate_date.isoformat(),
+            checkout_planned=calc.checkout_planned_date.isoformat(),
+        ),
+        nights=InvoiceNights(
+            planned=calc.planned_nights,
+            calculated=calc.calculated_nights,
+            suggested_to_charge=max(1, calc.calculated_nights),
+            override_applied=calc.nights_override_applied,
+            override_value=nights_override,
+        ),
+        room=InvoiceRoom(
+            room_id=calc.room_id,
+            numero=calc.room_numero,
+            room_type_name=calc.room_type_name,
+            nightly_rate=float(calc.nightly_rate),
+            rate_source=calc.rate_source,
+            is_overstay=calc.is_overstay,
+            overstay_nights=calc.overstay_nights,
+            overstay_charge=round(float(calc.overstay_charge), 2),
+        ),
+        breakdown_lines=breakdown_lines,
+        totals=InvoiceTotals(
+            room_subtotal=round(float(calc.room_subtotal), 2),
+            charges_total=round(float(calc.charges_total), 2),
+            taxes_total=round(float(calc.taxes_total), 2),
+            discounts_total=round(float(calc.discounts_total), 2),
+            grand_total=round(float(calc.grand_total), 2),
+            payments_total=round(float(calc.payments_total), 2),
+            balance=round(float(calc.balance), 2),
+        ),
+        payments=calc.payments_breakdown,
+        warnings=warnings_list,
+        readonly=True,
+        generated_at=datetime.utcnow().isoformat(),
+    )
     
     return CheckoutResult(
         success=True,
         message="Checkout exitoso",
         stay_id=stay.id,
         stay_status="cerrada",
-        reservation_status="finalizada", # Asumimos update cascade
-        invoice=calc # Retornamos preview final
+        reservation_status="finalizada",
+        invoice=invoice_response
     )
+
+
+@router.post("/stays/{stay_id}/checkout/stay", response_model=CheckoutResult)
+def checkout_stay(
+    stay_id: int = Path(..., gt=0),
+    req: CheckoutRequest = ...,
+    db: Session = Depends(get_db),
+):
+    """
+    📝 CHECKOUT DE ESTADÍA (Sin confirmar)
+    Retorna preview del cierre sin persistir cambios.
+    """
     stay = (
         db.query(Stay)
         .filter(Stay.id == stay_id)
@@ -2739,7 +2929,6 @@ def confirm_checkout(
         raise HTTPException(404, "Stay no encontrado")
 
     # 1. Idempotencia
-    if stay.estado == "cerrada":
         calc = compute_invoice(stay, db)
         invoice = _build_preview_response(stay, calc, None, None)
         return CheckoutResult(
@@ -2864,6 +3053,17 @@ def confirm_checkout(
 def _build_preview_response(stay, calc, discount_override_pct, tax_override_mode) -> InvoicePreviewResponse:
     # Helper simple para no duplicar toda la lógica de construcción de respuesta
     breakdown_lines = []
+
+    # Empresa asociada (si existe)
+    reservation = getattr(stay, "reservation", None)
+    empresa = getattr(reservation, "empresa", None)
+    empresa_contacto = None
+    if empresa:
+        empresa_contacto = EmpresaContactInfo(
+            nombre=empresa.contacto_nombre,
+            email=empresa.contacto_email,
+            telefono=empresa.contacto_telefono,
+        )
     
     # Room
     breakdown_lines.append(InvoiceLineItem(
@@ -2932,6 +3132,9 @@ def _build_preview_response(stay, calc, discount_override_pct, tax_override_mode
         stay_id=stay.id,
         reservation_id=stay.reservation_id,
         cliente_nombre=calc.cliente_nombre,
+        empresa_id=empresa.id if empresa else None,
+        empresa_nombre=empresa.nombre if empresa else None,
+        empresa_contacto=empresa_contacto,
         currency="ARS",
         period=InvoicePeriod(
             checkin_real=stay.checkin_real.isoformat() if stay.checkin_real else datetime.utcnow().isoformat(),
