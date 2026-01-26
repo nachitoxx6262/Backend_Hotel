@@ -23,6 +23,9 @@ class Usuario(Base):
     hashed_password = Column(String(255), nullable=False)
     nombre = Column(String(60), nullable=True)
     apellido = Column(String(60), nullable=True)
+
+    # Empresa a la que pertenece el usuario (tenant)
+    empresa_id = Column(Integer, ForeignKey("empresas.id", ondelete="SET NULL"), nullable=True)
     
     # Rol principal (para compatibilidad)
     rol = Column(String(20), nullable=False, default="readonly")

@@ -950,25 +950,25 @@ def upsert_checkout_task(db: Session, stay: Stay, room: Room) -> HousekeepingTas
     """Crea o devuelve la tarea de checkout para la estadía (idempotente)."""
     today = datetime.utcnow().date()
 
+    # Check for existing task by the unique constraint: (room_id, task_date, task_type)
     existing = (
         db.query(HousekeepingTask)
         .filter(
+            HousekeepingTask.room_id == room.id,
+            HousekeepingTask.task_date == today,
             HousekeepingTask.task_type == "checkout",
-            HousekeepingTask.stay_id == stay.id,
         )
         .first()
     )
 
     if existing:
+        # Update the stay and reservation references if they changed
         updated = False
-        if existing.room_id != room.id:
-            existing.room_id = room.id
+        if existing.stay_id != stay.id:
+            existing.stay_id = stay.id
             updated = True
         if existing.reservation_id != stay.reservation_id:
             existing.reservation_id = stay.reservation_id
-            updated = True
-        if existing.task_date is None:
-            existing.task_date = today
             updated = True
         if updated:
             existing.updated_at = datetime.utcnow()
@@ -1262,6 +1262,15 @@ def checkin_from_reservation(
 
     if res.estado not in ["confirmada", "draft"]:
         raise HTTPException(409, f"Reserva no puede hacer check-in en estado {res.estado}")
+
+    # Validar que la fecha actual esté dentro del período de reserva
+    from datetime import date as date_class
+    today = date_class.today()
+    if today < res.fecha_checkin or today >= res.fecha_checkout:
+        raise HTTPException(
+            409, 
+            f"El check-in solo se puede realizar entre el {res.fecha_checkin} y el {res.fecha_checkout}."
+        )
 
     # Verificar si ya existe stay
     existing_stay = db.query(Stay).filter(Stay.reservation_id == id).first()

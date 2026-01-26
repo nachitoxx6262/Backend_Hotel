@@ -596,3 +596,24 @@ class DailyCleanLog(Base):
     notes = Column(Text, nullable=True)
 
     room = relationship("Room")
+
+
+class HotelSettings(Base):
+    __tablename__ = "hotel_settings"
+    __table_args__ = (
+        UniqueConstraint("empresa_id", name="uq_hotel_settings_empresa"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    empresa_id = Column(Integer, ForeignKey("empresas.id", ondelete="CASCADE"), nullable=False, unique=True)
+    checkout_hour = Column(Integer, default=12, nullable=False)
+    checkout_minute = Column(Integer, default=0, nullable=False)
+    cleaning_start_hour = Column(Integer, default=10, nullable=False)
+    cleaning_end_hour = Column(Integer, default=12, nullable=False)
+    auto_extend_stays = Column(Boolean, default=True, nullable=False)
+    timezone = Column(String(50), default="America/Argentina/Buenos_Aires", nullable=False)
+    overstay_price = Column(Numeric(10, 2), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    empresa = relationship("Empresa")

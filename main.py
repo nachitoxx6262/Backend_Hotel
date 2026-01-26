@@ -24,12 +24,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from endpoints import roles, auth, hotel_calendar, pms_professional, habitaciones
+from endpoints import roles, auth, hotel_calendar, pms_professional, habitaciones, clientes, settings, pricing
 app.include_router(auth.router)
 app.include_router(roles.router)
 app.include_router(hotel_calendar.router)
+app.include_router(pricing.router)  # NUEVA: Pricing endpoints
 app.include_router(pms_professional.router)
 app.include_router(habitaciones.router)
+app.include_router(clientes.router)
+app.include_router(settings.router)
 
 
 @app.get("/")

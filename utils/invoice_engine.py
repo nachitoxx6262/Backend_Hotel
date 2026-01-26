@@ -3,12 +3,12 @@ Invoice Engine - Motor de cálculo financiero para estadías
 SINGLE SOURCE OF TRUTH para cálculos de checkout e invoice-preview
 """
 
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from decimal import Decimal
 from typing import List, Optional, Dict, Any, Tuple
 from sqlalchemy.orm import Session
 
-from models.core import Stay, Reservation, Room, RoomType, StayCharge, StayPayment
+from models.core import Stay, Reservation, Room, RoomType, StayCharge, StayPayment, DailyRate
 from utils.logging_utils import log_event
 
 
@@ -81,6 +81,11 @@ class InvoiceCalculation:
         self.final_nights: int = 0
         self.nights_override_applied: bool = False
         
+        # Overstay Detection
+        self.is_overstay: bool = False
+        self.overstay_nights: int = 0
+        self.overstay_charge: Decimal = Decimal("0")
+        
         # Habitación y tarifa
         self.room_id: Optional[int] = None
         self.room_numero: Optional[str] = None
@@ -108,6 +113,68 @@ class InvoiceCalculation:
         # Metadata
         self.readonly: bool = False
         self.cliente_nombre: Optional[str] = None
+
+
+def _get_nightly_rate_for_date(
+    fecha: date,
+    room_type: Optional[RoomType],
+    db: Optional[Session] = None
+) -> Decimal:
+    """
+    NUEVA FUNCIÓN: Obtener tarifa para una fecha específica
+    Precedencia:
+    1. DailyRate configurado para esa fecha
+    2. precio_base del RoomType
+    3. 0
+    """
+    if not db or not room_type:
+        # Fallback a precio_base
+        if room_type and getattr(room_type, "precio_base", None):
+            return _safe_decimal(room_type.precio_base, Decimal("0"))
+        return Decimal("0")
+    
+    # Buscar DailyRate para la fecha
+    try:
+        from endpoints.pricing import get_daily_rate_for_date
+        daily_rate = get_daily_rate_for_date(room_type.id, fecha, db=db)
+        if daily_rate and daily_rate.precio:
+            return _safe_decimal(daily_rate.precio, Decimal("0"))
+    except:
+        pass
+    
+    # Fallback a precio_base
+    if getattr(room_type, "precio_base", None):
+        return _safe_decimal(room_type.precio_base, Decimal("0"))
+    
+    return Decimal("0")
+
+
+def _calculate_nightly_charges_with_dailyrates(
+    checkin: date,
+    checkout: date,
+    room_type: Optional[RoomType],
+    db: Optional[Session] = None
+) -> Tuple[List[Decimal], Decimal]:
+    """
+    NUEVA FUNCIÓN: Calcular cargos por noche usando DailyRates
+    
+    Retorna:
+    - Lista de tarifas por día
+    - Total de noches
+    """
+    if checkout <= checkin:
+        return [], Decimal("0")
+    
+    nightly_rates = []
+    current_date = checkin
+    
+    while current_date < checkout:
+        rate = _get_nightly_rate_for_date(current_date, room_type, db)
+        nightly_rates.append(rate)
+        current_date += timedelta(days=1)
+    
+    total_charged = sum(nightly_rates)
+    return nightly_rates, total_charged
 
 
 def compute_invoice(
@@ -186,6 +253,13 @@ def compute_invoice(
     # =====================================================================
     # 4) TARIFA
     # =====================================================================
+    # Precedencia:
+    # 1. Override manual
+    # 2. Tarifa guardada en la estadía (snapshot histórico)
+    # 3. DailyRate si existe configuración
+    # 4. precio_base del tipo de habitación
+    # 5. 0
+    
     if tarifa_override is not None and tarifa_override >= 0:
         result.nightly_rate = _safe_decimal(tarifa_override, Decimal("0"))
         result.rate_source = "override"
@@ -193,9 +267,19 @@ def compute_invoice(
     elif (stay_rate := getattr(stay, "nightly_rate", None) or getattr(stay, "nightly_rate_snapshot", None)):
         result.nightly_rate = _safe_decimal(stay_rate, Decimal("0"))
         result.rate_source = "stay_snapshot"
-    elif room_type and getattr(room_type, "precio_base", None):
-        result.nightly_rate = _safe_decimal(room_type.precio_base, Decimal("0"))
-        result.rate_source = "room_type"
+    elif room_type:
+        # NUEVA: Intentar obtener de DailyRate (será promedio si hay variación)
+        result.nightly_rate = _get_nightly_rate_for_date(
+            _today_date(), room_type, db  # Usa tasa de hoy como referencia
+        )
+        if result.nightly_rate > 0:
+            result.rate_source = "daily_rate"
+        else:
+            # Fallback a precio_base
+            result.nightly_rate = _safe_decimal(
+                getattr(room_type, "precio_base", None), Decimal("0")
+            )
+            result.rate_source = "room_type" if result.nightly_rate > 0 else "missing"
     else:
         result.nightly_rate = Decimal("0")
         result.rate_source = "missing"
@@ -248,11 +332,33 @@ def compute_invoice(
     result.final_nights = int(nights_override) if result.nights_override_applied else int(suggested_to_charge)
     
     # =====================================================================
-    # 6) CÁLCULO DE TOTALES
+    # 6) OVERSTAY DETECTION
     # =====================================================================
     
-    # --- Subtotal de alojamiento ---
+    # Detectar si hay overstay (checkout_real > checkout_planned)
+    if result.readonly and stay.checkout_real:
+        checkout_real_date = parse_to_date(stay.checkout_real)
+        if checkout_real_date > result.checkout_planned_date:
+            result.is_overstay = True
+            result.overstay_nights = (checkout_real_date - result.checkout_planned_date).days
+            
+            # Calcular cargo por overstay (tarifa nightly * 1.5 = 50% premium)
+            overstay_rate = result.nightly_rate * Decimal("1.5")
+            result.overstay_charge = overstay_rate * Decimal(str(result.overstay_nights))
+            
+            result.warnings.append({
+                "code": "OVERSTAY_DETECTED",
+                "message": f"Overstay de {result.overstay_nights} día(s): ${float(result.overstay_charge):.2f}",
+                "severity": "warning",
+            })
+    
+    # =====================================================================
+    # 7) CÁLCULO DE TOTALES
+    # =====================================================================
+    
+    # --- Subtotal de alojamiento (incluyendo overstay) ---
     result.room_subtotal = result.nightly_rate * Decimal(str(result.final_nights))
+    result.room_subtotal += result.overstay_charge
     
     # --- Cargos / Consumos ---
     charges_total = Decimal("0")
