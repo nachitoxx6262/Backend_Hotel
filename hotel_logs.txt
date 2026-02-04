@@ -585,3 +585,5 @@ WHERE transactions.empresa_usuario_id = %(empresa_usuario_id_1)s AND transaction
 2026-02-04 16:20:43,374 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2026-02-04 to=2026-03-07 blocks=1 history=False cancelled=False no_show=False
 2026-02-04 16:25:43,978 | INFO | ADMIN | Usuario: admin | Accion: Listar tenants | Detalle: total=3
 2026-02-04 16:25:44,095 | INFO | ADMIN | Usuario: admin | Accion: Listar tenants | Detalle: total=3
+2026-02-04 17:17:19,764 | INFO | AUTH | Usuario: admin | Accion: Login exitoso | Detalle: rol=admin
+2026-02-04 17:17:19,786 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
