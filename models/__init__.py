@@ -19,9 +19,13 @@ from .usuario import Usuario
 from .servicios import ProductoServicio
 
 # 4. Core del Hotel (desde models.py)
-# Incluye: Empresas, Clientes, Habitaciones, Reservas, Estadías, Housekeeping, Auditoría
+# Incluye: Multi-tenant, Clientes, Habitaciones, Reservas, Estadías, Housekeeping, Auditoría
 from .core import (
-    Empresa,
+    Plan,
+    EmpresaUsuario,
+    Subscription,
+    PaymentAttempt,
+    ClienteCorporativo,
     Cliente,
     RoomType,
     Room,
@@ -40,7 +44,11 @@ from .core import (
     HKIncident,
     HKLostItem,
     MaintenanceTicket,
-    AuditEvent
+    AuditEvent,
+    HotelSettings,
+    TransactionCategory,
+    Transaction,
+    CashClosing
 )
 
 # (Opcional) Define qué se exporta si alguien hace 'from models import *'
@@ -48,10 +56,11 @@ __all__ = [
     "Rol", "Permiso", "RolPermiso", "UsuarioRol",
     "Usuario",
     "ProductoServicio",
-    "Empresa", "Cliente", "RoomType", "Room", "RatePlan", "DailyRate",
+    "Plan", "EmpresaUsuario", "Subscription", "PaymentAttempt",
+    "ClienteCorporativo", "Cliente", "RoomType", "Room", "RatePlan", "DailyRate",
     "Reservation", "ReservationRoom", "ReservationGuest",
     "Stay", "StayRoomOccupancy", "StayCharge", "StayPayment",
     "HousekeepingTask",
     "HKTemplate", "HKCycle", "HKIncident", "HKLostItem",
-    "MaintenanceTicket", "AuditEvent"
+    "MaintenanceTicket", "AuditEvent", "HotelSettings"
 ]

@@ -2,16 +2,18 @@
 Dependencias de autenticación y autorización
 """
 from typing import Optional, List
-from datetime import datetime
-from fastapi import Depends, HTTPException, status
+from datetime import datetime, timedelta
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from database import conexion
 from models.usuario import Usuario
 from models.rol import UsuarioRol, RolPermiso, Permiso
+from models.core import EmpresaUsuario
 from schemas.auth import TokenData
-from utils.auth import decode_token, verify_token
+from utils.auth import verify_token, TokenPayload
 from utils.logging_utils import log_event
 
 
@@ -31,10 +33,7 @@ async def get_current_user(
     Raises:
         HTTPException: Si el token es inválido o el usuario no existe
     """
-    print("=== TOKEN DEL FRONT ===")
-    print(token)
-    print("=== PAYLOAD SIN VERIFICAR ===")
-    print(decode_token(token))
+    # Debug logging of tokens removed to avoid leaking sensitive data
     payload = verify_token(token, token_type="access")
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -74,6 +73,18 @@ async def get_current_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Usuario desactivado"
         )
+
+    # Verificar tenant activo/no eliminado (excepto super admin)
+    if not user.es_super_admin and user.empresa_usuario_id:
+        tenant = db.query(EmpresaUsuario).filter(
+            EmpresaUsuario.id == user.empresa_usuario_id,
+            EmpresaUsuario.deleted.is_(False)
+        ).first()
+        if not tenant or not tenant.activa:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Tenant inactivo o eliminado"
+            )
     
     # Verificar si el usuario está bloqueado
     if user.bloqueado_hasta and user.bloqueado_hasta > datetime.utcnow():
@@ -82,8 +93,7 @@ async def get_current_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"Usuario bloqueado temporalmente. Intente en {tiempo_restante} minutos"
         )
-    print("=== USUARIO AUTENTICADO ===")
-    print(user.username)
+    # Debug logging removed to avoid leaking user data
     return user
 
 
@@ -280,3 +290,194 @@ def require_any_permission(codigos: List[str]):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permisos insuficientes")
         return current_user
     return dependency
+
+
+# ========== MULTI-TENANT DEPENDENCIES ==========
+
+async def get_current_tenant(
+    current_user: Usuario = Depends(get_current_active_user),
+    db: Session = Depends(conexion.get_db)
+) -> EmpresaUsuario:
+    """
+    Obtiene el tenant actual del usuario.
+    
+    Raises:
+        HTTPException: Si el usuario no está asignado a un tenant y no es super_admin
+    """
+    # Si es super_admin, no tiene tenant específico
+    if current_user.es_super_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Super admin debe especificar un tenant"
+        )
+    
+    # Usuario regular debe tener empresa_usuario_id
+    if not current_user.empresa_usuario_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuario no asignado a ningún hotel"
+        )
+    
+    # Verificar que el tenant existe y está activo
+    tenant = db.query(EmpresaUsuario).filter(
+        EmpresaUsuario.id == current_user.empresa_usuario_id,
+        EmpresaUsuario.activa == True
+    ).first()
+    
+    if not tenant:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Hotel no disponible o inactivo"
+        )
+    
+    return tenant
+
+
+async def get_tenant_from_token(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(conexion.get_db)
+) -> TokenPayload:
+    """
+    Obtiene el payload del token con información multi-tenant
+    """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="No se pudo validar las credenciales",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    
+    try:
+        payload = verify_token(token, token_type="access")
+        token_payload = TokenPayload(payload)
+        
+        if not token_payload.is_valid():
+            raise credentials_exception
+        
+        return token_payload
+    except HTTPException:
+        raise
+    except Exception:
+        raise credentials_exception
+
+
+async def require_super_admin(
+    current_user: Usuario = Depends(get_current_active_user)
+) -> Usuario:
+    """
+    Requiere que el usuario sea super_admin del SaaS
+    """
+    if not current_user.es_super_admin:
+        log_event(
+            "auth",
+            current_user.username,
+            "Acceso denegado - se requiere super_admin",
+            f"es_super_admin={current_user.es_super_admin}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Se requieren privilegios de super administrador"
+        )
+    return current_user
+
+
+async def validate_trial_status(
+    current_user: Usuario = Depends(get_current_active_user),
+    db: Session = Depends(conexion.get_db)
+) -> bool:
+    """
+    Valida si el trial del usuario está activo
+    
+    Returns:
+        True si el trial está activo, False si ha expirado
+    
+    Raises:
+        HTTPException si el usuario no tiene trial o no está asociado a un tenant
+    """
+    if current_user.es_super_admin:
+        return True  # Super admin no tiene restricción de trial
+    
+    if not current_user.empresa_usuario_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuario no asignado a ningún hotel"
+        )
+    
+    # Obtener el empresa_usuario
+    tenant = db.query(EmpresaUsuario).filter(
+        EmpresaUsuario.id == current_user.empresa_usuario_id
+    ).first()
+    
+    if not tenant:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Hotel no encontrado"
+        )
+    
+    # Verificar si está en trial (plan DEMO)
+    from models.core import PlanType
+    
+    if tenant.plan_tipo != PlanType.DEMO:
+        return True  # No es trial, es suscripción pagada
+    
+    # Verificar si el trial ha expirado
+    if tenant.fecha_fin_demo and datetime.utcnow() > tenant.fecha_fin_demo:
+        return False
+    
+    return True
+
+
+async def require_active_trial(
+    is_trial_active: bool = Depends(validate_trial_status)
+) -> None:
+    """
+    Requiere que el trial esté activo para operaciones de escritura
+    """
+    if not is_trial_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Trial expirado. Por favor, upgrade a un plan de pago"
+        )
+
+
+async def set_tenant_context(
+    request: Request,
+    current_user: Usuario = Depends(get_current_active_user),
+    db: Session = Depends(conexion.get_db)
+) -> int:
+    """
+    Middleware: Configura el contexto del tenant para PostgreSQL RLS
+    
+    Esto setea app.current_tenant_id en la sesión de PostgreSQL
+    para que las políticas RLS sepan cuál es el tenant actual
+    """
+    tenant_id = current_user.empresa_usuario_id
+    
+    # Si es super_admin, permitir acceso a todo (null tenant_id)
+    if current_user.es_super_admin:
+        tenant_id = None
+    
+    if tenant_id:
+        try:
+            # Setear app.current_tenant_id en PostgreSQL para RLS
+            db.execute(text(f"SET app.current_tenant_id = {tenant_id}"))
+            db.commit()
+        except Exception as e:
+            log_event(
+                "error",
+                current_user.username,
+                "Error setting tenant context",
+                str(e)
+            )
+    
+    # Guardar en request state para usar en handlers
+    request.state.tenant_id = tenant_id
+    request.state.current_user = current_user
+    
+    return tenant_id
+
+
+async def get_request_tenant_id(request: Request) -> Optional[int]:
+    """
+    Obtiene el tenant_id desde el request state (set por middleware)
+    """
+    return getattr(request.state, "tenant_id", None)

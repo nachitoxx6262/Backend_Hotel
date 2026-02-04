@@ -1,5 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
+from fastapi import Request
 import os
 from dotenv import load_dotenv
 
@@ -24,9 +25,19 @@ Base = declarative_base()
 
 
 # Función para obtener la sesión
-def get_db():
+def get_db(request: Request = None):
     db = SessionLocal()
     try:
+        if request is not None and hasattr(request, "state"):
+            try:
+                from utils.tenant_middleware import set_rls_context
+                tenant_id = getattr(request.state, "tenant_id", None)
+                user_id = getattr(request.state, "current_user_id", None)
+                is_super_admin = getattr(request.state, "is_super_admin", False)
+                if user_id is not None:
+                    set_rls_context(db, tenant_id, user_id, is_super_admin)
+            except Exception:
+                pass
         yield db
     finally:
         db.close()

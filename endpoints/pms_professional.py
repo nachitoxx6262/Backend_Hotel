@@ -9,6 +9,7 @@ from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Path, status
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy import and_, or_, func
 from pydantic import BaseModel, Field
 
@@ -16,11 +17,12 @@ from database.conexion import get_db
 from models.core import (
     Reservation, ReservationRoom, ReservationGuest, Room, RoomType,
     Stay, StayRoomOccupancy, StayCharge, StayPayment,
-    DailyRate, RatePlan, AuditEvent, Cliente, Empresa,
+    DailyRate, RatePlan, AuditEvent, Cliente, ClienteCorporativo,
     HousekeepingTask
 )
 from models import Usuario
 from utils.logging_utils import log_event
+from utils.dependencies import get_current_user
 from utils.invoice_engine import compute_invoice
 
 
@@ -179,13 +181,26 @@ class LostItemReportRequest(BaseModel):
     descripcion: str
     lugar: Optional[str] = None
 
+class ResolveAlertRequest(BaseModel):
+    task_id: int
+    alert_index: int  # Índice del incidente o lost_item en el array
+    alert_type: str  # "incident" o "lost_item"
+
 @router.post("/housekeeping/tasks", status_code=status.HTTP_201_CREATED)
 def create_housekeeping_task(
     req: HousekeepingTaskCreateRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """Crear una tarea agrupada (un registro) con lista de sub-tareas en meta.task_list."""
-    room = db.query(Room).filter(Room.id == req.room_id).first()
+    tenant_id = current_user.empresa_usuario_id
+    if not tenant_id:
+        raise HTTPException(401, "Usuario no autenticado o sin tenant asociado")
+
+    room = db.query(Room).filter(
+        Room.id == req.room_id,
+        Room.empresa_usuario_id == tenant_id
+    ).first()
     if not room:
         raise HTTPException(404, "Habitación no encontrada")
 
@@ -204,6 +219,7 @@ def create_housekeeping_task(
     title = req.task_names[0] if len(req.task_names) == 1 else f"{len(req.task_names)} tareas programadas"
 
     new_task = HousekeepingTask(
+        empresa_usuario_id=tenant_id,
         room_id=req.room_id,
         task_date=task_date,
         task_type=title,
@@ -238,13 +254,14 @@ def create_housekeeping_task(
 # Configuración: Hora de generación de limpieza diaria (ej: 10 AM)
 HOUSEKEEPING_DAILY_GEN_HOUR = 10
 
-def _get_is_high_priority(db: Session, room_id: int, target_date: date) -> bool:
+def _get_is_high_priority(db: Session, room_id: int, target_date: date, tenant_id: int) -> bool:
     """Detecta si hay un check-in pendiente para hoy en esta habitación"""
     incoming = (
         db.query(Reservation)
         .join(ReservationRoom)
         .filter(
             ReservationRoom.room_id == room_id,
+            Reservation.empresa_usuario_id == tenant_id,
             Reservation.fecha_checkin == target_date,
             Reservation.estado.in_(["confirmada", "draft"])
         )
@@ -252,7 +269,7 @@ def _get_is_high_priority(db: Session, room_id: int, target_date: date) -> bool:
     )
     return incoming is not None
 
-def _auto_generate_daily_tasks(db: Session, target_date: date):
+def _auto_generate_daily_tasks(db: Session, target_date: date, tenant_id: int):
     """Lógica interna para generar tareas diarias faltantes para habitaciones ocupadas"""
     now = datetime.utcnow()
     # Solo generar si ya pasamos la hora configurada (o si se fuerza, pero aquí automatizamos)
@@ -262,6 +279,7 @@ def _auto_generate_daily_tasks(db: Session, target_date: date):
         db.query(StayRoomOccupancy.room_id, Stay.id.label("stay_id"), Stay.reservation_id)
         .join(Stay, Stay.id == StayRoomOccupancy.stay_id)
         .filter(
+            Stay.empresa_usuario_id == tenant_id,
             Stay.estado.in_(["ocupada", "pendiente_checkout"]),
             StayRoomOccupancy.desde < datetime.combine(target_date + timedelta(days=1), datetime.min.time()),
             or_(StayRoomOccupancy.hasta.is_(None), StayRoomOccupancy.hasta > datetime.combine(target_date, datetime.min.time()))
@@ -276,8 +294,8 @@ def _auto_generate_daily_tasks(db: Session, target_date: date):
         
         if res and res.fecha_checkout <= target_date:
             # Generar tarea de checkout anticipada (para que housekeeping sepa que hoy se van)
-            stay_obj = db.query(Stay).get(sid)
-            room_obj = db.query(Room).get(rid)
+            stay_obj = db.query(Stay).filter(Stay.id == sid, Stay.empresa_usuario_id == tenant_id).first()
+            room_obj = db.query(Room).filter(Room.id == rid, Room.empresa_usuario_id == tenant_id).first()
             if stay_obj and room_obj:
                 upsert_checkout_task(db, stay_obj, room_obj)
             continue
@@ -292,8 +310,9 @@ def _auto_generate_daily_tasks(db: Session, target_date: date):
             .first()
         )
         if not existing:
-            priority = "alta" if _get_is_high_priority(db, rid, target_date) else "media"
+            priority = "alta" if _get_is_high_priority(db, rid, target_date, tenant_id) else "media"
             new_task = HousekeepingTask(
+                empresa_usuario_id=tenant_id,
                 room_id=rid,
                 stay_id=sid,
                 reservation_id=resid,
@@ -310,10 +329,14 @@ def _auto_generate_daily_tasks(db: Session, target_date: date):
 @router.post("/housekeeping/generate-daily")
 def generate_daily_tasks_endpoint(
     date: Optional[str] = Query(None, description="YYYY-MM-DD"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     target_date = datetime.utcnow().date() if not date else datetime.fromisoformat(date).date()
-    _auto_generate_daily_tasks(db, target_date)
+    tenant_id = current_user.empresa_usuario_id
+    if not tenant_id:
+        raise HTTPException(401, "Usuario no autenticado o sin tenant asociado")
+    _auto_generate_daily_tasks(db, target_date, tenant_id)
     return {"message": "Tareas generadas", "date": target_date.isoformat()}
 
 
@@ -322,16 +345,23 @@ def housekeeping_board(
     date: Optional[str] = Query(None, description="YYYY-MM-DD"),
     include_done: bool = Query(False),
     type: str = Query("all", description="All tasks, or specific type"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     target_date = datetime.utcnow().date() if not date else datetime.fromisoformat(date).date()
+    tenant_id = current_user.empresa_usuario_id
+    if not tenant_id:
+        raise HTTPException(401, "Usuario no autenticado o sin tenant asociado")
     
     # Automatización: generar diarias para el día consultado si es hoy o futuro cercano
     if target_date >= datetime.utcnow().date():
-        _auto_generate_daily_tasks(db, target_date)
+        _auto_generate_daily_tasks(db, target_date, tenant_id)
 
     # Optimización: Eager load de Room para evitar N+1
-    q = db.query(HousekeepingTask, Room).join(Room, Room.id == HousekeepingTask.room_id)
+    q = db.query(HousekeepingTask, Room).join(Room, Room.id == HousekeepingTask.room_id).filter(
+        HousekeepingTask.empresa_usuario_id == tenant_id,
+        Room.empresa_usuario_id == tenant_id
+    )
 
     clauses = []
 
@@ -368,7 +398,11 @@ def housekeeping_board(
     user_ids = [t.assigned_to_user_id for t, r in results if t.assigned_to_user_id]
     users = {}
     if user_ids:
-        for u in db.query(Usuario).filter(Usuario.id.in_(list(set(user_ids)))).all():
+        for u in db.query(Usuario).filter(
+            Usuario.id.in_(list(set(user_ids))),
+            Usuario.empresa_usuario_id == tenant_id,
+            Usuario.deleted.is_(False)
+        ).all():
             users[u.id] = {"id": u.id, "username": u.username}
 
     # Build summary
@@ -389,6 +423,11 @@ def housekeeping_board(
                 "Reposición de amenities",
                 "Dejar habitación en estado 'disponible'"
             ]}
+        
+        # Debug log
+        if meta.get("incidents") or meta.get("lost_items"):
+            print(f"DEBUG Task {t.id}: meta has incidents={meta.get('incidents')} lost_items={meta.get('lost_items')}")
+        
         return {
             "id": t.id,
             "task_type": t.task_type,
@@ -425,10 +464,17 @@ def housekeeping_board(
 @router.post("/housekeeping/tasks/{task_id}/start")
 def housekeeping_start_task(
     task_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """Registra el inicio de una limpieza para métricas."""
-    task = db.query(HousekeepingTask).filter(HousekeepingTask.id == task_id).first()
+    tenant_id = current_user.empresa_usuario_id
+    if not tenant_id:
+        raise HTTPException(401, "Usuario no autenticado o sin tenant asociado")
+    task = db.query(HousekeepingTask).filter(
+        HousekeepingTask.id == task_id,
+        HousekeepingTask.empresa_usuario_id == tenant_id
+    ).first()
     if not task:
         raise HTTPException(404, "Tarea no encontrada")
     
@@ -440,15 +486,23 @@ def housekeeping_start_task(
 @router.post("/housekeeping/incidents")
 def housekeeping_report_incident(
     req: IncidentReportRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """Reportar incidencia vinculada a habitación y anclarla a la tarea."""
+    tenant_id = current_user.empresa_usuario_id
+    if not tenant_id:
+        raise HTTPException(401, "Usuario no autenticado o sin tenant asociado")
+    
     task = None
     if req.task_id:
-        task = db.query(HousekeepingTask).filter(HousekeepingTask.id == req.task_id).first()
+        task = db.query(HousekeepingTask).filter(
+            HousekeepingTask.id == req.task_id,
+            HousekeepingTask.empresa_usuario_id == tenant_id
+        ).first()
         if not task:
             raise HTTPException(404, "Tarea no encontrada para la incidencia")
-
+        
         meta = task.meta or {}
         incidents = meta.get("incidents", [])
         incidents.append({
@@ -457,13 +511,22 @@ def housekeeping_report_incident(
             "gravedad": req.gravedad,
             "fecha": datetime.utcnow().isoformat(),
             "room_id": req.room_id,
+            "resolved": False,
+            "resolved_at": None,
+            "resolved_by": None
         })
         meta["incidents"] = incidents
         meta["has_incident"] = True
         task.meta = meta
+        flag_modified(task, "meta")
         task.updated_at = datetime.utcnow()
         db.commit()
         db.refresh(task)
+    else:
+        # Si no hay task_id, buscar la habitación para validar
+        room = db.query(Room).filter(Room.id == req.room_id, Room.empresa_usuario_id == tenant_id).first()
+        if not room:
+            raise HTTPException(404, "Habitación no encontrada")
 
     return {"status": "reported", "room_id": req.room_id, "task_id": task.id if task else None}
 
@@ -471,15 +534,23 @@ def housekeeping_report_incident(
 @router.post("/housekeeping/lost-items")
 def housekeeping_report_lost_item(
     req: LostItemReportRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """Reportar objeto perdido y anclarlo a la tarea."""
+    tenant_id = current_user.empresa_usuario_id
+    if not tenant_id:
+        raise HTTPException(401, "Usuario no autenticado o sin tenant asociado")
+    
     task = None
     if req.task_id:
-        task = db.query(HousekeepingTask).filter(HousekeepingTask.id == req.task_id).first()
+        task = db.query(HousekeepingTask).filter(
+            HousekeepingTask.id == req.task_id,
+            HousekeepingTask.empresa_usuario_id == tenant_id
+        ).first()
         if not task:
             raise HTTPException(404, "Tarea no encontrada para el objeto extraviado")
-
+        
         meta = task.meta or {}
         lost_items = meta.get("lost_items", [])
         lost_items.append({
@@ -487,25 +558,93 @@ def housekeeping_report_lost_item(
             "lugar": req.lugar,
             "fecha": datetime.utcnow().isoformat(),
             "room_id": req.room_id,
+            "resolved": False,
+            "resolved_at": None,
+            "resolved_by": None
         })
         meta["lost_items"] = lost_items
         meta["has_lost_item"] = True
         task.meta = meta
+        flag_modified(task, "meta")
         task.updated_at = datetime.utcnow()
         db.commit()
         db.refresh(task)
+    else:
+        # Si no hay task_id, buscar la habitación para validar
+        room = db.query(Room).filter(Room.id == req.room_id, Room.empresa_usuario_id == tenant_id).first()
+        if not room:
+            raise HTTPException(404, "Habitación no encontrada")
 
     return {"status": "reported", "room_id": req.room_id, "task_id": task.id if task else None}
+
+
+@router.patch("/housekeeping/alerts/resolve")
+def resolve_alert(
+    req: ResolveAlertRequest,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Marcar un incidente o lost_item como resuelto, manteniendo el historial."""
+    tenant_id = current_user.empresa_usuario_id
+    if not tenant_id:
+        raise HTTPException(401, "Usuario no autenticado o sin tenant asociado")
+    
+    task = db.query(HousekeepingTask).filter(
+        HousekeepingTask.id == req.task_id,
+        HousekeepingTask.empresa_usuario_id == tenant_id
+    ).first()
+    
+    if not task:
+        raise HTTPException(404, "Tarea no encontrada")
+    
+    meta = task.meta or {}
+    
+    if req.alert_type == "incident":
+        incidents = meta.get("incidents", [])
+        if req.alert_index < 0 or req.alert_index >= len(incidents):
+            raise HTTPException(400, "Índice de incidente inválido")
+        
+        incidents[req.alert_index]["resolved"] = True
+        incidents[req.alert_index]["resolved_at"] = datetime.utcnow().isoformat()
+        incidents[req.alert_index]["resolved_by"] = current_user.username
+        meta["incidents"] = incidents
+        
+    elif req.alert_type == "lost_item":
+        lost_items = meta.get("lost_items", [])
+        if req.alert_index < 0 or req.alert_index >= len(lost_items):
+            raise HTTPException(400, "Índice de objeto extraviado inválido")
+        
+        lost_items[req.alert_index]["resolved"] = True
+        lost_items[req.alert_index]["resolved_at"] = datetime.utcnow().isoformat()
+        lost_items[req.alert_index]["resolved_by"] = current_user.username
+        meta["lost_items"] = lost_items
+    else:
+        raise HTTPException(400, "Tipo de alerta inválido")
+    
+    task.meta = meta
+    flag_modified(task, "meta")
+    task.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(task)
+    
+    return {"status": "resolved", "task_id": task.id}
 
 
 @router.patch("/housekeeping/tasks/{task_id}")
 def housekeeping_patch_task(
     task_id: int = Path(..., gt=0),
     req: HousekeepingTaskPatchRequest = ...,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """Patch housekeeping task. If status goes to done, mark room disponible and set done_at."""
-    task = db.query(HousekeepingTask).filter(HousekeepingTask.id == task_id).first()
+    tenant_id = current_user.empresa_usuario_id
+    if not tenant_id:
+        raise HTTPException(401, "Usuario no autenticado o sin tenant asociado")
+    task = db.query(HousekeepingTask).filter(
+        HousekeepingTask.id == task_id,
+        HousekeepingTask.empresa_usuario_id == tenant_id
+    ).first()
     if not task:
         raise HTTPException(404, "Task no encontrada")
 
@@ -515,6 +654,13 @@ def housekeeping_patch_task(
         task.status = req.status
 
     if req.assigned_to_user_id is not None:
+        user = db.query(Usuario).filter(
+            Usuario.id == req.assigned_to_user_id,
+            Usuario.empresa_usuario_id == tenant_id,
+            Usuario.deleted.is_(False)
+        ).first()
+        if not user:
+            raise HTTPException(404, "Usuario asignado no encontrado")
         task.assigned_to_user_id = req.assigned_to_user_id
 
     if req.notes:
@@ -559,11 +705,26 @@ class HousekeepingClaimRequest(BaseModel):
 def housekeeping_claim_task(
     task_id: int = Path(..., gt=0),
     req: HousekeepingClaimRequest = ...,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
-    task = db.query(HousekeepingTask).filter(HousekeepingTask.id == task_id).first()
+    tenant_id = current_user.empresa_usuario_id
+    if not tenant_id:
+        raise HTTPException(401, "Usuario no autenticado o sin tenant asociado")
+    task = db.query(HousekeepingTask).filter(
+        HousekeepingTask.id == task_id,
+        HousekeepingTask.empresa_usuario_id == tenant_id
+    ).first()
     if not task:
         raise HTTPException(404, "Task no encontrada")
+
+    user = db.query(Usuario).filter(
+        Usuario.id == req.assigned_to_user_id,
+        Usuario.empresa_usuario_id == tenant_id,
+        Usuario.deleted.is_(False)
+    ).first()
+    if not user:
+        raise HTTPException(404, "Usuario asignado no encontrado")
 
     task.assigned_to_user_id = req.assigned_to_user_id
     task.status = "in_progress"
@@ -576,7 +737,8 @@ def housekeeping_claim_task(
 @router.get("/housekeeping/daily")
 def housekeeping_daily(
     date: Optional[str] = Query(None, description="YYYY-MM-DD"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """
     Derived daily tasks for a given date.
@@ -586,6 +748,9 @@ def housekeeping_daily(
     from models.core import DailyCleanLog
     
     target_date = datetime.utcnow().date() if not date else datetime.fromisoformat(date).date()
+    tenant_id = current_user.empresa_usuario_id
+    if not tenant_id:
+        raise HTTPException(401, "Usuario no autenticado o sin tenant asociado")
 
     day_start = datetime.combine(target_date, datetime.min.time())
     next_day = target_date + timedelta(days=1)
@@ -602,6 +767,8 @@ def housekeeping_daily(
         .join(Stay, Stay.id == StayRoomOccupancy.stay_id)
         .filter(
             Stay.estado.in_(["ocupada", "pendiente_checkout"]),
+            Stay.empresa_usuario_id == tenant_id,
+            Room.empresa_usuario_id == tenant_id,
             StayRoomOccupancy.desde < day_end,
             or_(StayRoomOccupancy.hasta.is_(None), StayRoomOccupancy.hasta > day_start)
         )
@@ -650,12 +817,20 @@ class DailyCleanLogRequest(BaseModel):
 @router.post("/housekeeping/daily/log")
 def housekeeping_daily_log(
     req: DailyCleanLogRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """Register daily cleaning completion. Upserts a DailyCleanLog entry."""
     from models.core import DailyCleanLog
     
     target_date = datetime.fromisoformat(req.date).date()
+    tenant_id = current_user.empresa_usuario_id
+    if not tenant_id:
+        raise HTTPException(401, "Usuario no autenticado o sin tenant asociado")
+
+    room = db.query(Room).filter(Room.id == req.room_id, Room.empresa_usuario_id == tenant_id).first()
+    if not room:
+        raise HTTPException(404, "Habitación no encontrada")
 
     log = (
         db.query(DailyCleanLog)

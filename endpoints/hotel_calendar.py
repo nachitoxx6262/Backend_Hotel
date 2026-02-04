@@ -17,11 +17,11 @@ from database.conexion import get_db
 from models.core import (
     Reservation, ReservationRoom, ReservationGuest,
     Stay, StayRoomOccupancy, StayCharge, StayPayment,
-    Room, RoomType, Cliente, Empresa, AuditEvent, HousekeepingTask, HotelSettings
+    Room, RoomType, Cliente, ClienteCorporativo, AuditEvent, HousekeepingTask, HotelSettings
 )
 from models.servicios import ProductoServicio
 from utils.logging_utils import log_event
-from utils.dependencies import get_current_user_optional
+from utils.dependencies import get_current_user_optional, get_current_user
 from utils.invoice_engine import compute_invoice
 from utils.timezone import get_hotel_now
 from utils.overstay_engine import check_overstay_status, OVERSTAY_DETECTED
@@ -147,6 +147,7 @@ class CheckoutRequest(BaseModel):
     discount_override_pct: Optional[float] = Field(None, ge=0, le=100, description="Descuento adicional %")
     tax_override_mode: Optional[str] = Field(None, description="normal|exento|custom")
     tax_override_value: Optional[float] = Field(None, ge=0, description="Impuesto manual si mode=custom")
+    surcharge_amount: Optional[float] = Field(None, ge=0, description="Recargo adicional (ej. por forma de pago)")
 
     # Opciones de Confirmación
     housekeeping: bool = Field(False, description="Generar tarea de limpieza")
@@ -385,11 +386,19 @@ def parse_to_datetime(value: Union[str, datetime]) -> datetime:
     raise TypeError(f"Unsupported datetime type: {type(value)}")
 
 
-def _get_active_empresa_or_404(db: Session, empresa_id: int) -> Empresa:
-    """Obtiene empresa activa o lanza 404 si no existe o está inactiva."""
+def _get_active_empresa_or_404(
+    db: Session,
+    empresa_id: int,
+    tenant_id: int
+) -> ClienteCorporativo:
+    """Obtiene empresa activa del tenant o lanza 404 si no existe o está inactiva."""
     empresa = (
-        db.query(Empresa)
-        .filter(Empresa.id == empresa_id, Empresa.activo == True)  # noqa: E712
+        db.query(ClienteCorporativo)
+        .filter(
+            ClienteCorporativo.id == empresa_id,
+            ClienteCorporativo.empresa_usuario_id == tenant_id,
+            ClienteCorporativo.activo == True  # noqa: E712
+        )
         .first()
     )
     if not empresa:
@@ -417,6 +426,7 @@ def compute_render_window(start: date, end: date, view_start: date, view_end: da
 
 def _check_room_availability(
     db: Session,
+    tenant_id: int,
     room_id: int,
     fecha_desde: date,
     fecha_hasta: date,
@@ -425,7 +435,10 @@ def _check_room_availability(
 ) -> bool:
     """Verificar disponibilidad de habitación en rango de fechas"""
 
-    room = db.query(Room).filter(Room.id == room_id).first()
+    room = db.query(Room).filter(
+        Room.id == room_id,
+        Room.empresa_usuario_id == tenant_id
+    ).first()
     # Si no existe, no permitir asignaciones
     if not room:
         return False
@@ -436,6 +449,7 @@ def _check_room_availability(
         .join(ReservationRoom)
         .filter(
             ReservationRoom.room_id == room_id,
+            Reservation.empresa_usuario_id == tenant_id,
             Reservation.estado.in_(["draft", "confirmada"]),  # No ocupada (ya tiene Stay con occupancies)
             Reservation.fecha_checkin < fecha_hasta,
             Reservation.fecha_checkout > fecha_desde
@@ -457,6 +471,7 @@ def _check_room_availability(
         .join(Stay)
         .filter(
             StayRoomOccupancy.room_id == room_id,
+            Stay.empresa_usuario_id == tenant_id,
             Stay.estado.in_(["pendiente_checkin", "ocupada", "pendiente_checkout"]),
         )
     ).all()
@@ -541,7 +556,8 @@ def get_calendar(
     include_no_show: bool = Query(False, description="Incluir reservas no-show"),
     room_id: Optional[int] = Query(None, description="Filtrar por habitación específica"),
     view: str = Query("all", description="Vista: all | stays | reservations"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user_optional)
 ):
     """
     📅 CALENDARIO UNIFICADO - Reservas futuras + Ocupaciones actuales + Histórico
@@ -569,6 +585,11 @@ def get_calendar(
     if days_diff > 120:
         log_event("calendar", "warning", "Rango amplio", f"from={from_date} to={to_date} days={days_diff}")
     
+    # Obtener tenant_id del usuario autenticado
+    tenant_id = current_user.empresa_usuario_id if current_user else None
+    if not tenant_id:
+        raise HTTPException(401, "Usuario no autenticado o sin tenant asociado")
+    
     # Convertir a datetime para overlap (from inclusivo, to exclusivo)
     from datetime import time
     from_dt = datetime.combine(fecha_desde, time.min)
@@ -595,16 +616,22 @@ def get_calendar(
             stay_estados.append("cerrada")
         
         # Query base de stays
+        # OPTIMIZADO: Eagerly load ALL relationships to prevent N+1 queries
         stays_query = (
             db.query(Stay)
             .options(
                 joinedload(Stay.reservation).joinedload(Reservation.cliente),
                 joinedload(Stay.reservation).joinedload(Reservation.empresa),
-                joinedload(Stay.reservation).joinedload(Reservation.rooms).joinedload(ReservationRoom.room),
+                joinedload(Stay.reservation).joinedload(Reservation.rooms).joinedload(ReservationRoom.room).joinedload(Room.tipo),
                 joinedload(Stay.reservation).joinedload(Reservation.guests),  # Include guests for pax count
-                joinedload(Stay.occupancies).joinedload(StayRoomOccupancy.room)
+                joinedload(Stay.occupancies).joinedload(StayRoomOccupancy.room).joinedload(Room.tipo),
+                joinedload(Stay.charges),
+                joinedload(Stay.payments)
             )
-            .filter(Stay.estado.in_(stay_estados))
+            .filter(
+                Stay.empresa_usuario_id == tenant_id,
+                Stay.estado.in_(stay_estados)
+            )
         )
         
         # NO filtrar por overlap en la query SQL (lo haremos en Python)
@@ -833,15 +860,17 @@ def get_calendar(
             reservation_estados.append("no_show")
         
         # Query base de reservations
+        # OPTIMIZADO: Eagerly load ALL relationships including Room.tipo
         reservations_query = (
             db.query(Reservation)
             .options(
-                joinedload(Reservation.rooms).joinedload(ReservationRoom.room),
+                joinedload(Reservation.rooms).joinedload(ReservationRoom.room).joinedload(Room.tipo),
                 joinedload(Reservation.cliente),
                 joinedload(Reservation.empresa),
                 joinedload(Reservation.guests)  # Include guests for pax count
             )
             .filter(
+                Reservation.empresa_usuario_id == tenant_id,
                 Reservation.estado.in_(reservation_estados + ["ocupada"]),  # incluir ocupada para filtrar después
                 Reservation.fecha_checkin < fecha_hasta,
                 Reservation.fecha_checkout > fecha_desde
@@ -957,7 +986,10 @@ def get_calendar(
     rooms_query = (
         db.query(Room)
         .options(joinedload(Room.tipo))
-        .filter(Room.activo == True)
+        .filter(
+            Room.activo == True,
+            Room.empresa_usuario_id == tenant_id
+        )
     )
     
     if room_id:
@@ -1004,45 +1036,58 @@ def get_calendar(
 @router.post("/reservations", status_code=status.HTTP_201_CREATED)
 def create_reservation(
     req: CreateReservationRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """
     Crear nueva reserva
     """
+    tenant_id = current_user.empresa_usuario_id
+    
     fecha_checkin = parse_to_date(req.fecha_checkin)
     fecha_checkout = parse_to_date(req.fecha_checkout)
     
     if fecha_checkout <= fecha_checkin:
         raise HTTPException(400, "La fecha de checkout debe ser posterior al checkin")
     
-    # Validar habitaciones
-    rooms = db.query(Room).filter(Room.id.in_(req.room_ids)).all()
+    # Validar habitaciones (deben pertenecer al tenant)
+    rooms = db.query(Room).filter(
+        Room.id.in_(req.room_ids),
+        Room.empresa_usuario_id == tenant_id
+    ).all()
     if len(rooms) != len(req.room_ids):
-        raise HTTPException(404, "Una o más habitaciones no encontradas")
+        raise HTTPException(404, "Una o más habitaciones no encontradas o no pertenecen a tu empresa")
     
     # Verificar disponibilidad
     for room in rooms:
-        if not _check_room_availability(db, room.id, fecha_checkin, fecha_checkout):
+        if not _check_room_availability(db, tenant_id, room.id, fecha_checkin, fecha_checkout):
             raise HTTPException(
                 409,
                 f"Habitación {room.numero} no disponible en las fechas seleccionadas"
             )
     
-    # Validar cliente/empresa si se proporciona
+    # Validar cliente/empresa si se proporciona (deben pertenecer al tenant)
     if req.cliente_id:
-        cliente = db.query(Cliente).filter(Cliente.id == req.cliente_id).first()
+        cliente = db.query(Cliente).filter(
+            Cliente.id == req.cliente_id,
+            Cliente.empresa_usuario_id == tenant_id
+        ).first()
         if not cliente:
-            raise HTTPException(404, "Cliente no encontrado")
+            raise HTTPException(404, "Cliente no encontrado o no pertenece a tu empresa")
     
     if req.empresa_id:
-        empresa = db.query(Empresa).filter(Empresa.id == req.empresa_id).first()
+        empresa = db.query(ClienteCorporativo).filter(
+            ClienteCorporativo.id == req.empresa_id,
+            ClienteCorporativo.empresa_usuario_id == tenant_id
+        ).first()
         if not empresa:
-            raise HTTPException(404, "Empresa no encontrada")
+            raise HTTPException(404, "Empresa no encontrada o no pertenece a tu empresa")
     
-    # Crear reserva
+    # Crear reserva con empresa_usuario_id
     reservation = Reservation(
         cliente_id=req.cliente_id,
         empresa_id=req.empresa_id,
+        empresa_usuario_id=tenant_id,
         nombre_temporal=req.nombre_temporal,
         fecha_checkin=fecha_checkin,
         fecha_checkout=fecha_checkout,
@@ -1062,11 +1107,29 @@ def create_reservation(
         )
         db.add(res_room)
     
-    # Asignar huéspedes si se proporcionan
+    # Asignar huéspedes si se proporcionan (validar pertenencia al tenant)
+    guest_ids = [g.get("cliente_id") for g in req.huespedes if g.get("cliente_id")]
+    if guest_ids:
+        unique_guest_ids = list(set(guest_ids))
+        valid_guest_ids = {
+            row[0]
+            for row in db.query(Cliente.id)
+            .filter(
+                Cliente.id.in_(unique_guest_ids),
+                Cliente.empresa_usuario_id == tenant_id
+            )
+            .all()
+        }
+        if len(valid_guest_ids) != len(unique_guest_ids):
+            raise HTTPException(404, "Uno o más huéspedes no pertenecen a tu empresa")
+
     for guest_data in req.huespedes:
+        cliente_id = guest_data.get("cliente_id")
+        if not cliente_id:
+            continue
         res_guest = ReservationGuest(
             reservation_id=reservation.id,
-            cliente_id=guest_data.get("cliente_id"),
+            cliente_id=cliente_id,
             rol=guest_data.get("rol", "adulto")
         )
         db.add(res_guest)
@@ -1099,7 +1162,8 @@ def create_reservation(
 def update_reservation(
     reservation_id: int = Path(..., gt=0),
     req: UpdateReservationRequest = ...,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """
     Actualizar reserva existente.
@@ -1109,9 +1173,14 @@ def update_reservation(
     - No se puede editar si está cerrada
     - Cambios de fechas requieren verificar disponibilidad
     """
-    reservation = db.query(Reservation).filter(Reservation.id == reservation_id).first()
+    tenant_id = current_user.empresa_usuario_id
+    
+    reservation = db.query(Reservation).filter(
+        Reservation.id == reservation_id,
+        Reservation.empresa_usuario_id == tenant_id
+    ).first()
     if not reservation:
-        raise HTTPException(status_code=404, detail="Reserva no encontrada")
+        raise HTTPException(status_code=404, detail="Reserva no encontrada o no pertenece a tu empresa")
     
     # VALIDACIÓN 1: No editar si está ocupada (tiene Stay activa)
     if reservation.estado == "ocupada":
@@ -1165,7 +1234,7 @@ def update_reservation(
         # Verificar disponibilidad para las nuevas fechas
         for res_room in reservation.rooms:
             if not _check_room_availability(
-                db, res_room.room_id, nueva_checkin, nueva_checkout,
+                db, tenant_id, res_room.room_id, nueva_checkin, nueva_checkout,
                 exclude_reservation_id=reservation_id
             ):
                 raise HTTPException(409, f"Habitación {res_room.room.numero} no disponible")
@@ -1203,7 +1272,7 @@ async def cancel_reservation(
     reservation_id: int = Path(..., gt=0),
     req: CancelReservationRequest = ...,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user_optional)
+    current_user = Depends(get_current_user)
 ):
     """
     Cancelar reserva (soft delete).
@@ -1219,15 +1288,22 @@ async def cancel_reservation(
     - cancelled_at
     - cancelled_by
     """
+    tenant_id = current_user.empresa_usuario_id
+    if not tenant_id:
+        raise HTTPException(status_code=401, detail="Usuario no autenticado o sin tenant asociado")
+
     reservation = (
         db.query(Reservation)
         .options(joinedload(Reservation.rooms))
-        .filter(Reservation.id == reservation_id)
+        .filter(
+            Reservation.id == reservation_id,
+            Reservation.empresa_usuario_id == tenant_id
+        )
         .first()
     )
     
     if not reservation:
-        raise HTTPException(status_code=404, detail="Reserva no encontrada")
+        raise HTTPException(status_code=404, detail="Reserva no encontrada o no pertenece a tu empresa")
     
     # IDEMPOTENCIA: Si ya está cancelada, retornar OK
     if reservation.estado == "cancelada":
@@ -1241,6 +1317,7 @@ async def cancel_reservation(
     # VALIDACIÓN 1: No permitir cancelar si tiene Stay activo
     existing_stay = db.query(Stay).filter(
         Stay.reservation_id == reservation_id,
+        Stay.empresa_usuario_id == tenant_id,
         Stay.estado != "cerrada"
     ).first()
     
@@ -1254,17 +1331,20 @@ async def cancel_reservation(
     reservation.estado = "cancelada"
     reservation.cancel_reason = req.reason
     reservation.cancelled_at = datetime.utcnow()
-    reservation.cancelled_by = current_user.id if current_user else None
+    reservation.cancelled_by = current_user.id
     reservation.updated_at = datetime.utcnow()
     
     # Liberar habitaciones (estado_operativo)
     for res_room in reservation.rooms:
-        room = db.query(Room).filter(Room.id == res_room.room_id).first()
+        room = db.query(Room).filter(
+            Room.id == res_room.room_id,
+            Room.empresa_usuario_id == tenant_id
+        ).first()
         if room and room.estado_operativo == "reservada":
             room.estado_operativo = "disponible"
     
     # Auditoría
-    username = current_user.username if current_user else "sistema"
+    username = current_user.username
     audit = AuditEvent(
         entity_type="reservation",
         entity_id=reservation.id,
@@ -1294,7 +1374,8 @@ async def cancel_reservation(
 @router.patch("/calendar/blocks/move")
 def move_block(
     req: MoveBlockRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """
     Mover o redimensionar bloque (reserva o estadía).
@@ -1305,11 +1386,18 @@ def move_block(
     - Verificar solapamiento de habitaciones
     - Validar dates lógicas (checkin < checkout)
     """
+    tenant_id = current_user.empresa_usuario_id
+    if not tenant_id:
+        raise HTTPException(status_code=401, detail="Usuario no autenticado o sin tenant asociado")
+
     if req.kind == "reservation":
         if not req.reservation_id:
             raise HTTPException(status_code=400, detail="reservation_id requerido")
         
-        reservation = db.query(Reservation).filter(Reservation.id == req.reservation_id).first()
+        reservation = db.query(Reservation).filter(
+            Reservation.id == req.reservation_id,
+            Reservation.empresa_usuario_id == tenant_id
+        ).first()
         if not reservation:
             raise HTTPException(status_code=404, detail="Reserva no encontrada")
         
@@ -1342,15 +1430,25 @@ def move_block(
         
         # Verificar disponibilidad
         availability_result = _check_room_availability(
-            db, req.room_id, nueva_checkin, nueva_checkout,
+            db, tenant_id, req.room_id, nueva_checkin, nueva_checkout,
             exclude_reservation_id=req.reservation_id
         )
         if not availability_result:
             # Obtener habitación para mensaje más específico
-            target_room = db.query(Room).filter(Room.id == req.room_id).first()
+            target_room = db.query(Room).filter(
+                Room.id == req.room_id,
+                Room.empresa_usuario_id == tenant_id
+            ).first()
             room_label = target_room.numero if target_room else str(req.room_id)
             
             raise HTTPException(409, f"Habitación {room_label} no disponible en las fechas solicitadas")
+        else:
+            target_room = db.query(Room).filter(
+                Room.id == req.room_id,
+                Room.empresa_usuario_id == tenant_id
+            ).first()
+            if not target_room:
+                raise HTTPException(status_code=404, detail="Habitación no encontrada o no pertenece a tu empresa")
         
         # Advertencia si hay estadía activa (sin bloquear)
         active_stay_warning = (
@@ -1358,6 +1456,7 @@ def move_block(
             .join(Stay)
             .filter(
                 StayRoomOccupancy.room_id == req.room_id,
+                Stay.empresa_usuario_id == tenant_id,
                 Stay.estado.in_(["pendiente_checkin", "ocupada", "pendiente_checkout"]),
                 StayRoomOccupancy.hasta.is_(None)  # Sin checkout
             )
@@ -1402,10 +1501,15 @@ def move_block(
             if not occupancy:
                 raise HTTPException(status_code=404, detail="Ocupación no encontrada")
             stay = occupancy.stay
+            if stay and stay.empresa_usuario_id != tenant_id:
+                raise HTTPException(status_code=404, detail="Ocupación no encontrada")
         
         # 2. Si no hay occupancy_id pero hay stay_id, intentar recuperar
         elif req.stay_id:
-            stay = db.query(Stay).filter(Stay.id == req.stay_id).first()
+            stay = db.query(Stay).filter(
+                Stay.id == req.stay_id,
+                Stay.empresa_usuario_id == tenant_id
+            ).first()
             if not stay:
                 raise HTTPException(status_code=404, detail="Estadía no encontrada")
             
@@ -1459,6 +1563,13 @@ def move_block(
             occupancy.hasta = datetime.utcnow()
             
             # Crear nueva ocupación
+            room_nueva = db.query(Room).filter(
+                Room.id == req.room_id,
+                Room.empresa_usuario_id == tenant_id
+            ).first()
+            if not room_nueva:
+                raise HTTPException(status_code=404, detail="Habitación no encontrada o no pertenece a tu empresa")
+
             nueva_occ = StayRoomOccupancy(
                 stay_id=stay.id,
                 room_id=req.room_id,
@@ -1470,11 +1581,17 @@ def move_block(
             db.add(nueva_occ)
             
             # Actualizar estado de habitaciones
-            room_anterior = db.query(Room).filter(Room.id == occupancy.room_id).first()
+            room_anterior = db.query(Room).filter(
+                Room.id == occupancy.room_id,
+                Room.empresa_usuario_id == tenant_id
+            ).first()
             if room_anterior:
                 room_anterior.estado_operativo = "disponible"
             
-            room_nueva = db.query(Room).filter(Room.id == req.room_id).first()
+            room_nueva = db.query(Room).filter(
+                Room.id == req.room_id,
+                Room.empresa_usuario_id == tenant_id
+            ).first()
             if room_nueva:
                 room_nueva.estado_operativo = "ocupada"
         
@@ -1509,7 +1626,8 @@ def move_block(
 def checkin_from_reservation(
     reservation_id: int = Path(..., gt=0),
     req: CheckinRequest = ...,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """
     Realizar check-in creando una estadía desde una reserva.
@@ -1522,18 +1640,23 @@ def checkin_from_reservation(
     
     Idempotencia: Si Stay ya existe, retorna 200 OK con Stay existente
     """
+    tenant_id = current_user.empresa_usuario_id
+    
     reservation = (
         db.query(Reservation)
         .options(
             joinedload(Reservation.rooms),
             joinedload(Reservation.guests)
         )
-        .filter(Reservation.id == reservation_id)
+        .filter(
+            Reservation.id == reservation_id,
+            Reservation.empresa_usuario_id == tenant_id
+        )
         .first()
     )
     
     if not reservation:
-        raise HTTPException(status_code=404, detail="Reserva no encontrada")
+        raise HTTPException(status_code=404, detail="Reserva no encontrada o no pertenece a tu empresa")
     
     # VALIDACIÓN 1: Reserva debe ser candidata a check-in
     if not reservation.is_draft_or_confirmed():
@@ -1586,7 +1709,9 @@ def checkin_from_reservation(
     for h in req.huespedes:
         nombre = h.get("nombre", "").strip()
         apellido = h.get("apellido", "").strip()
-        documento = h.get("documento", "").strip()
+        # Aceptar ambos formatos: documento o numero_documento
+        documento = h.get("documento") or h.get("numero_documento", "")
+        documento = documento.strip() if documento else ""
         tipo_doc = h.get("tipo_documento", "DNI")
         rol = h.get("rol", "adulto")
         
@@ -1596,16 +1721,20 @@ def checkin_from_reservation(
         # Buscar cliente existente
         cliente = db.query(Cliente).filter(
             Cliente.numero_documento == documento,
-            Cliente.tipo_documento == tipo_doc
+            Cliente.tipo_documento == tipo_doc,
+            Cliente.empresa_usuario_id == tenant_id
         ).first()
         
         if not cliente:
             # Crear nuevo
             cliente = Cliente(
+                empresa_usuario_id=tenant_id,
                 nombre=nombre,
                 apellido=apellido,
                 tipo_documento=tipo_doc,
                 numero_documento=documento,
+                telefono=h.get("telefono"),
+                email=h.get("email"),
                 activo=True
             )
             db.add(cliente)
@@ -1614,8 +1743,8 @@ def checkin_from_reservation(
             
         processed_guests.append({"cliente_id": cliente.id, "rol": rol})
         
-        # Si es el principal, actualizar reserva si falta
-        if rol == 'principal' and not reservation.cliente_id:
+        # Si es el principal, actualizar reserva SIEMPRE (incluso si tenía nombre_temporal)
+        if rol == 'principal':
             reservation.cliente_id = cliente.id
 
     # Actualizar ReservationGuests si hay datos nuevos
@@ -1631,6 +1760,7 @@ def checkin_from_reservation(
 
     # Crear estadía
     stay = Stay(
+        empresa_usuario_id=tenant_id,
         reservation_id=reservation.id,
         estado="ocupada",
         checkin_real=datetime.utcnow(),
@@ -1687,66 +1817,12 @@ def checkin_from_reservation(
     }
 
 
-@router.get("/clients/search-by-doc")
-def search_client_by_doc(
-    doc: str = Query(..., min_length=3),
-    db: Session = Depends(get_db)
-):
-    """
-    Buscar un cliente por documento.
-    """
-    cliente = db.query(Cliente).filter(
-        Cliente.numero_documento == doc
-    ).first()
-    
-    if not cliente:
-        return None 
-        
-    stays_count = (
-        db.query(func.count(Stay.id))
-        .join(Reservation, Reservation.id == Stay.reservation_id)
-        .filter(
-            Reservation.cliente_id == cliente.id,
-            Stay.estado == 'cerrada'
-        )
-        .scalar()
-    )
-    
-    last_stay = (
-        db.query(Stay)
-        .join(Reservation, Reservation.id == Stay.reservation_id)
-        .filter(
-            Reservation.cliente_id == cliente.id,
-            Stay.estado == 'cerrada'
-        )
-        .order_by(Stay.checkout_real.desc())
-        .first()
-    )
-    
-    last_room = None
-    if last_stay and last_stay.occupancies:
-        # Intento de obtener última habitación
-        pass
-
-    return {
-        "found": True,
-        "id": cliente.id,
-        "nombre": cliente.nombre,
-        "apellido": cliente.apellido,
-        "documento": cliente.numero_documento,
-        "tipo_documento": cliente.tipo_documento,
-        "history": {
-            "total_stays": stays_count or 0,
-            "last_stay_date": last_stay.checkout_real.isoformat() if last_stay and last_stay.checkout_real else None,
-        }
-    }
-
-
 @router.post("/stays/{stay_id}/checkout")
 def checkout_stay(
     stay_id: int = Path(..., gt=0),
     req: CheckoutRequest = ...,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """
     🚪 CHECK-OUT PROFESIONAL
@@ -1772,6 +1848,8 @@ def checkout_stay(
     - Reservation: "finalizada" (si estaba "ocupada")
     - Room: "limpieza" hasta que housekeeping cierre la tarea de checkout
     """
+    tenant_id = current_user.empresa_usuario_id
+    
     # =====================================================================
     # 1) CARGAR STAY CON RELACIONES
     # =====================================================================
@@ -1784,19 +1862,22 @@ def checkout_stay(
             joinedload(Stay.charges),
             joinedload(Stay.payments),
         )
-        .filter(Stay.id == stay_id)
+        .filter(
+            Stay.id == stay_id,
+            Stay.empresa_usuario_id == tenant_id
+        )
         .first()
     )
     
     if not stay:
-        raise HTTPException(status_code=404, detail="Estadía no encontrada")
+        raise HTTPException(404, "Estadía no encontrada o no pertenece a tu empresa")
     
     reservation = stay.reservation
     if not reservation:
         raise HTTPException(status_code=400, detail="Stay sin reserva asociada")
 
     if req.empresa_id is not None:
-        empresa = _get_active_empresa_or_404(db, req.empresa_id)
+        empresa = _get_active_empresa_or_404(db, req.empresa_id, tenant_id)
         reservation.empresa_id = empresa.id
         reservation.empresa = empresa
         reservation.updated_at = datetime.utcnow()
@@ -2032,7 +2113,8 @@ def checkout_stay(
 @router.get("/stays/{stay_id}/summary")
 def get_stay_summary(
     stay_id: int = Path(..., gt=0),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """
     Obtener resumen completo de una estadía (especialmente para cerradas).
@@ -2044,6 +2126,8 @@ def get_stay_summary(
     - Cargos y pagos
     - Totales
     """
+    tenant_id = current_user.empresa_usuario_id
+    
     stay = (
         db.query(Stay)
         .options(
@@ -2054,11 +2138,15 @@ def get_stay_summary(
             joinedload(Stay.charges),
             joinedload(Stay.payments)
         )
-        .filter(Stay.id == stay_id)
+        .filter(
+            Stay.id == stay_id,
+            Stay.empresa_usuario_id == tenant_id
+        )
         .first()
     )
     
     if not stay:
+        raise HTTPException(404, "Estadía no encontrada o no pertenece a tu empresa")
         raise HTTPException(status_code=404, detail="Estadía no encontrada")
     
     reservation = stay.reservation
@@ -2078,7 +2166,8 @@ def get_stay_summary(
                 "tipo": "empresa",
                 "nombre": reservation.empresa.nombre,
                 "cuit": reservation.empresa.cuit,
-                "email": reservation.empresa.email
+                "email": reservation.empresa.contacto_email,
+                "telefono": reservation.empresa.contacto_telefono
             }
         else:
             cliente_info = {
@@ -2185,14 +2274,20 @@ def get_stay_summary(
 @router.get("/stays/{stay_id}/charges")
 def list_charges(
     stay_id: int = Path(..., gt=0),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """
     Listar cargos de una estadía
     """
-    stay = db.query(Stay).filter(Stay.id == stay_id).first()
+    tenant_id = current_user.empresa_usuario_id
+    
+    stay = db.query(Stay).filter(
+        Stay.id == stay_id,
+        Stay.empresa_usuario_id == tenant_id
+    ).first()
     if not stay:
-        raise HTTPException(404, "Estadía no encontrada")
+        raise HTTPException(404, "Estadía no encontrada o no pertenece a tu empresa")
     
     charges = db.query(StayCharge).filter(StayCharge.stay_id == stay_id).all()
     return {
@@ -2217,14 +2312,20 @@ def list_charges(
 def add_charge(
     stay_id: int = Path(..., gt=0),
     req: ChargeRequest = ...,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """
     Agregar cargo a una estadía
     """
-    stay = db.query(Stay).filter(Stay.id == stay_id).first()
+    tenant_id = current_user.empresa_usuario_id
+    
+    stay = db.query(Stay).filter(
+        Stay.id == stay_id,
+        Stay.empresa_usuario_id == tenant_id
+    ).first()
     if not stay:
-        raise HTTPException(404, "Estadía no encontrada")
+        raise HTTPException(404, "Estadía no encontrada o no pertenece a tu empresa")
     
     if stay.estado == "cerrada":
         raise HTTPException(409, "No se pueden agregar cargos a una estadía cerrada")
@@ -2272,15 +2373,21 @@ def add_charge(
 def delete_charge(
     stay_id: int = Path(..., gt=0),
     charge_id: int = Path(..., gt=0),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """
     Eliminar un cargo (Hard Delete).
     Solo si la estadía NO está cerrada.
     """
-    stay = db.query(Stay).filter(Stay.id == stay_id).first()
+    tenant_id = current_user.empresa_usuario_id
+    
+    stay = db.query(Stay).filter(
+        Stay.id == stay_id,
+        Stay.empresa_usuario_id == tenant_id
+    ).first()
     if not stay:
-        raise HTTPException(404, "Estadía no encontrada")
+        raise HTTPException(404, "Estadía no encontrada o no pertenece a tu empresa")
     
     if stay.estado == "cerrada":
         raise HTTPException(409, "No se pueden eliminar cargos de una estadía cerrada")
@@ -2315,7 +2422,8 @@ def delete_charge(
 def add_payment(
     stay_id: int = Path(..., gt=0),
     req: PaymentRequest = ...,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """
     Registrar pago para una estadía
@@ -2324,9 +2432,14 @@ def add_payment(
     - NO genera comprobante ni modifica la reserva
     - El frontend es responsable de actualizar invoicePreview después
     """
-    stay = db.query(Stay).filter(Stay.id == stay_id).first()
+    tenant_id = current_user.empresa_usuario_id
+    
+    stay = db.query(Stay).filter(
+        Stay.id == stay_id,
+        Stay.empresa_usuario_id == tenant_id
+    ).first()
     if not stay:
-        raise HTTPException(404, "Estadía no encontrada")
+        raise HTTPException(404, "Estadía no encontrada o no pertenece a tu empresa")
     
     if stay.estado == "cerrada":
         raise HTTPException(409, "No se pueden agregar pagos a una estadía cerrada")
@@ -2398,12 +2511,23 @@ def preview_checkout_post(
     stay_id: int = Path(..., gt=0),
     req: CheckoutRequest = ...,
     db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """
     🧾 POST INVOICE PREVIEW (Body params)
     
     Versión POST para aceptar overrides complejos en el body.
     """
+    tenant_id = current_user.empresa_usuario_id
+    
+    # Validar que el stay pertenece al tenant
+    stay = db.query(Stay).filter(
+        Stay.id == stay_id,
+        Stay.empresa_usuario_id == tenant_id
+    ).first()
+    if not stay:
+        raise HTTPException(404, "Estadía no encontrada o no pertenece a tu empresa")
+    
     return get_invoice_preview(
         stay_id=stay_id,
         checkout_date=None, # O extraer de req se existe
@@ -2412,8 +2536,10 @@ def preview_checkout_post(
         discount_override_pct=req.discount_override_pct,
         tax_override_mode=req.tax_override_mode,
         tax_override_value=req.tax_override_value,
+        surcharge_amount=req.surcharge_amount,
         include_items=True,
-        db=db
+        db=db,
+        current_user=current_user
     )
 
 @router.get("/stays/{stay_id}/invoice-preview", response_model=InvoicePreviewResponse)
@@ -2425,8 +2551,10 @@ def get_invoice_preview(
     discount_override_pct: Optional[float] = Query(None, ge=0, le=100, description="Descuento adicional en %"),
     tax_override_mode: Optional[str] = Query(None, description="Modo: 'normal'|'exento'|'custom'"),
     tax_override_value: Optional[float] = Query(None, ge=0, description="Impuesto personalizado"),
+    surcharge_amount: Optional[float] = Query(None, ge=0, description="Recargo adicional (ej. forma de pago)"),
     include_items: bool = Query(True, description="Incluir líneas detalladas"),
     db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """
     🧾 INVOICE PREVIEW (Checkout Wizard)
@@ -2438,13 +2566,17 @@ def get_invoice_preview(
       noches, tarifa, impuestos, descuentos, pagos, total y saldo.
     - Retorna estructura completa para el frontend del checkout wizard
     """
+    tenant_id = current_user.empresa_usuario_id
     
     # =====================================================================
     # 1) CARGAR STAY
     # =====================================================================
     stay = (
         db.query(Stay)
-        .filter(Stay.id == stay_id)
+        .filter(
+            Stay.id == stay_id,
+            Stay.empresa_usuario_id == tenant_id
+        )
         .options(
             joinedload(Stay.reservation).joinedload(Reservation.cliente),
             joinedload(Stay.reservation).joinedload(Reservation.empresa),
@@ -2546,6 +2678,19 @@ def get_invoice_preview(
                 )
             )
         
+        # Recargos (si hay)
+        if surcharge_amount and surcharge_amount > 0:
+            breakdown_lines.append(
+                InvoiceLineItem(
+                    line_type="surcharge",
+                    description="Recargo (forma de pago, cuotas, etc.)",
+                    quantity=1.0,
+                    unit_price=float(surcharge_amount),
+                    total=float(surcharge_amount),
+                    metadata={"surcharge_applied": True},
+                )
+            )
+        
         # Pagos
         for payment_item in calc.payments_breakdown:
             breakdown_lines.append(
@@ -2612,9 +2757,9 @@ def get_invoice_preview(
             charges_total=round(float(calc.charges_total), 2),
             taxes_total=round(float(calc.taxes_total), 2),
             discounts_total=round(float(calc.discounts_total), 2),
-            grand_total=round(float(calc.grand_total), 2),
+            grand_total=round(float(calc.grand_total + Decimal(str(surcharge_amount or 0))), 2),
             payments_total=round(float(calc.payments_total), 2),
-            balance=round(float(calc.balance), 2),
+            balance=round(float(calc.balance + Decimal(str(surcharge_amount or 0))), 2),
         ),
         payments=calc.payments_breakdown if include_items else [],
         warnings=warnings_list,
@@ -2623,78 +2768,25 @@ def get_invoice_preview(
     )
 
 
-@router.post("/stays/{stay_id}/checkout/preview", response_model=InvoicePreviewResponse)
-def post_invoice_preview(
-    stay_id: int = Path(..., gt=0),
-    req: CheckoutRequest = ...,
-    db: Session = Depends(get_db),
-):
-    """
-    🧾 Invoice Preview (POST)
-    Permite enviar overrides en el body para recálculo sin persistir.
-    """
-    stay = (
-        db.query(Stay)
-        .filter(Stay.id == stay_id)
-        .options(
-            joinedload(Stay.reservation).joinedload(Reservation.cliente),
-            joinedload(Stay.reservation).joinedload(Reservation.empresa),
-            joinedload(Stay.occupancies).joinedload(StayRoomOccupancy.room).joinedload(Room.tipo),
-            joinedload(Stay.charges),
-            joinedload(Stay.payments),
-        )
-        .first()
-    )
-    if not stay:
-        raise HTTPException(404, "Stay no encontrado")
-    
-    reservation = stay.reservation
-    if not reservation:
-        raise HTTPException(400, "Stay sin reserva")
-
-    original_empresa = reservation.empresa
-    original_empresa_id = reservation.empresa_id
-    if req.empresa_id is not None:
-        empresa = _get_active_empresa_or_404(db, req.empresa_id)
-        reservation.empresa_id = empresa.id
-        reservation.empresa = empresa
-
-    try:
-        calc = compute_invoice(
-            stay=stay,
-            db=db,
-            checkout_date_override=req.retroactive_time,
-            nights_override=req.nights_override,
-            tarifa_override=req.tarifa_override,
-            discount_pct_override=req.discount_override_pct,
-            tax_mode_override=req.tax_override_mode,
-            tax_value_override=req.tax_override_value,
-        )
-    except Exception as e:
-        raise HTTPException(500, f"Error cálculo invoice: {e}")
-    finally:
-        if req.empresa_id is not None:
-            reservation.empresa_id = original_empresa_id
-            reservation.empresa = original_empresa
-            db.expire(reservation)
-
-    # Construir respuesta
-    return _build_preview_response(stay, calc, req.discount_override_pct, req.tax_override_mode)
-
-
 @router.post("/stays/{stay_id}/checkout/confirm", response_model=CheckoutResult)
 def confirm_checkout(
     stay_id: int = Path(..., gt=0),
     req: CheckoutRequest = ...,
     db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """
     ✅ CONFIRMAR CHECKOUT
     """
+    tenant_id = current_user.empresa_usuario_id
+    
     # 1. Validar Stay
-    stay = db.query(Stay).filter(Stay.id == stay_id).first()
+    stay = db.query(Stay).filter(
+        Stay.id == stay_id,
+        Stay.empresa_usuario_id == tenant_id
+    ).first()
     if not stay:
-        raise HTTPException(404, "Stay no encontrado")
+        raise HTTPException(404, "Stay no encontrado o no pertenece a tu empresa")
         
     if stay.estado == "cerrada":
         raise HTTPException(409, "Estadía ya cerrada")
@@ -2704,7 +2796,7 @@ def confirm_checkout(
         raise HTTPException(400, "Stay sin reserva asociada")
 
     if req.empresa_id is not None:
-        empresa = _get_active_empresa_or_404(db, req.empresa_id)
+        empresa = _get_active_empresa_or_404(db, req.empresa_id, tenant_id)
         reservation.empresa_id = empresa.id
         reservation.empresa = empresa
         reservation.updated_at = datetime.utcnow()
@@ -2745,14 +2837,19 @@ def confirm_checkout(
     except Exception as e:
         raise HTTPException(500, f"Error cálculo final: {e}")
 
-    # 4. Validar Deuda
-    if calc.balance > 0.01 and not req.allow_close_with_debt:
-        raise HTTPException(409, f"No se puede cerrar con saldo pendiente ({calc.balance}). Registre pago o autorice deuda.")
+    # 4. Aplicar recargo adicional si existe
+    surcharge_amount = Decimal(str(req.surcharge_amount)) if req.surcharge_amount else Decimal('0')
+    final_grand_total = calc.grand_total + surcharge_amount
+    final_balance = calc.balance + surcharge_amount
     
-    if calc.balance > 0.01 and req.allow_close_with_debt and not req.debt_reason:
+    # 5. Validar Deuda
+    if final_balance > 0.01 and not req.allow_close_with_debt:
+        raise HTTPException(409, f"No se puede cerrar con saldo pendiente ({final_balance}). Registre pago o autorice deuda.")
+    
+    if final_balance > 0.01 and req.allow_close_with_debt and not req.debt_reason:
         raise HTTPException(400, "Debe especificar motivo de deuda")
 
-    # 5. ACTUALIZAR STAY (Cerrar)
+    # 6. ACTUALIZAR STAY (Cerrar)
     stay.checkout_real = actual_checkout_at
     stay.estado = "cerrada"
     stay.updated_at = datetime.now()
@@ -2786,6 +2883,28 @@ def confirm_checkout(
         room_charge.monto_total = calc.room_subtotal
         room_charge.descripcion = f"Alojamiento {calc.final_nights} noches"
 
+    # Agregar recargo adicional como cargo si existe
+    if surcharge_amount > 0:
+        surcharge_charge = db.query(StayCharge).filter(
+            StayCharge.stay_id == stay.id, 
+            StayCharge.tipo == "surcharge"
+        ).first()
+        
+        if not surcharge_charge:
+            surcharge_charge = StayCharge(
+                stay_id=stay.id,
+                tipo="surcharge",
+                descripcion="Recargo adicional (forma de pago)",
+                cantidad=1,
+                monto_unitario=surcharge_amount,
+                monto_total=surcharge_amount,
+                creado_por="sistema_checkout"
+            )
+            db.add(surcharge_charge)
+        else:
+            surcharge_charge.monto_unitario = surcharge_amount
+            surcharge_charge.monto_total = surcharge_amount
+
     # Persistir descuentos/impuestos como items si es necesario (omitido por brevedad, asumimos engine simple)
 
     # 7. Generar Auditoría
@@ -2797,8 +2916,9 @@ def confirm_checkout(
         descripcion=f"Checkout completado.{audit_notes}",
         payload={
             "checkout_real": actual_checkout_at.isoformat(),
-            "grand_total": float(calc.grand_total),
-            "balance": float(calc.balance),
+            "grand_total": float(final_grand_total),
+            "surcharge": float(surcharge_amount),
+            "balance": float(final_balance),
             "overrides": req.dict(exclude_none=True)
         }
     )
@@ -2818,18 +2938,132 @@ def confirm_checkout(
     
     # Generar tarea de housekeeping si está habilitada
     if req.housekeeping:
-        generate_checkout_tasks(stay, db)
+        try:
+            generate_checkout_tasks(stay, db)
+            db.flush()  # Forzar escritura para capturar UniqueViolation aquí
+        except Exception as e:
+            # Si ya existe la tarea (checkout duplicado), continuar
+            if "uq_hk_task_daily" in str(e) or "UniqueViolation" in str(e):
+                db.rollback()  # Revertir solo esta operación
+                log_event("checkout", current_user.username, 
+                         "Tarea housekeeping ya existe", 
+                         f"stay_id={stay_id}, ignorando duplicado")
+            else:
+                # Otro error, re-lanzar
+                raise
+    
+    # 9. CREAR TRANSACCIONES EN CAJA (una por cada pago realizado)
+    # Buscar o crear categoría "Venta de Habitación"
+    from models.core import TransactionCategory, Transaction, TransactionType, PaymentMethod
+    
+    categoria_venta = db.query(TransactionCategory).filter(
+        TransactionCategory.empresa_usuario_id == tenant_id,
+        TransactionCategory.nombre == "Venta de Habitación",
+        TransactionCategory.tipo == TransactionType.INGRESO.value
+    ).first()
+    
+    if not categoria_venta:
+        # Crear categoría del sistema si no existe
+        categoria_venta = TransactionCategory(
+            empresa_usuario_id=tenant_id,
+            nombre="Venta de Habitación",
+            tipo=TransactionType.INGRESO.value,
+            descripcion="Ingresos por alojamiento",
+            activo=True,
+            es_sistema=True
+        )
+        db.add(categoria_venta)
+        db.flush()
+    
+    # Mapeo de métodos de pago de StayPayment a Transaction
+    metodo_map = {
+        "efectivo": PaymentMethod.EFECTIVO.value,
+        "tarjeta": PaymentMethod.TARJETA.value,
+        "tarjeta_credito": PaymentMethod.TARJETA_CREDITO.value,
+        "tarjeta_debito": PaymentMethod.TARJETA_DEBITO.value,
+        "transferencia": PaymentMethod.TRANSFERENCIA.value,
+        "qr": PaymentMethod.QR.value,
+        "cheque": PaymentMethod.CHEQUE.value
+    }
+    
+    # Preparar breakdown compartido para todas las transacciones
+    breakdown = [
+        {"description": f"Alojamiento - {calc.final_nights} noches", "amount": float(calc.room_subtotal)},
+    ]
+    
+    # Agregar cargos
+    if calc.charges_total > 0:
+        breakdown.append({"description": "Consumos y cargos", "amount": float(calc.charges_total)})
+    
+    # Agregar descuentos
+    if calc.discounts_total > 0:
+        breakdown.append({"description": "Descuentos", "amount": -float(calc.discounts_total)})
+    
+    # Agregar recargo
+    if surcharge_amount and surcharge_amount > 0:
+        breakdown.append({"description": "Recargo (pago, cuotas, etc.)", "amount": float(surcharge_amount)})
+    
+    # Agregar impuestos
+    if calc.taxes_total > 0:
+        breakdown.append({"description": "Impuestos", "amount": float(calc.taxes_total)})
+    
+    # Crear una transacción por cada pago realizado
+    if stay.payments:
+        for payment in stay.payments:
+            if payment.es_reverso:
+                continue  # Saltar pagos revertidos
+            
+            metodo_pago = metodo_map.get(payment.metodo, "otro")
+            
+            ingreso_transaction = Transaction(
+                empresa_usuario_id=tenant_id,
+                tipo=TransactionType.INGRESO.value,
+                category_id=categoria_venta.id,
+                monto=payment.monto,
+                metodo_pago=metodo_pago,
+                referencia=payment.referencia or f"Stay #{stay.id} - Reserva #{reservation.id}",
+                fecha=actual_checkout_at,
+                usuario_id=current_user.id,
+                stay_id=stay.id,
+                cliente_id=reservation.cliente_id,
+                notas=f"Pago {metodo_pago} - Checkout Stay #{stay.id}" + (f" - {payment.notas}" if payment.notas else ""),
+                es_automatica=True,
+                metadata_json={
+                    "breakdown": breakdown,
+                    "payment_id": payment.id,
+                    "is_partial": len([p for p in stay.payments if not p.es_reverso]) > 1
+                }
+            )
+            db.add(ingreso_transaction)
+    else:
+        # Si no hay pagos registrados, crear transacción por el total (efectivo por defecto)
+        ingreso_transaction = Transaction(
+            empresa_usuario_id=tenant_id,
+            tipo=TransactionType.INGRESO.value,
+            category_id=categoria_venta.id,
+            monto=final_grand_total,
+            metodo_pago=PaymentMethod.EFECTIVO.value,
+            referencia=f"Stay #{stay.id} - Reserva #{reservation.id}",
+            fecha=actual_checkout_at,
+            usuario_id=current_user.id,
+            stay_id=stay.id,
+            cliente_id=reservation.cliente_id,
+            notas=f"Ingreso automático por checkout: {calc.final_nights} noches a {calc.nightly_rate}/noche" + (f" + recargo ${surcharge_amount}" if surcharge_amount > 0 else ""),
+            es_automatica=True,
+            metadata_json={"breakdown": breakdown}
+        )
+        db.add(ingreso_transaction)
 
     db.commit()
     
     # Convert InvoiceCalculation to InvoicePreviewResponse
     breakdown_lines = [
         InvoiceLineItem(
+            line_type="charge",
             description=charge.get("descripcion", ""),
             quantity=charge.get("cantidad", 1),
             unit_price=charge.get("monto_unitario", 0),
-            total=charge.get("monto_total", 0),
-            type="charge"
+            total=charge.get("monto_total", 0)
         )
         for charge in calc.charges_breakdown
     ]
@@ -2884,9 +3118,9 @@ def confirm_checkout(
             charges_total=round(float(calc.charges_total), 2),
             taxes_total=round(float(calc.taxes_total), 2),
             discounts_total=round(float(calc.discounts_total), 2),
-            grand_total=round(float(calc.grand_total), 2),
+            grand_total=round(float(final_grand_total), 2),
             payments_total=round(float(calc.payments_total), 2),
-            balance=round(float(calc.balance), 2),
+            balance=round(float(final_balance), 2),
         ),
         payments=calc.payments_breakdown,
         warnings=warnings_list,
@@ -2909,14 +3143,20 @@ def checkout_stay(
     stay_id: int = Path(..., gt=0),
     req: CheckoutRequest = ...,
     db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """
     📝 CHECKOUT DE ESTADÍA (Sin confirmar)
     Retorna preview del cierre sin persistir cambios.
     """
+    tenant_id = current_user.empresa_usuario_id
+    
     stay = (
         db.query(Stay)
-        .filter(Stay.id == stay_id)
+        .filter(
+            Stay.id == stay_id,
+            Stay.empresa_usuario_id == tenant_id
+        )
         .options(
             joinedload(Stay.reservation),
             joinedload(Stay.occupancies).joinedload(StayRoomOccupancy.room).joinedload(Room.tipo),
@@ -2926,9 +3166,10 @@ def checkout_stay(
         .first()
     )
     if not stay:
-        raise HTTPException(404, "Stay no encontrado")
+        raise HTTPException(404, "Stay no encontrado o no pertenece a tu empresa")
 
     # 1. Idempotencia
+    if stay.estado == "cerrada":
         calc = compute_invoice(stay, db)
         invoice = _build_preview_response(stay, calc, None, None)
         return CheckoutResult(
@@ -3180,15 +3421,29 @@ def _build_preview_response(stay, calc, discount_override_pct, tax_override_mode
 # ========================================================================
 
 @router.get("/productos-servicios", response_model=List[ProductoServicioResponse])
-def list_productos_servicios(include_inactive: bool = Query(False, description="Incluir inactivos"), db: Session = Depends(get_db)):
-    query = db.query(ProductoServicio).order_by(ProductoServicio.actualizado_en.desc())
+def list_productos_servicios(
+    include_inactive: bool = Query(False, description="Incluir inactivos"),
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    tenant_id = current_user.empresa_usuario_id
+    
+    query = db.query(ProductoServicio).filter(
+        ProductoServicio.empresa_usuario_id == tenant_id
+    ).order_by(ProductoServicio.actualizado_en.desc())
     if not include_inactive:
         query = query.filter(ProductoServicio.activo.is_(True))
     return query.all()
 
 
 @router.post("/productos-servicios", response_model=ProductoServicioResponse, status_code=status.HTTP_201_CREATED)
-def create_producto_servicio(payload: ProductoServicioCreate, db: Session = Depends(get_db), current_user=Depends(get_current_user_optional)):
+def create_producto_servicio(
+    payload: ProductoServicioCreate,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    tenant_id = current_user.empresa_usuario_id
+    
     nuevo = ProductoServicio(
         nombre=payload.nombre,
         tipo=payload.tipo,
@@ -3196,6 +3451,7 @@ def create_producto_servicio(payload: ProductoServicioCreate, db: Session = Depe
         precio_unitario=payload.precio_unitario,
         activo=payload.activo if payload.activo is not None else True,
         actualizado_por=getattr(current_user, "username", None),
+        empresa_usuario_id=tenant_id
     )
     db.add(nuevo)
     db.commit()
@@ -3206,10 +3462,20 @@ def create_producto_servicio(payload: ProductoServicioCreate, db: Session = Depe
 
 
 @router.put("/productos-servicios/{producto_id}", response_model=ProductoServicioResponse)
-def update_producto_servicio(producto_id: int = Path(..., gt=0), payload: ProductoServicioUpdate = None, db: Session = Depends(get_db), current_user=Depends(get_current_user_optional)):
-    producto = db.query(ProductoServicio).filter(ProductoServicio.id == producto_id).first()
+def update_producto_servicio(
+    producto_id: int = Path(..., gt=0),
+    payload: ProductoServicioUpdate = None,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    tenant_id = current_user.empresa_usuario_id
+    
+    producto = db.query(ProductoServicio).filter(
+        ProductoServicio.id == producto_id,
+        ProductoServicio.empresa_usuario_id == tenant_id
+    ).first()
     if not producto:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Producto/servicio no encontrado")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Producto/servicio no encontrado o no pertenece a tu empresa")
 
     data = payload.dict(exclude_unset=True)
     for key, value in data.items():
@@ -3224,10 +3490,19 @@ def update_producto_servicio(producto_id: int = Path(..., gt=0), payload: Produc
 
 
 @router.delete("/productos-servicios/{producto_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_producto_servicio(producto_id: int = Path(..., gt=0), db: Session = Depends(get_db), current_user=Depends(get_current_user_optional)):
-    producto = db.query(ProductoServicio).filter(ProductoServicio.id == producto_id).first()
+def delete_producto_servicio(
+    producto_id: int = Path(..., gt=0),
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    tenant_id = current_user.empresa_usuario_id
+    
+    producto = db.query(ProductoServicio).filter(
+        ProductoServicio.id == producto_id,
+        ProductoServicio.empresa_usuario_id == tenant_id
+    ).first()
     if not producto:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Producto/servicio no encontrado")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Producto/servicio no encontrado o no pertenece a tu empresa")
 
     producto.activo = False
     producto.actualizado_por = getattr(current_user, "username", None)
@@ -3240,13 +3515,17 @@ def delete_producto_servicio(producto_id: int = Path(..., gt=0), db: Session = D
 @router.get("/clients/search-by-doc")
 def search_client_by_doc(
     doc: str = Query(..., min_length=3),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """
     Buscar un cliente por documento.
     """
+    tenant_id = current_user.empresa_usuario_id
+
     cliente = db.query(Cliente).filter(
-        Cliente.numero_documento == doc
+        Cliente.numero_documento == doc,
+        Cliente.empresa_usuario_id == tenant_id
     ).first()
     
     if not cliente:
@@ -3257,6 +3536,7 @@ def search_client_by_doc(
         .join(Reservation, Reservation.id == Stay.reservation_id)
         .filter(
             Reservation.cliente_id == cliente.id,
+            Reservation.empresa_usuario_id == tenant_id,
             Stay.estado == 'cerrada'
         )
         .scalar()
@@ -3267,6 +3547,7 @@ def search_client_by_doc(
         .join(Reservation, Reservation.id == Stay.reservation_id)
         .filter(
             Reservation.cliente_id == cliente.id,
+            Reservation.empresa_usuario_id == tenant_id,
             Stay.estado == 'cerrada'
         )
         .order_by(Stay.checkout_real.desc())

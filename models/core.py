@@ -14,19 +14,188 @@ from sqlalchemy import (
     JSON,
     CheckConstraint,
     text,
+    Enum,
 )
 from sqlalchemy.orm import relationship
 from database.conexion import Base
 from sqlalchemy.dialects.postgresql import JSONB
+import enum
 
-class Empresa(Base):
-    __tablename__ = "empresas"
+
+# ============================================================================
+# ENUMS MULTI-TENANT
+# ============================================================================
+
+class PlanType(str, enum.Enum):
+    DEMO = "demo"
+    BASICO = "basico"
+    PREMIUM = "premium"
+
+
+class SubscriptionStatus(str, enum.Enum):
+    ACTIVO = "activo"
+    VENCIDO = "vencido"
+    CANCELADO = "cancelado"
+    BLOQUEADO = "bloqueado"
+
+
+class PaymentStatus(str, enum.Enum):
+    PENDIENTE = "pendiente"
+    EXITOSO = "exitoso"
+    FALLIDO = "fallido"
+
+
+class PaymentProvider(str, enum.Enum):
+    DUMMY = "dummy"
+    MERCADO_PAGO = "mercado_pago"
+    STRIPE = "stripe"
+
+
+# ============================================================================
+# MULTI-TENANT CORE MODELS
+# ============================================================================
+
+class Plan(Base):
+    """Planes disponibles en el SaaS"""
+    __tablename__ = "planes"
     __table_args__ = (
-        UniqueConstraint("cuit", name="uq_empresa_cuit"),
-        Index("idx_empresa_nombre", "nombre"),
+        UniqueConstraint("nombre", name="uq_plan_nombre"),
+        Index("idx_plan_nombre", "nombre"),
     )
 
     id = Column(Integer, primary_key=True)
+    nombre = Column(Enum(PlanType, values_callable=lambda obj: [e.value for e in obj]), nullable=False, unique=True)
+    descripcion = Column(Text, nullable=True)
+    precio_mensual = Column(Numeric(12, 2), nullable=False)
+    max_habitaciones = Column(Integer, nullable=False, default=10)
+    max_usuarios = Column(Integer, nullable=False, default=5)
+    caracteristicas = Column(JSONB, nullable=True)  # {"feature1": true, "feature2": false}
+    activo = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+
+    subscriptions = relationship("Subscription", back_populates="plan")
+
+
+class EmpresaUsuario(Base):
+    """Tenants SaaS - Hoteles que contratan Cuenus Hotel"""
+    __tablename__ = "empresa_usuarios"
+    __table_args__ = (
+        UniqueConstraint("cuit", name="uq_empresa_usuario_cuit"),
+        Index("idx_empresa_usuario_nombre", "nombre_hotel"),
+        Index("idx_empresa_usuario_estado", "activa"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    nombre_hotel = Column(String(150), nullable=False)
+    cuit = Column(String(20), nullable=False)
+    
+    contacto_nombre = Column(String(100), nullable=True)
+    contacto_email = Column(String(100), nullable=True)
+    contacto_telefono = Column(String(30), nullable=True)
+    
+    direccion = Column(String(200), nullable=True)
+    ciudad = Column(String(100), nullable=True)
+    provincia = Column(String(100), nullable=True)
+
+    plan_tipo = Column(Enum(PlanType, values_callable=lambda obj: [e.value for e in obj]), default=PlanType.DEMO, nullable=False)
+    
+    # Trial: solo para plan DEMO
+    fecha_inicio_demo = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=True)
+    fecha_fin_demo = Column(DateTime(timezone=True), nullable=True)  # Seteado a hoy + 10 días en registro
+    
+    # Control de acceso
+    activa = Column(Boolean, default=True, nullable=False)
+    deleted = Column(Boolean, default=False, nullable=False)
+    
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    usuarios = relationship("Usuario", back_populates="empresa_usuario")
+    clientes = relationship("Cliente", back_populates="empresa_usuario")
+    clientes_corporativos = relationship("ClienteCorporativo", back_populates="empresa_usuario")
+    habitaciones = relationship("Room", back_populates="empresa_usuario")
+    reservas = relationship("Reservation", back_populates="empresa_usuario")
+    stays = relationship("Stay", back_populates="empresa_usuario")
+    daily_rates = relationship("DailyRate", back_populates="empresa_usuario")
+    housekeeping_tasks = relationship("HousekeepingTask", back_populates="empresa_usuario")
+    roles = relationship("Rol", back_populates="empresa_usuario")
+    subscription = relationship("Subscription", back_populates="empresa_usuario", uselist=False)
+    hotel_settings = relationship("HotelSettings", back_populates="empresa_usuario", uselist=False)
+    transaction_categories = relationship("TransactionCategory", back_populates="empresa_usuario")
+    transactions = relationship("Transaction", back_populates="empresa_usuario")
+    cash_closings = relationship("CashClosing", back_populates="empresa_usuario")
+
+
+class Subscription(Base):
+    """Suscripciones activas por tenant"""
+    __tablename__ = "subscriptions"
+    __table_args__ = (
+        UniqueConstraint("empresa_usuario_id", name="uq_subscription_empresa_usuario"),
+        Index("idx_subscription_estado", "estado"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    empresa_usuario_id = Column(Integer, ForeignKey("empresa_usuarios.id"), nullable=False, unique=True)
+    plan_id = Column(Integer, ForeignKey("planes.id"), nullable=False)
+    
+    estado = Column(Enum(SubscriptionStatus, values_callable=lambda obj: [e.value for e in obj]), default=SubscriptionStatus.ACTIVO, nullable=False)
+    fecha_proxima_renovacion = Column(DateTime(timezone=True), nullable=True)
+    
+    metadata_json = Column(JSONB, nullable=True)  # {last_payment_id, billing_email, etc}
+    
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    empresa_usuario = relationship("EmpresaUsuario", back_populates="subscription")
+    plan = relationship("Plan", back_populates="subscriptions")
+    payment_attempts = relationship("PaymentAttempt", back_populates="subscription")
+    transactions = relationship("Transaction", back_populates="subscription")
+
+
+class PaymentAttempt(Base):
+    """Intentos de pago - tabla de auditoría"""
+    __tablename__ = "payment_attempts"
+    __table_args__ = (
+        Index("idx_payment_subscription", "subscription_id"),
+        Index("idx_payment_estado", "estado"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    subscription_id = Column(Integer, ForeignKey("subscriptions.id"), nullable=False)
+    
+    monto = Column(Numeric(12, 2), nullable=False)
+    estado = Column(Enum(PaymentStatus), default=PaymentStatus.PENDIENTE, nullable=False)
+    proveedor = Column(Enum(PaymentProvider), default=PaymentProvider.DUMMY, nullable=False)
+    
+    external_id = Column(String(255), nullable=True)  # ID del proveedor de pago
+    webhook_url = Column(String(500), nullable=True)
+    response_json = Column(JSONB, nullable=True)
+    
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    subscription = relationship("Subscription", back_populates="payment_attempts")
+
+
+# ============================================================================
+# RENOMBRADA: Empresa → ClienteCorporativo (Clientes que reservan)
+# ============================================================================
+
+class ClienteCorporativo(Base):
+    """Empresas clientes que reservan en el hotel (ej: Coca Cola, Mercedes)"""
+    __tablename__ = "cliente_corporativo"
+    __table_args__ = (
+        UniqueConstraint("cuit", name="uq_cliente_corporativo_cuit"),
+        Index("idx_cliente_corporativo_nombre", "nombre"),
+        Index("idx_cliente_corporativo_empresa_usuario", "empresa_usuario_id"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    empresa_usuario_id = Column(Integer, ForeignKey("empresa_usuarios.id"), nullable=False)
+    
     nombre = Column(String(150), nullable=False)
     cuit = Column(String(20), nullable=False)
     tipo_empresa = Column(String(50), nullable=True)
@@ -40,9 +209,12 @@ class Empresa(Base):
     provincia = Column(String(100), nullable=True)
 
     activo = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    clientes = relationship("Cliente", back_populates="empresa")
+    # Relationships
+    empresa_usuario = relationship("EmpresaUsuario", back_populates="clientes_corporativos")
+    clientes = relationship("Cliente", back_populates="cliente_corporativo")
 
 
 class Cliente(Base):
@@ -51,9 +223,12 @@ class Cliente(Base):
         UniqueConstraint("tipo_documento", "numero_documento", name="uq_doc"),
         Index("idx_cliente_email", "email"),
         Index("idx_cliente_telefono", "telefono"),
+        Index("idx_cliente_empresa", "empresa_usuario_id"),
+        Index("idx_cliente_corporativo", "empresa_id"),
     )
 
     id = Column(Integer, primary_key=True)
+    empresa_usuario_id = Column(Integer, ForeignKey("empresa_usuarios.id", ondelete="CASCADE"), nullable=False)
     nombre = Column(String(60), nullable=False)
     apellido = Column(String(60), nullable=False)
     tipo_documento = Column(String(20), nullable=False, default="DNI")
@@ -65,23 +240,30 @@ class Cliente(Base):
     email = Column(String(100), nullable=True)
     telefono = Column(String(30), nullable=True)
 
-    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=True)
+    empresa_id = Column(Integer, ForeignKey("cliente_corporativo.id"), nullable=True)
     nota_interna = Column(Text, nullable=True)
 
     blacklist = Column(Boolean, default=False, nullable=False)
     motivo_blacklist = Column(Text, nullable=True)
 
     activo = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    empresa = relationship("Empresa", back_populates="clientes")
+    # Relationships
+    empresa_usuario = relationship("EmpresaUsuario", back_populates="clientes")
+    cliente_corporativo = relationship("ClienteCorporativo", back_populates="clientes")
+    transactions = relationship("Transaction", back_populates="cliente")
 
 class RoomType(Base):
     __tablename__ = "room_types"
-    __table_args__ = (UniqueConstraint("nombre", name="uq_roomtype_nombre"),)
+    __table_args__ = (
+        UniqueConstraint("empresa_usuario_id", "nombre", name="uq_roomtype_empresa_nombre"),
+        Index("idx_roomtype_empresa", "empresa_usuario_id"),
+    )
 
     id = Column(Integer, primary_key=True)
+    empresa_usuario_id = Column(Integer, ForeignKey("empresa_usuarios.id", ondelete="CASCADE"), nullable=False)
     nombre = Column(String(60), nullable=False)
     descripcion = Column(Text, nullable=True)
     capacidad = Column(Integer, nullable=False, default=1)
@@ -93,12 +275,14 @@ class RoomType(Base):
 class Room(Base):
     __tablename__ = "rooms"
     __table_args__ = (
-        UniqueConstraint("numero", name="uq_room_numero"),
+        UniqueConstraint("empresa_usuario_id", "numero", name="uq_room_empresa_numero"),
         Index("idx_room_tipo", "room_type_id"),
         Index("idx_room_estado_operativo", "estado_operativo"),
+        Index("idx_room_empresa", "empresa_usuario_id"),
     )
 
     id = Column(Integer, primary_key=True)
+    empresa_usuario_id = Column(Integer, ForeignKey("empresa_usuarios.id", ondelete="CASCADE"), nullable=False)
     numero = Column(String(10), nullable=False)   # "101", "PB1" si algún día te pintan letras
     piso = Column(Integer, nullable=True)
     room_type_id = Column(Integer, ForeignKey("room_types.id"), nullable=False)
@@ -111,10 +295,11 @@ class Room(Base):
     particularidades = Column(JSONB, nullable=True)  # {"jacuzzi":true,...}
     activo = Column(Boolean, default=True, nullable=False)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
     tipo = relationship("RoomType")
+    empresa_usuario = relationship("EmpresaUsuario", back_populates="habitaciones")
 
 
 class RatePlan(Base):
@@ -129,7 +314,7 @@ class RatePlan(Base):
     reglas = Column(JSONB, nullable=True)
 
     activo = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
 
 class DailyRate(Base):
@@ -139,32 +324,37 @@ class DailyRate(Base):
     """
     __tablename__ = "daily_rates"
     __table_args__ = (
-        UniqueConstraint("room_type_id", "fecha", "rate_plan_id", name="uq_rate_day"),
+        UniqueConstraint("empresa_usuario_id", "room_type_id", "fecha", "rate_plan_id", name="uq_rate_day_empresa"),
         Index("idx_rate_fecha", "fecha"),
+        Index("idx_rate_empresa", "empresa_usuario_id"),
     )
 
     id = Column(Integer, primary_key=True)
+    empresa_usuario_id = Column(Integer, ForeignKey("empresa_usuarios.id", ondelete="CASCADE"), nullable=False)
     room_type_id = Column(Integer, ForeignKey("room_types.id"), nullable=False)
     rate_plan_id = Column(Integer, ForeignKey("rate_plans.id"), nullable=True)
 
-    fecha = Column(DateTime, nullable=False)  # guardá date si querés; DateTime también sirve
+    fecha = Column(DateTime(timezone=True), nullable=False)  # guardá date si querés; DateTime también sirve
     precio = Column(Numeric(12, 2), nullable=False)
 
     room_type = relationship("RoomType")
     rate_plan = relationship("RatePlan")
+    empresa_usuario = relationship("EmpresaUsuario", back_populates="daily_rates")
 
 class Reservation(Base):
     __tablename__ = "reservations"
     __table_args__ = (
         Index("idx_res_fechas", "fecha_checkin", "fecha_checkout"),
         Index("idx_res_estado", "estado"),
+        Index("idx_res_empresa", "empresa_usuario_id"),
     )
 
     id = Column(Integer, primary_key=True)
+    empresa_usuario_id = Column(Integer, ForeignKey("empresa_usuarios.id", ondelete="CASCADE"), nullable=False)
 
     # Titular (puede ser null si es "nombre temporal")
     cliente_id = Column(Integer, ForeignKey("clientes.id"), nullable=True)
-    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=True)
+    empresa_id = Column(Integer, ForeignKey("cliente_corporativo.id"), nullable=True)
     nombre_temporal = Column(String(120), nullable=True)
 
     fecha_checkin = Column(Date, nullable=False)
@@ -179,17 +369,18 @@ class Reservation(Base):
     
     # Cancelación (soft delete)
     cancel_reason = Column(Text, nullable=True)
-    cancelled_at = Column(DateTime, nullable=True)
+    cancelled_at = Column(DateTime(timezone=True), nullable=True)
     cancelled_by = Column(Integer, nullable=True)  # ID del usuario que canceló
 
     # Snapshot opcional: datos para reconstruir rápido sin 50 joins
     meta = Column(JSONB, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
     cliente = relationship("Cliente")
-    empresa = relationship("Empresa")
+    empresa = relationship("ClienteCorporativo", foreign_keys=[empresa_id])
+    empresa_usuario = relationship("EmpresaUsuario", back_populates="reservas")
     rooms = relationship("ReservationRoom", back_populates="reservation", cascade="all, delete-orphan")
     guests = relationship("ReservationGuest", back_populates="reservation", cascade="all, delete-orphan")
 
@@ -248,7 +439,7 @@ class ReservationGuest(Base):
     # principal | adulto | menor
     rol = Column(String(20), nullable=False)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
     reservation = relationship("Reservation", back_populates="guests")
     cliente = relationship("Cliente")
@@ -258,27 +449,31 @@ class Stay(Base):
     __table_args__ = (
         UniqueConstraint("reservation_id", name="uq_stay_reservation"),
         Index("idx_stay_estado", "estado"),
+        Index("idx_stay_empresa", "empresa_usuario_id"),
     )
 
     id = Column(Integer, primary_key=True)
+    empresa_usuario_id = Column(Integer, ForeignKey("empresa_usuarios.id", ondelete="CASCADE"), nullable=False)
     reservation_id = Column(Integer, ForeignKey("reservations.id", ondelete="RESTRICT"), nullable=False)
 
     # Estados operacionales (vida real)
     # pendiente_checkin | ocupada | pendiente_checkout | cerrada
     estado = Column(String(30), nullable=False, default="pendiente_checkin")
 
-    checkin_real = Column(DateTime, nullable=True)
-    checkout_real = Column(DateTime, nullable=True)
+    checkin_real = Column(DateTime(timezone=True), nullable=True)
+    checkout_real = Column(DateTime(timezone=True), nullable=True)
 
     notas_internas = Column(Text, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
     reservation = relationship("Reservation")
+    empresa_usuario = relationship("EmpresaUsuario", back_populates="stays")
     occupancies = relationship("StayRoomOccupancy", back_populates="stay", cascade="all, delete-orphan")
     charges = relationship("StayCharge", back_populates="stay", cascade="all, delete-orphan")
     payments = relationship("StayPayment", back_populates="stay", cascade="all, delete-orphan")
+    transactions = relationship("Transaction", back_populates="stay")
 
     def get_active_occupancy(self):
         """Retorna la ocupación activa (hasta IS NULL), o None"""
@@ -337,12 +532,12 @@ class StayRoomOccupancy(Base):
     stay_id = Column(Integer, ForeignKey("stays.id", ondelete="CASCADE"), nullable=False)
     room_id = Column(Integer, ForeignKey("rooms.id", ondelete="RESTRICT"), nullable=False)
 
-    desde = Column(DateTime, nullable=False)
-    hasta = Column(DateTime, nullable=True)  # null = sigue ocupando
+    desde = Column(DateTime(timezone=True), nullable=False)
+    hasta = Column(DateTime(timezone=True), nullable=True)  # null = sigue ocupando
 
     motivo = Column(String(120), nullable=True)  # upgrade, mantenimiento, error, etc.
     creado_por = Column(String(50), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
     stay = relationship("Stay", back_populates="occupancies")
     room = relationship("Room")
@@ -368,7 +563,7 @@ class StayCharge(Base):
     monto_unitario = Column(Numeric(12, 2), nullable=False)
     monto_total = Column(Numeric(12, 2), nullable=False)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     creado_por = Column(String(50), nullable=True)
 
     stay = relationship("Stay", back_populates="charges")
@@ -392,7 +587,7 @@ class StayPayment(Base):
     referencia = Column(String(120), nullable=True)
     es_reverso = Column(Boolean, default=False, nullable=False)
 
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime(timezone=True), default=datetime.utcnow)
     usuario = Column(String(50), nullable=True)
     notas = Column(Text, nullable=True)
 
@@ -409,7 +604,7 @@ class HKTemplate(Base):
     minibar_default = Column(JSON, nullable=True)
 
     activo = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
 
 class HousekeepingTask(Base):
@@ -417,6 +612,7 @@ class HousekeepingTask(Base):
     __table_args__ = (
         Index("idx_hk_task_room_date", "room_id", "task_date"),
         Index("idx_hk_task_status_date", "status", "task_date"),
+        Index("idx_hk_task_empresa", "empresa_usuario_id"),
         # Una sola limpieza diaria por habitación y día
         UniqueConstraint("room_id", "task_date", "task_type", name="uq_hk_task_daily"),
         # Una sola limpieza de checkout por estadía
@@ -426,10 +622,10 @@ class HousekeepingTask(Base):
             unique=True,
             postgresql_where=text("task_type = 'checkout'"),
         ),
-        # Constraints removidos para flexibilidad: task_type y status son libres
     )
 
     id = Column(Integer, primary_key=True)
+    empresa_usuario_id = Column(Integer, ForeignKey("empresa_usuarios.id", ondelete="CASCADE"), nullable=False)
     room_id = Column(Integer, ForeignKey("rooms.id", ondelete="RESTRICT"), nullable=False)
     stay_id = Column(Integer, ForeignKey("stays.id", ondelete="SET NULL"), nullable=True)
     reservation_id = Column(Integer, ForeignKey("reservations.id", ondelete="SET NULL"), nullable=True)
@@ -440,17 +636,18 @@ class HousekeepingTask(Base):
     priority = Column(String(20), nullable=False, default="media")  # baja | media | alta | urgente
 
     assigned_to_user_id = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
-    started_at = Column(DateTime, nullable=True) # Para métricas de tiempo
-    done_at = Column(DateTime, nullable=True)
+    started_at = Column(DateTime(timezone=True), nullable=True) # Para métricas de tiempo
+    done_at = Column(DateTime(timezone=True), nullable=True)
     notes = Column(Text, nullable=True)
     meta = Column(JSONB, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
     room = relationship("Room")
     stay = relationship("Stay")
     reservation = relationship("Reservation")
+    empresa_usuario = relationship("EmpresaUsuario", back_populates="housekeeping_tasks")
 
 
 class HKCycle(Base):
@@ -474,15 +671,15 @@ class HKCycle(Base):
     estado = Column(String(30), nullable=False, default="pending")
 
     asignado_a = Column(String(100), nullable=True)
-    started_at = Column(DateTime, nullable=True)
-    finished_at = Column(DateTime, nullable=True)
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    finished_at = Column(DateTime(timezone=True), nullable=True)
 
     checklist_result = Column(JSON, nullable=True)
     minibar_snapshot = Column(JSON, nullable=True)
     notas = Column(Text, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
     room = relationship("Room")
     stay = relationship("Stay")
@@ -503,7 +700,7 @@ class HKIncident(Base):
     descripcion = Column(Text, nullable=False)
     fotos_url = Column(JSON, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     created_by = Column(String(100), nullable=True)
 
     cycle = relationship("HKCycle", back_populates="incidents")
@@ -519,7 +716,7 @@ class HKLostItem(Base):
     descripcion = Column(Text, nullable=False)
     lugar = Column(String(150), nullable=True)
     entregado_a = Column(String(120), nullable=True)
-    fecha_hallazgo = Column(DateTime, default=datetime.utcnow)
+    fecha_hallazgo = Column(DateTime(timezone=True), default=datetime.utcnow)
 
     created_by = Column(String(100), nullable=True)
 
@@ -547,8 +744,8 @@ class MaintenanceTicket(Base):
     creado_por = Column(String(50), nullable=True)
     asignado_a = Column(String(100), nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    closed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    closed_at = Column(DateTime(timezone=True), nullable=True)
 
     room = relationship("Room")
 
@@ -570,7 +767,7 @@ class AuditEvent(Base):
     action = Column(String(50), nullable=False)  # CHECKIN, CHECKOUT, ROOM_MOVE, PAYMENT, UPDATE...
     usuario = Column(String(50), nullable=True)
 
-    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
+    timestamp = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     descripcion = Column(Text, nullable=True)
     payload = Column(JSONB, nullable=True)
     ip_address = Column(String(45), nullable=True)
@@ -592,7 +789,7 @@ class DailyCleanLog(Base):
     room_id = Column(Integer, ForeignKey("rooms.id", ondelete="RESTRICT"), nullable=False)
     date = Column(Date, nullable=False)
     user_id = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
-    completed_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    completed_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     notes = Column(Text, nullable=True)
 
     room = relationship("Room")
@@ -601,11 +798,12 @@ class DailyCleanLog(Base):
 class HotelSettings(Base):
     __tablename__ = "hotel_settings"
     __table_args__ = (
-        UniqueConstraint("empresa_id", name="uq_hotel_settings_empresa"),
+        UniqueConstraint("empresa_usuario_id", name="uq_hotel_settings_empresa_usuario"),
+        Index("idx_hotel_settings_empresa", "empresa_usuario_id"),
     )
 
     id = Column(Integer, primary_key=True)
-    empresa_id = Column(Integer, ForeignKey("empresas.id", ondelete="CASCADE"), nullable=False, unique=True)
+    empresa_usuario_id = Column(Integer, ForeignKey("empresa_usuarios.id", ondelete="CASCADE"), nullable=False, unique=True)
     checkout_hour = Column(Integer, default=12, nullable=False)
     checkout_minute = Column(Integer, default=0, nullable=False)
     cleaning_start_hour = Column(Integer, default=10, nullable=False)
@@ -613,7 +811,138 @@ class HotelSettings(Base):
     auto_extend_stays = Column(Boolean, default=True, nullable=False)
     timezone = Column(String(50), default="America/Argentina/Buenos_Aires", nullable=False)
     overstay_price = Column(Numeric(10, 2), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    empresa_usuario = relationship("EmpresaUsuario", back_populates="hotel_settings")
 
-    empresa = relationship("Empresa")
+
+# ============================================================================
+# SISTEMA DE CAJA - INGRESOS Y EGRESOS
+# ============================================================================
+
+class TransactionType(str, enum.Enum):
+    """Tipo de transacción"""
+    INGRESO = "ingreso"
+    EGRESO = "egreso"
+
+
+class PaymentMethod(str, enum.Enum):
+    """Métodos de pago para transacciones de caja"""
+    EFECTIVO = "efectivo"
+    TRANSFERENCIA = "transferencia"
+    TARJETA = "tarjeta"
+    TARJETA_CREDITO = "tarjeta_credito"
+    TARJETA_DEBITO = "tarjeta_debito"
+    CHEQUE = "cheque"
+    QR = "qr"
+    OTRO = "otro"
+
+
+class TransactionCategory(Base):
+    """Categorías de ingresos y egresos"""
+    __tablename__ = "transaction_categories"
+    __table_args__ = (
+        UniqueConstraint("empresa_usuario_id", "nombre", "tipo", name="uq_category_nombre_tipo"),
+        Index("idx_category_empresa", "empresa_usuario_id"),
+        Index("idx_category_tipo", "tipo"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    empresa_usuario_id = Column(Integer, ForeignKey("empresa_usuarios.id", ondelete="CASCADE"), nullable=False)
+    nombre = Column(String(100), nullable=False)  # Ej: "Sueldos", "Proveedores", "Venta de Habitación"
+    tipo = Column(Enum(TransactionType, name='transaction_type', values_callable=lambda obj: [e.value for e in obj]), nullable=False)  # ingreso o egreso
+    descripcion = Column(Text, nullable=True)
+    activo = Column(Boolean, default=True, nullable=False)
+    es_sistema = Column(Boolean, default=False, nullable=False)  # No editable/eliminable si es True
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+
+    # Relationships
+    empresa_usuario = relationship("EmpresaUsuario", back_populates="transaction_categories")
+    transactions = relationship("Transaction", back_populates="category")
+
+
+class Transaction(Base):
+    """Registro de ingresos y egresos"""
+    __tablename__ = "transactions"
+    __table_args__ = (
+        Index("idx_transaction_empresa", "empresa_usuario_id"),
+        Index("idx_transaction_tipo", "tipo"),
+        Index("idx_transaction_fecha", "fecha"),
+        Index("idx_transaction_usuario", "usuario_id"),
+        Index("idx_transaction_stay", "stay_id"),
+        Index("idx_transaction_subscription", "subscription_id"),
+        Index("idx_transaction_anulada", "anulada"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    empresa_usuario_id = Column(Integer, ForeignKey("empresa_usuarios.id", ondelete="CASCADE"), nullable=False)
+    tipo = Column(Enum(TransactionType, name='transaction_type', values_callable=lambda obj: [e.value for e in obj]), nullable=False)
+    category_id = Column(Integer, ForeignKey("transaction_categories.id", ondelete="RESTRICT"), nullable=False)
+    
+    monto = Column(Numeric(12, 2), nullable=False)
+    metodo_pago = Column(Enum(PaymentMethod, name='payment_method', values_callable=lambda obj: [e.value for e in obj]), nullable=False)
+    referencia = Column(String(255), nullable=True)  # Nro de comprobante, transferencia, etc.
+    
+    fecha = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
+    
+    # Relaciones opcionales con entidades del sistema
+    stay_id = Column(Integer, ForeignKey("stays.id", ondelete="SET NULL"), nullable=True)  # Si es ingreso de estadía
+    subscription_id = Column(Integer, ForeignKey("subscriptions.id", ondelete="SET NULL"), nullable=True)  # Si es pago de suscripción
+    cliente_id = Column(Integer, ForeignKey("clientes.id", ondelete="SET NULL"), nullable=True)  # Cliente asociado
+    
+    # Control de anulaciones (no se permite edición, solo anulación)
+    anulada = Column(Boolean, default=False, nullable=False)
+    anulada_por_id = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
+    anulada_fecha = Column(DateTime(timezone=True), nullable=True)
+    motivo_anulacion = Column(Text, nullable=True)
+    transaction_anulacion_id = Column(Integer, ForeignKey("transactions.id", ondelete="SET NULL"), nullable=True)  # Referencia a la transacción que anula esta
+    
+    notas = Column(Text, nullable=True)
+    es_automatica = Column(Boolean, default=False, nullable=False)  # True si fue generada por checkout/stripe
+    metadata_json = Column(JSONB, nullable=True)  # {breakdown: [...], invoice_details, etc}
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+
+    # Relationships
+    empresa_usuario = relationship("EmpresaUsuario", back_populates="transactions")
+    category = relationship("TransactionCategory", back_populates="transactions")
+    usuario = relationship("Usuario", foreign_keys=[usuario_id], back_populates="transactions_creadas")
+    anulada_por = relationship("Usuario", foreign_keys=[anulada_por_id], back_populates="transactions_anuladas")
+    stay = relationship("Stay", back_populates="transactions")
+    subscription = relationship("Subscription", back_populates="transactions")
+    cliente = relationship("Cliente", back_populates="transactions")
+    transaction_anulacion = relationship("Transaction", remote_side=[id], uselist=False)
+
+
+class CashClosing(Base):
+    """Cierre de caja por turno"""
+    __tablename__ = "cash_closings"
+    __table_args__ = (
+        Index("idx_cash_closing_empresa", "empresa_usuario_id"),
+        Index("idx_cash_closing_usuario", "usuario_id"),
+        Index("idx_cash_closing_fecha", "fecha_cierre"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    empresa_usuario_id = Column(Integer, ForeignKey("empresa_usuarios.id", ondelete="CASCADE"), nullable=False)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
+    
+    fecha_apertura = Column(DateTime(timezone=True), nullable=False)
+    fecha_cierre = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    
+    # Montos calculados por el sistema
+    ingresos_sistema = Column(Numeric(12, 2), nullable=False, default=0)
+    egresos_sistema = Column(Numeric(12, 2), nullable=False, default=0)
+    saldo_sistema = Column(Numeric(12, 2), nullable=False, default=0)
+    
+    # Montos declarados por el usuario
+    efectivo_declarado = Column(Numeric(12, 2), nullable=False)
+    diferencia = Column(Numeric(12, 2), nullable=False)  # efectivo_declarado - saldo_sistema
+    
+    notas = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+
+    # Relationships
+    empresa_usuario = relationship("EmpresaUsuario", back_populates="cash_closings")
+    usuario = relationship("Usuario", back_populates="cash_closings")

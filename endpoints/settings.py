@@ -2,13 +2,14 @@
 Endpoints para gestión de Configuraciones del Hotel (HotelSettings)
 """
 from typing import Optional
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from database.conexion import get_db
-from models.core import HotelSettings, Empresa
+from models.core import HotelSettings, EmpresaUsuario
 from utils.dependencies import get_current_user
 from utils.logging_utils import log_event
 
@@ -17,7 +18,7 @@ router = APIRouter(prefix="/api/settings", tags=["settings"])
 
 # Schemas
 class HotelSettingsCreate(BaseModel):
-    empresa_id: int
+    empresa_usuario_id: int
     checkout_hour: int = Field(default=12, ge=0, le=23)
     checkout_minute: int = Field(default=0, ge=0, le=59)
     cleaning_start_hour: int = Field(default=10, ge=0, le=23)
@@ -45,11 +46,10 @@ class HotelSettingsUpdate(BaseModel):
 
 class HotelSettingsRead(BaseModel):
     id: int
-    empresa_id: int
+    empresa_usuario_id: int
     checkout_hour: int
     checkout_minute: int
     cleaning_start_hour: int
-    cleaning_end_hour: int
     cleaning_end_hour: int
     auto_extend_stays: bool
     timezone: str
@@ -59,6 +59,14 @@ class HotelSettingsRead(BaseModel):
 
     class Config:
         from_attributes = True
+    
+    @field_validator('created_at', 'updated_at', mode='before')
+    @classmethod
+    def convert_datetime_to_iso(cls, v):
+        """Convierte datetime a string ISO 8601"""
+        if isinstance(v, datetime):
+            return v.isoformat()
+        return v
 
 
 # Endpoints
@@ -73,36 +81,31 @@ def get_hotel_settings(
     Obtiene las configuraciones del hotel actual del usuario.
     """
     try:
-        # Obtener el ID del usuario
-        user_id = current_user.id if hasattr(current_user, 'id') else None
-        
-        if not user_id:
+        # Validar que el usuario está autenticado
+        if not current_user:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Usuario no identificado"
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Usuario no autenticado"
             )
-
-        # Buscar las configuraciones del hotel (por ahora use primera empresa encontrada)
-        # En el futuro, esto debería venir de una relación usuario -> empresa
-        empresa = db.query(Empresa).filter(Empresa.activo == True).first()
         
-        if not empresa:
+        # Get tenant ID from authenticated user
+        empresa_usuario_id = current_user.empresa_usuario_id if hasattr(current_user, 'empresa_usuario_id') else None
+        
+        if not empresa_usuario_id:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="No hay empresa disponible"
+                detail="Usuario no asociado a ningún hotel/tenant"
             )
-        
-        empresa_id = empresa.id
 
         # Buscar las configuraciones del hotel
         settings = db.query(HotelSettings).filter(
-            HotelSettings.empresa_id == empresa_id
+            HotelSettings.empresa_usuario_id == empresa_usuario_id
         ).first()
 
         if not settings:
             # Crear configuraciones por defecto si no existen
             new_settings = HotelSettings(
-                empresa_id=empresa_id,
+                empresa_usuario_id=empresa_usuario_id,
                 checkout_hour=12,
                 checkout_minute=0,
                 cleaning_start_hour=10,
@@ -115,11 +118,12 @@ def get_hotel_settings(
             db.commit()
             db.refresh(new_settings)
             
+            user_id = current_user.id if hasattr(current_user, 'id') else "system"
             log_event(
                 "settings",
                 str(user_id),
                 "hotel_settings_created",
-                f"empresa_id={empresa_id} action=default_settings_created"
+                f"empresa_usuario_id={empresa_usuario_id} action=default_settings_created"
             )
             
             return HotelSettingsRead.from_orm(new_settings)
@@ -152,43 +156,33 @@ def update_hotel_settings(
     Solo usuarios con permisos de administrador pueden actualizar.
     """
     try:
-        # Obtener el usuario actual (Usuario object)
-        user_id = current_user.id if hasattr(current_user, 'id') else None
-        user_role = current_user.rol if hasattr(current_user, 'rol') else "readonly"
-        
-        if not user_id:
+        # Validar que el usuario está autenticado
+        if not current_user:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Usuario no identificado"
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Usuario no autenticado"
             )
-
-        # Verificar que el usuario tenga permisos de administrador
-        if user_role not in ["admin", "manager", "administrator"]:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="No tienes permisos para actualizar configuraciones"
-            )
-
-        # Buscar la empresa (por ahora use primera empresa activa)
-        empresa = db.query(Empresa).filter(Empresa.activo == True).first()
         
-        if not empresa:
+        user_id = current_user.id if hasattr(current_user, 'id') else "system"
+        
+        # Get tenant ID from authenticated user
+        empresa_usuario_id = current_user.empresa_usuario_id if hasattr(current_user, 'empresa_usuario_id') else None
+        
+        if not empresa_usuario_id:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="No hay empresa disponible"
+                detail="Usuario no asociado a ningún hotel/tenant"
             )
-        
-        empresa_id = empresa.id
 
         # Buscar las configuraciones existentes
         settings = db.query(HotelSettings).filter(
-            HotelSettings.empresa_id == empresa_id
+            HotelSettings.empresa_usuario_id == empresa_usuario_id
         ).first()
 
         if not settings:
             # Crear nuevas configuraciones con los valores proporcionados
             new_settings = HotelSettings(
-                empresa_id=empresa_id,
+                empresa_usuario_id=empresa_usuario_id,
                 checkout_hour=settings_data.checkout_hour or 12,
                 checkout_minute=settings_data.checkout_minute or 0,
                 cleaning_start_hour=settings_data.cleaning_start_hour or 10,
@@ -205,7 +199,7 @@ def update_hotel_settings(
                 "settings",
                 str(user_id),
                 "hotel_settings_updated",
-                f"empresa_id={empresa_id} action=settings_created"
+                f"empresa_usuario_id={empresa_usuario_id} action=settings_created"
             )
             
             return HotelSettingsRead.from_orm(new_settings)
@@ -233,7 +227,7 @@ def update_hotel_settings(
             "settings",
             str(user_id),
             "hotel_settings_updated",
-            f"empresa_id={empresa_id} checkout_hour={settings.checkout_hour} auto_extend_stays={settings.auto_extend_stays}"
+            f"empresa_usuario_id={empresa_usuario_id} checkout_hour={settings.checkout_hour} auto_extend_stays={settings.auto_extend_stays}"
         )
 
         return HotelSettingsRead.from_orm(settings)
@@ -273,29 +267,38 @@ def create_hotel_settings(
                 detail="Usuario no identificado"
             )
         
-        if user_role not in ["admin", "manager", "administrator"]:
+        if user_role not in ["admin", "gerente", "administrator"]:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="No tienes permisos para crear configuraciones"
             )
 
-        # Verificar que la empresa exista
-        empresa = db.query(Empresa).filter(Empresa.id == settings_data.empresa_id).first()
-        if not empresa:
+        if not current_user.es_super_admin and settings_data.empresa_usuario_id != current_user.empresa_usuario_id:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Empresa no encontrada"
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No tienes permisos para crear configuraciones de otro hotel"
             )
 
-        # Verificar que no exista ya configuración para esta empresa
+        # Verificar que el tenant exista
+        empresa_usuario = db.query(EmpresaUsuario).filter(
+            EmpresaUsuario.id == settings_data.empresa_usuario_id,
+            EmpresaUsuario.deleted.is_(False)
+        ).first()
+        if not empresa_usuario:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Tenant/Hotel no encontrado"
+            )
+
+        # Verificar que no exista ya configuración para este tenant
         existing = db.query(HotelSettings).filter(
-            HotelSettings.empresa_id == settings_data.empresa_id
+            HotelSettings.empresa_usuario_id == settings_data.empresa_usuario_id
         ).first()
         
         if existing:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Ya existe configuración para esta empresa"
+                detail="Ya existe configuración para este hotel"
             )
 
         # Crear nuevas configuraciones
@@ -308,7 +311,7 @@ def create_hotel_settings(
             "settings",
             str(user_id),
             "hotel_settings_created",
-            f"empresa_id={settings_data.empresa_id}"
+            f"empresa_usuario_id={settings_data.empresa_usuario_id}"
         )
 
         return HotelSettingsRead.from_orm(new_settings)

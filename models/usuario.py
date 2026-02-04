@@ -15,6 +15,7 @@ class Usuario(Base):
         Index('idx_usuario_username', 'username'),
         Index('idx_usuario_email', 'email'),
         Index('idx_usuario_activo', 'activo'),
+        Index('idx_usuario_empresa_usuario', 'empresa_usuario_id'),
     )
 
     id = Column(Integer, primary_key=True, index=True)
@@ -24,8 +25,14 @@ class Usuario(Base):
     nombre = Column(String(60), nullable=True)
     apellido = Column(String(60), nullable=True)
 
-    # Empresa a la que pertenece el usuario (tenant)
-    empresa_id = Column(Integer, ForeignKey("empresas.id", ondelete="SET NULL"), nullable=True)
+    # LEGACY: Empresa antigua (para compatibilidad)
+    empresa_id = Column(Integer, ForeignKey("cliente_corporativo.id", ondelete="SET NULL"), nullable=True)
+    
+    # MULTI-TENANT: Empresa Usuario (SaaS tenant). NULL si es super_admin
+    empresa_usuario_id = Column(Integer, ForeignKey("empresa_usuarios.id", ondelete="SET NULL"), nullable=True)
+    
+    # Super admin del SaaS (puede ver todos los hoteles)
+    es_super_admin = Column(Boolean, default=False, nullable=False)
     
     # Rol principal (para compatibilidad)
     rol = Column(String(20), nullable=False, default="readonly")
@@ -45,6 +52,10 @@ class Usuario(Base):
     
     # Relaciones
     usuario_roles = relationship("UsuarioRol", back_populates="usuario", cascade="all, delete-orphan")
+    empresa_usuario = relationship("EmpresaUsuario", back_populates="usuarios")
+    transactions_creadas = relationship("Transaction", foreign_keys="Transaction.usuario_id", back_populates="usuario")
+    transactions_anuladas = relationship("Transaction", foreign_keys="Transaction.anulada_por_id", back_populates="anulada_por")
+    cash_closings = relationship("CashClosing", back_populates="usuario")
     
     def __repr__(self):
         return f"<Usuario(id={self.id}, username='{self.username}', rol='{self.rol}')>"

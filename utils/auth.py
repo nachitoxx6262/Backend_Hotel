@@ -1,6 +1,8 @@
 """
 Utilidades para autenticación JWT y manejo de contraseñas
 """
+import os
+import secrets
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
@@ -9,10 +11,18 @@ from fastapi import HTTPException, status
 
 
 # Configuración de seguridad
-SECRET_KEY = "tu-clave-secreta-super-segura-cambiala-en-produccion-123456789"  # ⚠️ CAMBIAR EN PRODUCCIÓN
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+if not SECRET_KEY:
+    # En desarrollo, generar una key aleatoria (se pierde al reiniciar)
+    SECRET_KEY = secrets.token_urlsafe(32)
+    if os.getenv("ENV") == "production":
+        raise RuntimeError("⚠️ JWT_SECRET_KEY must be configured in production environment!")
+    print("⚠️ WARNING: Using temporary SECRET_KEY for development. Set JWT_SECRET_KEY in .env")
+
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
-REFRESH_TOKEN_EXPIRE_DAYS = 7
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
+
 
 # Contexto de encriptación para passwords
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -40,11 +50,37 @@ def get_password_hash(password: str) -> str:
 
 # ========== FUNCIONES DE JWT ==========
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(
+    user_id: int,
+    username: str,
+    rol: str = "readonly",
+    empresa_usuario_id: Optional[int] = None,
+    es_super_admin: bool = False,
+    extra_data: Optional[dict] = None,
+    expires_delta: Optional[timedelta] = None
+) -> str:
     """
-    Crea un token de acceso JWT
+    Crea un token de acceso JWT con soporte multi-tenant
+    
+    Args:
+        user_id: ID del usuario
+        username: Username del usuario
+        rol: Rol principal del usuario
+        empresa_usuario_id: ID del tenant (NULL si es super_admin)
+        es_super_admin: Boolean indicando si es super admin SaaS
+        extra_data: Datos adicionales a incluir en el payload
+        expires_delta: Duración personalizada del token
     """
-    to_encode = data.copy()
+    to_encode = {
+        "user_id": user_id,
+        "sub": username,
+        "rol": rol,
+        "empresa_usuario_id": empresa_usuario_id,
+        "es_super_admin": es_super_admin,
+    }
+    
+    if extra_data:
+        to_encode.update(extra_data)
     
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
@@ -61,11 +97,22 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     return encoded_jwt
 
 
-def create_refresh_token(data: dict) -> str:
+def create_refresh_token(
+    user_id: int,
+    username: str,
+    empresa_usuario_id: Optional[int] = None,
+    es_super_admin: bool = False
+) -> str:
     """
-    Crea un token de refresco JWT con mayor duración
+    Crea un token de refresco JWT con mayor duración (soporte multi-tenant)
     """
-    to_encode = data.copy()
+    to_encode = {
+        "user_id": user_id,
+        "sub": username,
+        "empresa_usuario_id": empresa_usuario_id,
+        "es_super_admin": es_super_admin,
+    }
+    
     expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     
     to_encode.update({
@@ -198,3 +245,37 @@ def es_password_seguro(password: str) -> tuple[bool, list[str]]:
         errores.append("Se recomienda incluir caracteres especiales")
     
     return (len(errores) == 0, errores)
+
+
+# ========== MULTI-TENANT UTILITIES ==========
+
+class TokenPayload:
+    """
+    Modelo para payload decodificado del JWT con soporte multi-tenant
+    """
+    def __init__(self, payload: dict):
+        self.user_id: int = payload.get("user_id")
+        self.username: str = payload.get("sub")
+        self.rol: str = payload.get("rol", "readonly")
+        self.empresa_usuario_id: Optional[int] = payload.get("empresa_usuario_id")
+        self.es_super_admin: bool = payload.get("es_super_admin", False)
+        self.exp: int = payload.get("exp")
+        self.iat: int = payload.get("iat")
+        self.token_type: str = payload.get("type", "access")
+    
+    def is_valid(self) -> bool:
+        """Verifica que el payload tenga los campos requeridos"""
+        return self.user_id is not None and self.username is not None
+    
+    def is_super_admin(self) -> bool:
+        """Verifica si el usuario es super admin"""
+        return self.es_super_admin and self.empresa_usuario_id is None
+    
+    def get_tenant_id(self) -> Optional[int]:
+        """Retorna el tenant_id (empresa_usuario_id) del usuario"""
+        if self.is_super_admin():
+            return None  # Super admin no tiene tenant específico
+        return self.empresa_usuario_id
+    
+    def __repr__(self) -> str:
+        return f"TokenPayload(user_id={self.user_id}, username={self.username}, empresa_usuario_id={self.empresa_usuario_id}, es_super_admin={self.es_super_admin})"

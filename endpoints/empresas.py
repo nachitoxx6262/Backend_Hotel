@@ -7,10 +7,10 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
-from pydantic import BaseModel, Field, field_serializer
+from pydantic import BaseModel, Field, field_serializer, EmailStr
 
 from database.conexion import get_db
-from models.core import Empresa, Reservation, Stay, StayCharge, Room, RoomType
+from models.core import ClienteCorporativo, Reservation, Stay, StayCharge, Room, RoomType
 from utils.dependencies import get_current_user
 
 router = APIRouter(prefix="/empresas", tags=["Empresas"])
@@ -22,7 +22,7 @@ class EmpresaBase(BaseModel):
     cuit: str = Field(..., min_length=1, max_length=20)
     tipo_empresa: Optional[str] = None
     contacto_nombre: Optional[str] = None
-    contacto_email: Optional[str] = None
+    contacto_email: Optional[EmailStr] = None
     contacto_telefono: Optional[str] = None
     direccion: Optional[str] = None
     ciudad: Optional[str] = None
@@ -39,7 +39,7 @@ class EmpresaUpdate(BaseModel):
     cuit: Optional[str] = None
     tipo_empresa: Optional[str] = None
     contacto_nombre: Optional[str] = None
-    contacto_email: Optional[str] = None
+    contacto_email: Optional[EmailStr] = None
     contacto_telefono: Optional[str] = None
     direccion: Optional[str] = None
     ciudad: Optional[str] = None
@@ -65,18 +65,34 @@ class EmpresaRead(EmpresaBase):
 @router.get("", response_model=List[EmpresaRead])
 def list_empresas(
     db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """Listar empresas activas"""
-    empresas = db.query(Empresa).filter(Empresa.activo == True).order_by(Empresa.nombre).all()  # noqa: E712
+    if not current_user or not current_user.empresa_usuario_id:
+        raise HTTPException(status_code=401, detail="No autenticado o sin tenant asociado")
+    
+    tenant_id = current_user.empresa_usuario_id
+    empresas = db.query(ClienteCorporativo).filter(
+        ClienteCorporativo.empresa_usuario_id == tenant_id,
+        ClienteCorporativo.activo == True
+    ).order_by(ClienteCorporativo.nombre).all()  # noqa: E712
     return empresas
 
 
 @router.get("/eliminadas", response_model=List[EmpresaRead])
 def list_deleted_empresas(
     db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """Listar empresas eliminadas (inactivas)"""
-    empresas = db.query(Empresa).filter(Empresa.activo == False).all()  # noqa: E712
+    if not current_user or not current_user.empresa_usuario_id:
+        raise HTTPException(status_code=401, detail="No autenticado o sin tenant asociado")
+    
+    tenant_id = current_user.empresa_usuario_id
+    empresas = db.query(ClienteCorporativo).filter(
+        ClienteCorporativo.empresa_usuario_id == tenant_id,
+        ClienteCorporativo.activo == False
+    ).all()  # noqa: E712
     return empresas
 
 
@@ -84,14 +100,24 @@ def list_deleted_empresas(
 def create_empresa(
     data: EmpresaCreate,
     db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """Crear nueva empresa"""
-    # Validar CUIT único
-    existing = db.query(Empresa).filter(Empresa.cuit == data.cuit).first()
+    if not current_user or not current_user.empresa_usuario_id:
+        raise HTTPException(status_code=401, detail="No autenticado o sin tenant asociado")
+    
+    tenant_id = current_user.empresa_usuario_id
+    
+    # Validar CUIT único dentro del tenant
+    existing = db.query(ClienteCorporativo).filter(
+        ClienteCorporativo.empresa_usuario_id == tenant_id,
+        ClienteCorporativo.cuit == data.cuit
+    ).first()
     if existing:
         raise HTTPException(status_code=400, detail="Ya existe una empresa con este CUIT")
 
-    empresa = Empresa(
+    empresa = ClienteCorporativo(
+        empresa_usuario_id=tenant_id,
         nombre=data.nombre.strip(),
         cuit=data.cuit.strip(),
         tipo_empresa=data.tipo_empresa,
@@ -115,15 +141,27 @@ def update_empresa(
     empresa_id: int = Path(..., gt=0),
     data: EmpresaUpdate = ...,
     db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """Actualizar empresa"""
-    empresa = db.query(Empresa).filter(Empresa.id == empresa_id).first()
+    if not current_user or not current_user.empresa_usuario_id:
+        raise HTTPException(status_code=401, detail="No autenticado o sin tenant asociado")
+    
+    tenant_id = current_user.empresa_usuario_id
+    
+    empresa = db.query(ClienteCorporativo).filter(
+        ClienteCorporativo.id == empresa_id,
+        ClienteCorporativo.empresa_usuario_id == tenant_id
+    ).first()
     if not empresa:
         raise HTTPException(status_code=404, detail="Empresa no encontrada")
 
-    # Validar CUIT único (si cambió)
+    # Validar CUIT único dentro del tenant (si cambió)
     if data.cuit and data.cuit != empresa.cuit:
-        existing = db.query(Empresa).filter(Empresa.cuit == data.cuit).first()
+        existing = db.query(ClienteCorporativo).filter(
+            ClienteCorporativo.empresa_usuario_id == tenant_id,
+            ClienteCorporativo.cuit == data.cuit
+        ).first()
         if existing:
             raise HTTPException(status_code=400, detail="Ya existe una empresa con este CUIT")
 
@@ -158,9 +196,18 @@ def update_empresa(
 def delete_empresa(
     empresa_id: int = Path(..., gt=0),
     db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """Eliminar (soft delete) empresa"""
-    empresa = db.query(Empresa).filter(Empresa.id == empresa_id).first()
+    if not current_user or not current_user.empresa_usuario_id:
+        raise HTTPException(status_code=401, detail="No autenticado o sin tenant asociado")
+    
+    tenant_id = current_user.empresa_usuario_id
+    
+    empresa = db.query(ClienteCorporativo).filter(
+        ClienteCorporativo.id == empresa_id,
+        ClienteCorporativo.empresa_usuario_id == tenant_id
+    ).first()
     if not empresa:
         raise HTTPException(status_code=404, detail="Empresa no encontrada")
 
@@ -172,9 +219,18 @@ def delete_empresa(
 def restore_empresa(
     empresa_id: int = Path(..., gt=0),
     db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """Restaurar empresa eliminada"""
-    empresa = db.query(Empresa).filter(Empresa.id == empresa_id).first()
+    if not current_user or not current_user.empresa_usuario_id:
+        raise HTTPException(status_code=401, detail="No autenticado o sin tenant asociado")
+    
+    tenant_id = current_user.empresa_usuario_id
+    
+    empresa = db.query(ClienteCorporativo).filter(
+        ClienteCorporativo.id == empresa_id,
+        ClienteCorporativo.empresa_usuario_id == tenant_id
+    ).first()
     if not empresa:
         raise HTTPException(status_code=404, detail="Empresa no encontrada")
 
@@ -188,9 +244,18 @@ def restore_empresa(
 def get_empresa(
     empresa_id: int,
     db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """Obtener empresa por ID"""
-    empresa = db.query(Empresa).filter(Empresa.id == empresa_id).first()
+    if not current_user or not current_user.empresa_usuario_id:
+        raise HTTPException(status_code=401, detail="No autenticado o sin tenant asociado")
+    
+    tenant_id = current_user.empresa_usuario_id
+    
+    empresa = db.query(ClienteCorporativo).filter(
+        ClienteCorporativo.id == empresa_id,
+        ClienteCorporativo.empresa_usuario_id == tenant_id
+    ).first()
     if not empresa:
         raise HTTPException(status_code=404, detail="Empresa no encontrada")
     return empresa
@@ -229,11 +294,20 @@ class EmpresaDetallesResponse(BaseModel):
 def get_empresa_detalles(
     empresa_id: int = Path(..., gt=0),
     db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """Obtener detalles de ocupación, cargos y reservaciones de una empresa"""
     
-    # Verificar que la empresa existe
-    empresa = db.query(Empresa).filter(Empresa.id == empresa_id).first()
+    if not current_user or not current_user.empresa_usuario_id:
+        raise HTTPException(status_code=401, detail="No autenticado o sin tenant asociado")
+    
+    tenant_id = current_user.empresa_usuario_id
+    
+    # Verificar que la empresa existe y pertenece al tenant
+    empresa = db.query(ClienteCorporativo).filter(
+        ClienteCorporativo.id == empresa_id,
+        ClienteCorporativo.empresa_usuario_id == tenant_id
+    ).first()
     if not empresa:
         raise HTTPException(status_code=404, detail="Empresa no encontrada")
 
@@ -242,21 +316,29 @@ def get_empresa_detalles(
     ocupacion = {}
     
     stays = db.query(Stay).filter(
-        Stay.reservation.has(Reservation.empresa_id == empresa_id),
-        Stay.estado.in_(["activa", "llegada"])  # Estados donde está ocupada
+        Stay.empresa_usuario_id == tenant_id,
+        Stay.reservation.has(
+            Reservation.empresa_id == empresa_id,
+            Reservation.empresa_usuario_id == tenant_id
+        ),
+        Stay.estado.in_(["ocupada", "pendiente_checkout"])  # Estados donde está ocupada
     ).all()
     
     for stay in stays:
-        for room_ocupancy in stay.room_ocupancies:
+        for room_ocupancy in stay.occupancies:
             room = room_ocupancy.room
-            room_type_name = room.room_type.nombre if room.room_type else "Desconocida"
+            room_type_name = room.tipo.nombre if room.tipo else "Desconocida"
             ocupacion[room_type_name] = ocupacion.get(room_type_name, 0) + 1
 
     # Obtener cargos pendientes
     cargos_list = []
     
     stays_con_cargos = db.query(Stay).filter(
-        Stay.reservation.has(Reservation.empresa_id == empresa_id),
+        Stay.empresa_usuario_id == tenant_id,
+        Stay.reservation.has(
+            Reservation.empresa_id == empresa_id,
+            Reservation.empresa_usuario_id == tenant_id
+        ),
     ).all()
     
     for stay in stays_con_cargos:
@@ -283,7 +365,8 @@ def get_empresa_detalles(
     
     reservas = db.query(Reservation).filter(
         Reservation.empresa_id == empresa_id,
-        Reservation.estado.in_(["confirmada", "ocupada", "llegada"])
+        Reservation.empresa_usuario_id == tenant_id,
+        Reservation.estado.in_(["confirmada", "ocupada", "draft"])
     ).all()
     
     for res in reservas:
@@ -306,7 +389,10 @@ def get_empresa_detalles(
         # Calcular monto sumando cargos de las stays vinculadas a la reserva
         monto_total = 0
         stay_id_principal = None
-        stays_reserva = db.query(Stay).filter(Stay.reservation_id == res.id).all()
+        stays_reserva = db.query(Stay).filter(
+            Stay.reservation_id == res.id,
+            Stay.empresa_usuario_id == tenant_id
+        ).all()
         for stay in stays_reserva:
             if stay_id_principal is None:
                 stay_id_principal = stay.id  # Usar la primera estadía encontrada

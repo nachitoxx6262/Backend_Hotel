@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, date
 from sqlalchemy.orm import Session
 from database.conexion import SessionLocal, engine
 from models.core import (
-    Cliente, Empresa, Reservation, Stay, Room, RoomType,
+    Cliente, ClienteCorporativo, EmpresaUsuario, Reservation, Stay, Room, RoomType,
     StayRoomOccupancy, StayCharge, StayPayment
 )
 from models.usuario import Usuario
@@ -27,7 +27,7 @@ def get_random_phone():
 def get_random_email(nombre, apellido):
     return f"{nombre.lower()}.{apellido.lower()}@email.com"
 
-def seed_clientes(db: Session, cantidad: int = 50):
+def seed_clientes(db: Session, tenant_id: int, cantidad: int = 50):
     """Crear clientes de prueba"""
     clientes = []
     for i in range(cantidad):
@@ -40,6 +40,7 @@ def seed_clientes(db: Session, cantidad: int = 50):
             numero_documento=f"{random.randint(1000000000, 9999999999)}",
             email=get_random_email(nombre, apellido) if random.random() > 0.3 else None,
             telefono=get_random_phone() if random.random() > 0.2 else None,
+            empresa_usuario_id=tenant_id,
             created_at=datetime.now() - timedelta(days=random.randint(90, 365))
         )
         db.add(cliente)
@@ -49,17 +50,18 @@ def seed_clientes(db: Session, cantidad: int = 50):
     print(f"✅ Creados {cantidad} clientes")
     return clientes
 
-def seed_empresas(db: Session):
+def seed_empresas(db: Session, tenant_id: int):
     """Crear empresas de prueba"""
     empresas = []
     for nombre in EMPRESAS_NOMBRES:
-        empresa = Empresa(
+        empresa = ClienteCorporativo(
             nombre=nombre,
             cuit=f"{random.randint(10000000000, 99999999999)}",
             contacto_nombre=random.choice(NOMBRES) + " " + random.choice(APELLIDOS),
             contacto_telefono=get_random_phone(),
             contacto_email=f"info@{nombre.lower().replace(' ', '')}.com",
             activo=True,
+            empresa_usuario_id=tenant_id,
             created_at=datetime.now() - timedelta(days=random.randint(180, 730))
         )
         db.add(empresa)
@@ -69,13 +71,13 @@ def seed_empresas(db: Session):
     print(f"✅ Creadas {len(empresas)} empresas")
     return empresas
 
-def seed_historical_reservations(db: Session, clientes: list, empresas: list, dias_atras: int = 60):
+def seed_historical_reservations(db: Session, tenant_id: int, clientes: list, empresas: list, dias_atras: int = 60):
     """Crear reservas y estadías históricas"""
     
     # Obtener habitaciones y tipos
-    rooms = db.query(Room).filter(Room.activo == True).all()
-    room_types = db.query(RoomType).all()
-    usuarios = db.query(Usuario).all()
+    rooms = db.query(Room).filter(Room.activo == True, Room.empresa_usuario_id == tenant_id).all()
+    room_types = db.query(RoomType).filter(RoomType.empresa_usuario_id == tenant_id).all()
+    usuarios = db.query(Usuario).filter(Usuario.empresa_usuario_id == tenant_id, Usuario.deleted.is_(False)).all()
     
     if not rooms:
         print("❌ No hay habitaciones en la base de datos")
@@ -112,6 +114,7 @@ def seed_historical_reservations(db: Session, clientes: list, empresas: list, di
             reservation = Reservation(
                 cliente_id=cliente.id,
                 empresa_id=empresa.id if empresa else None,
+                empresa_usuario_id=tenant_id,
                 fecha_checkin=fecha_checkin,
                 fecha_checkout=fecha_checkout,
                 estado="cerrada" if fecha_checkout < datetime.now().date() else "confirmada",
@@ -138,6 +141,7 @@ def seed_historical_reservations(db: Session, clientes: list, empresas: list, di
                     estado = "llegada"
                 
                 stay = Stay(
+                    empresa_usuario_id=tenant_id,
                     reservation_id=reservation.id,
                     estado=estado,
                     checkin_real=checkin_real,
@@ -245,32 +249,37 @@ def main():
                 print("❌ Operación cancelada")
                 return
         
+        tenant = db.query(EmpresaUsuario).first()
+        if not tenant:
+            print("❌ No hay EmpresaUsuario. Crea un tenant primero.")
+            return
+
         # Crear clientes si no hay suficientes
         if existing_clientes < 30:
             print(f"📊 Solo hay {existing_clientes} clientes. Creando más...")
-            clientes = seed_clientes(db, 50)
+            clientes = seed_clientes(db, tenant.id, 50)
         else:
             print(f"✅ Usando {existing_clientes} clientes existentes")
-            clientes = db.query(Cliente).all()
+            clientes = db.query(Cliente).filter(Cliente.empresa_usuario_id == tenant.id).all()
         
         # Crear empresas si no hay
-        empresas_count = db.query(Empresa).count()
+        empresas_count = db.query(ClienteCorporativo).filter(ClienteCorporativo.empresa_usuario_id == tenant.id).count()
         if empresas_count < 3:
             print(f"🏢 Solo hay {empresas_count} empresas. Creando más...")
-            empresas = seed_empresas(db)
+            empresas = seed_empresas(db, tenant.id)
         else:
             print(f"✅ Usando {empresas_count} empresas existentes")
-            empresas = db.query(Empresa).all()
+            empresas = db.query(ClienteCorporativo).filter(ClienteCorporativo.empresa_usuario_id == tenant.id).all()
         
         # Generar datos históricos
         print("\n📅 Generando reservas y estadías históricas (últimos 60 días)...")
-        seed_historical_reservations(db, clientes, empresas, dias_atras=60)
+        seed_historical_reservations(db, tenant.id, clientes, empresas, dias_atras=60)
         
         print("\n" + "=" * 60)
         print("✅ ¡Datos históricos generados exitosamente!")
         print("\n📊 Resumen:")
         print(f"   - Clientes: {db.query(Cliente).count()}")
-        print(f"   - Empresas: {db.query(Empresa).count()}")
+        print(f"   - Empresas: {db.query(ClienteCorporativo).count()}")
         print(f"   - Reservas: {db.query(Reservation).count()}")
         print(f"   - Estadías: {db.query(Stay).count()}")
         print(f"   - Ocupaciones: {db.query(StayRoomOccupancy).count()}")

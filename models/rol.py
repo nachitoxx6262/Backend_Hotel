@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, UniqueConstraint, Index
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
@@ -7,16 +7,26 @@ from database.conexion import Base
 
 class Rol(Base):
     __tablename__ = "roles"
+    __table_args__ = (
+        # Rol global (sin empresa_usuario_id) o tenant-scoped
+        UniqueConstraint("nombre", "empresa_usuario_id", name="uq_rol_empresa_nombre"),
+        Index("idx_rol_empresa", "empresa_usuario_id"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
-    nombre = Column(String(50), unique=True, nullable=False, index=True)
+    nombre = Column(String(50), nullable=False, index=True)
     descripcion = Column(String(255), nullable=True)
+    
+    # Multi-tenant: NULL = rol global (super admin), otherwise = tenant-scoped
+    empresa_usuario_id = Column(Integer, ForeignKey("empresa_usuarios.id", ondelete="CASCADE"), nullable=True)
+    
     activo = Column(Boolean, default=True)
     creado_en = Column(DateTime, default=datetime.utcnow)
     actualizado_en = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     permisos = relationship("RolPermiso", back_populates="rol", cascade="all, delete-orphan")
     usuarios = relationship("UsuarioRol", back_populates="rol", cascade="all, delete-orphan")
+    empresa_usuario = relationship("EmpresaUsuario", back_populates="roles")
 
 
 class Permiso(Base):

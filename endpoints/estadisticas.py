@@ -13,8 +13,9 @@ from decimal import Decimal
 from database.conexion import get_db
 from models.core import (
     Reservation, Stay, Room, RoomType, Cliente, StayCharge,
-    StayPayment, AuditEvent, Empresa, StayRoomOccupancy
+    StayPayment, AuditEvent, ClienteCorporativo, StayRoomOccupancy
 )
+from models.usuario import Usuario
 from utils.dependencies import get_current_user
 
 router = APIRouter(prefix="/estadisticas", tags=["Estadísticas"])
@@ -65,12 +66,16 @@ class TasaOcupacionPeriodo(dict):
 @router.get("/hoy")
 def get_estadisticas_hoy(
     db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """Estadísticas del día actual"""
     hoy = datetime.now().date()
+    tenant_id = current_user.empresa_usuario_id
 
     # Total habitaciones
-    total_rooms = db.query(func.count(Room.id)).scalar() or 0
+    total_rooms = db.query(func.count(Room.id)).filter(
+        Room.empresa_usuario_id == tenant_id
+    ).scalar() or 0
 
     # Habitaciones ocupadas hoy
     ocupadas = db.query(func.count(Room.id.distinct())).join(
@@ -78,6 +83,7 @@ def get_estadisticas_hoy(
     ).join(
         Stay, Stay.id == StayRoomOccupancy.stay_id, isouter=True
     ).filter(
+        Room.empresa_usuario_id == tenant_id,
         Stay.estado.in_(["activa", "llegada"]),
         func.date(Stay.checkin_real) <= hoy,
         (Stay.checkout_real.is_(None) | (func.date(Stay.checkout_real) >= hoy))
@@ -85,31 +91,36 @@ def get_estadisticas_hoy(
 
     # Check-ins hoy
     checkins_hoy = db.query(func.count(Stay.id)).filter(
+        Stay.empresa_usuario_id == tenant_id,
         func.date(Stay.checkin_real) == hoy
     ).scalar() or 0
 
     # Check-outs hoy
     checkouts_hoy = db.query(func.count(Stay.id)).filter(
+        Stay.empresa_usuario_id == tenant_id,
         func.date(Stay.checkout_real) == hoy
     ).scalar() or 0
 
     # Ingresos hoy
     ingresos_hoy = db.query(
         func.coalesce(func.sum(StayCharge.monto_total), 0)
-    ).filter(
+    ).join(Stay).filter(
+        Stay.empresa_usuario_id == tenant_id,
         func.date(StayCharge.created_at) == hoy
     ).scalar() or 0
 
     # Pagos hoy
     pagos_hoy = db.query(
         func.coalesce(func.sum(StayPayment.monto), 0)
-    ).filter(
+    ).join(Stay).filter(
+        Stay.empresa_usuario_id == tenant_id,
         func.date(StayPayment.timestamp) == hoy,
         StayPayment.es_reverso == False
     ).scalar() or 0
 
     # Nuevos clientes
     nuevos_clientes = db.query(func.count(Cliente.id)).filter(
+        Cliente.empresa_usuario_id == tenant_id,
         func.date(Cliente.created_at) == hoy
     ).scalar() or 0
 
@@ -132,9 +143,13 @@ def get_estadisticas_hoy(
 def get_ocupacion_ultimos_dias(
     dias: int = 30,
     db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """Ocupación por día para los últimos N días"""
-    total_rooms = db.query(func.count(Room.id)).scalar() or 1
+    tenant_id = current_user.empresa_usuario_id
+    total_rooms = db.query(func.count(Room.id)).filter(
+        Room.empresa_usuario_id == tenant_id
+    ).scalar() or 1
 
     datos = []
     for i in range(dias, 0, -1):
@@ -145,6 +160,7 @@ def get_ocupacion_ultimos_dias(
         ).join(
             Stay, Stay.id == StayRoomOccupancy.stay_id, isouter=True
         ).filter(
+            Room.empresa_usuario_id == tenant_id,
             Stay.estado.in_(["activa", "llegada", "cerrada"]),
             func.date(Stay.checkin_real) <= fecha_check,
             (Stay.checkout_real.is_(None) | (func.date(Stay.checkout_real) >= fecha_check))
@@ -166,21 +182,25 @@ def get_ocupacion_ultimos_dias(
 def get_ingresos_ultimos_dias(
     dias: int = 30,
     db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """Ingresos diarios para los últimos N días"""
+    tenant_id = current_user.empresa_usuario_id
     datos = []
     for i in range(dias, 0, -1):
         fecha_check = (datetime.now() - timedelta(days=i)).date()
 
         ingresos = db.query(
             func.coalesce(func.sum(StayCharge.monto_total), 0)
-        ).filter(
+        ).join(Stay).filter(
+            Stay.empresa_usuario_id == tenant_id,
             func.date(StayCharge.created_at) == fecha_check
         ).scalar() or 0
 
         pagos = db.query(
             func.coalesce(func.sum(StayPayment.monto), 0)
-        ).filter(
+        ).join(Stay).filter(
+            Stay.empresa_usuario_id == tenant_id,
             func.date(StayPayment.timestamp) == fecha_check,
             StayPayment.es_reverso == False
         ).scalar() or 0
@@ -200,8 +220,10 @@ def get_ingresos_ultimos_dias(
 @router.get("/resumen-mes-actual")
 def get_resumen_mes_actual(
     db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """Resumen completo del mes actual"""
+    tenant_id = current_user.empresa_usuario_id
     hoy = datetime.now()
     primer_dia_mes = hoy.replace(day=1).date()
     ultimo_dia_mes = (hoy.replace(day=1) + timedelta(days=32)).replace(day=1) - timedelta(days=1)
@@ -209,7 +231,8 @@ def get_resumen_mes_actual(
     # Total ingresos mes
     total_ingresos_mes = db.query(
         func.coalesce(func.sum(StayCharge.monto_total), 0)
-    ).filter(
+    ).join(Stay).filter(
+        Stay.empresa_usuario_id == tenant_id,
         func.date(StayCharge.created_at) >= primer_dia_mes,
         func.date(StayCharge.created_at) <= ultimo_dia_mes
     ).scalar() or 0
@@ -217,7 +240,8 @@ def get_resumen_mes_actual(
     # Total pagado mes
     total_pagado_mes = db.query(
         func.coalesce(func.sum(StayPayment.monto), 0)
-    ).filter(
+    ).join(Stay).filter(
+        Stay.empresa_usuario_id == tenant_id,
         func.date(StayPayment.timestamp) >= primer_dia_mes,
         func.date(StayPayment.timestamp) <= ultimo_dia_mes,
         StayPayment.es_reverso == False
@@ -225,12 +249,14 @@ def get_resumen_mes_actual(
 
     # Reservaciones mes
     reservaciones_mes = db.query(func.count(Reservation.id)).filter(
+        Reservation.empresa_usuario_id == tenant_id,
         func.date(Reservation.created_at) >= primer_dia_mes,
         func.date(Reservation.created_at) <= ultimo_dia_mes
     ).scalar() or 0
 
     # Check-ins mes
     checkins_mes = db.query(func.count(Stay.id)).filter(
+        Stay.empresa_usuario_id == tenant_id,
         func.date(Stay.checkin_real) >= primer_dia_mes,
         func.date(Stay.checkin_real) <= ultimo_dia_mes
     ).scalar() or 0
@@ -238,7 +264,8 @@ def get_resumen_mes_actual(
     # ADR (Average Daily Rate)
     noches_ocupadas = db.query(
         func.coalesce(func.sum(StayCharge.cantidad), 0)
-    ).filter(
+    ).join(Stay).filter(
+        Stay.empresa_usuario_id == tenant_id,
         StayCharge.tipo == "room_revenue",
         func.date(StayCharge.created_at) >= primer_dia_mes,
         func.date(StayCharge.created_at) <= ultimo_dia_mes
@@ -247,13 +274,16 @@ def get_resumen_mes_actual(
     adr = float(total_ingresos_mes) / float(noches_ocupadas) if noches_ocupadas > 0 else 0
 
     # Ocupación promedio mes
-    total_rooms = db.query(func.count(Room.id)).scalar() or 1
+    total_rooms = db.query(func.count(Room.id)).filter(
+        Room.empresa_usuario_id == tenant_id
+    ).scalar() or 1
     dias_mes = (ultimo_dia_mes.date() - primer_dia_mes).days + 1
     capacidad_mes = total_rooms * dias_mes
     
     total_noches_ocupadas = db.query(
         func.coalesce(func.sum(StayCharge.cantidad), 0)
-    ).filter(
+    ).join(Stay).filter(
+        Stay.empresa_usuario_id == tenant_id,
         StayCharge.tipo == "room_revenue",
         func.date(StayCharge.created_at) >= primer_dia_mes,
         func.date(StayCharge.created_at) <= ultimo_dia_mes
@@ -280,17 +310,21 @@ def get_top_empresas(
     limite: int = 5,
     dias: int = 30,
     db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """Top empresas por ingresos en los últimos N días"""
+    tenant_id = current_user.empresa_usuario_id
     fecha_desde = (datetime.now() - timedelta(days=dias)).date()
 
     empresas = db.query(
-        Empresa.id,
-        Empresa.nombre,
+        ClienteCorporativo.id,
+        ClienteCorporativo.nombre,
         func.coalesce(func.sum(StayCharge.monto_total), 0).label("total_ingresos"),
         func.coalesce(func.sum(StayPayment.monto), 0).label("total_pagado"),
+    ).filter(
+        ClienteCorporativo.empresa_usuario_id == tenant_id
     ).outerjoin(
-        Reservation, Reservation.empresa_id == Empresa.id
+        Reservation, Reservation.empresa_id == ClienteCorporativo.id
     ).outerjoin(
         Stay, Stay.reservation_id == Reservation.id
     ).outerjoin(
@@ -300,7 +334,7 @@ def get_top_empresas(
     ).filter(
         func.date(StayCharge.created_at) >= fecha_desde
     ).group_by(
-        Empresa.id, Empresa.nombre
+        ClienteCorporativo.id, ClienteCorporativo.nombre
     ).order_by(
         func.sum(StayCharge.monto_total).desc()
     ).limit(limite).all()
@@ -323,9 +357,20 @@ def get_top_empresas(
 def get_actividad_reciente(
     limite: int = 10,
     db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """Actividad reciente del sistema"""
-    eventos = db.query(AuditEvent).order_by(
+    tenant_id = current_user.empresa_usuario_id
+    
+    # Obtener usuarios de la misma empresa para filtrar eventos
+    usuarios_empresa = db.query(Usuario.username).filter(
+        Usuario.empresa_usuario_id == tenant_id
+    ).all()
+    usernames = [u.username for u in usuarios_empresa]
+    
+    eventos = db.query(AuditEvent).filter(
+        AuditEvent.usuario.in_(usernames)
+    ).order_by(
         AuditEvent.timestamp.desc()
     ).limit(limite).all()
 
@@ -347,9 +392,13 @@ def get_actividad_reciente(
 def get_prediccion_ocupacion(
     dias_futuros: int = 14,
     db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """Predicción de ocupación para los próximos N días basada en reservaciones"""
-    total_rooms = db.query(func.count(Room.id)).scalar() or 1
+    tenant_id = current_user.empresa_usuario_id
+    total_rooms = db.query(func.count(Room.id)).filter(
+        Room.empresa_usuario_id == tenant_id
+    ).scalar() or 1
 
     predicciones = []
     for i in range(1, dias_futuros + 1):
@@ -357,6 +406,7 @@ def get_prediccion_ocupacion(
 
         # Contar reservaciones confirmadas para esa fecha
         reservaciones = db.query(func.count(Reservation.id)).filter(
+            Reservation.empresa_usuario_id == tenant_id,
             Reservation.fecha_checkin <= fecha_check,
             Reservation.fecha_checkout > fecha_check,
             Reservation.estado.in_(["confirmada", "ocupada"])
@@ -377,8 +427,10 @@ def get_prediccion_ocupacion(
 def get_tipos_habitacion_performance(
     dias: int = 30,
     db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """Performance por tipo de habitación"""
+    tenant_id = current_user.empresa_usuario_id
     fecha_desde = (datetime.now() - timedelta(days=dias)).date()
 
     tipos = db.query(
@@ -387,6 +439,8 @@ def get_tipos_habitacion_performance(
         func.count(Room.id).label("cantidad_habitaciones"),
         func.coalesce(func.sum(StayCharge.cantidad), 0).label("noches_ocupadas"),
         func.coalesce(func.sum(StayCharge.monto_total), 0).label("ingresos"),
+    ).filter(
+        RoomType.empresa_usuario_id == tenant_id
     ).outerjoin(
         Room, Room.room_type_id == RoomType.id
     ).outerjoin(
@@ -419,8 +473,10 @@ def get_tipos_habitacion_performance(
 def get_deudores(
     dias: int = None,  # Si es None, todos los deudores históricos
     db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """Obtener lista de clientes/empresas con saldo pendiente"""
+    tenant_id = current_user.empresa_usuario_id
     
     deudores = []
     
@@ -430,6 +486,8 @@ def get_deudores(
         func.concat(Cliente.nombre, ' ', Cliente.apellido).label("nombre"),
         func.coalesce(func.sum(StayCharge.monto_total), 0).label("total_cargos"),
         func.coalesce(func.sum(StayPayment.monto), 0).label("total_pagado"),
+    ).filter(
+        Cliente.empresa_usuario_id == tenant_id
     ).outerjoin(
         Reservation, Reservation.cliente_id == Cliente.id
     ).outerjoin(
@@ -470,12 +528,14 @@ def get_deudores(
     
     # Deudores Empresas
     empresas_deudores = db.query(
-        Empresa.id,
-        Empresa.nombre,
+        ClienteCorporativo.id,
+        ClienteCorporativo.nombre,
         func.coalesce(func.sum(StayCharge.monto_total), 0).label("total_cargos"),
         func.coalesce(func.sum(StayPayment.monto), 0).label("total_pagado"),
+    ).filter(
+        ClienteCorporativo.empresa_usuario_id == tenant_id
     ).outerjoin(
-        Reservation, Reservation.empresa_id == Empresa.id
+        Reservation, Reservation.empresa_id == ClienteCorporativo.id
     ).outerjoin(
         Stay, Stay.reservation_id == Reservation.id
     ).outerjoin(
@@ -491,7 +551,7 @@ def get_deudores(
         )
     
     empresas_deudores = empresas_deudores.group_by(
-        Empresa.id, Empresa.nombre
+        ClienteCorporativo.id, ClienteCorporativo.nombre
     ).having(
         func.coalesce(func.sum(StayCharge.monto_total), 0) > 
         func.coalesce(func.sum(StayPayment.monto), 0)

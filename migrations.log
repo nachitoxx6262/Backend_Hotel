@@ -1,0 +1,764 @@
+2026-01-26 20:41:25,444 - INFO - ======================================================================
+2026-01-26 20:41:25,482 - INFO -    Migrations: 005 to 007
+2026-01-26 20:41:25,483 - INFO -    Timestamp: 2026-01-26T20:41:25.483177
+2026-01-26 20:41:25,483 - INFO - ======================================================================
+2026-01-26 20:41:25,484 - INFO - Database: hotelbeta_db @ localhost:5432
+2026-01-26 20:41:25,484 - INFO - Executing migration 005: 005_multitenant_core.sql
+2026-01-26 20:41:25,566 - ERROR - Error: "psql" no se reconoce como un comando interno o externo,
+programa o archivo por lotes ejecutable.
+
+2026-01-26 20:41:25,567 - INFO - Retrying migration 005 with SQLAlchemy...
+2026-01-26 20:41:25,568 - INFO - Executing migration 005: 005_multitenant_core.sql
+2026-01-26 20:41:25,818 - INFO - Executing migration 006: 006_add_tenant_id_all_tables.sql
+2026-01-26 20:41:25,851 - ERROR - Error: "psql" no se reconoce como un comando interno o externo,
+programa o archivo por lotes ejecutable.
+
+2026-01-26 20:41:25,851 - INFO - Retrying migration 006 with SQLAlchemy...
+2026-01-26 20:41:25,852 - INFO - Executing migration 006: 006_add_tenant_id_all_tables.sql
+2026-01-26 20:41:25,885 - WARNING - Warning during statement execution: (psycopg2.errors.DependentObjectsStillExist) no se puede eliminar Ìndice uq_roomtype_nombre porque restricciÛn ´uq_roomtype_nombreª en tabla room_types lo requiere
+HINT:  Puede eliminar restricciÛn ´uq_roomtype_nombreª en tabla room_types en su lugar.
+
+[SQL: -- Cambiar UNIQUE de solo nombre a (empresa_usuario_id, nombre)
+DROP INDEX IF EXISTS uq_roomtype_nombre]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:41:25,886 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacciÛn abortada, las Ûrdenes ser·n ignoradas hasta el fin de bloque de transacciÛn
+
+[SQL: CREATE UNIQUE INDEX uq_roomtype_empresa_nombre ON room_types(empresa_usuario_id, nombre)]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:41:25,887 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacciÛn abortada, las Ûrdenes ser·n ignoradas hasta el fin de bloque de transacciÛn
+
+[SQL: CREATE INDEX idx_roomtype_empresa ON room_types(empresa_usuario_id)]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:41:25,888 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacciÛn abortada, las Ûrdenes ser·n ignoradas hasta el fin de bloque de transacciÛn
+
+[SQL: -- ============================================================
+-- 3. ROOMS: Agregar FK empresa_usuario_id + actualizar UNIQUE
+-- ============================================================
+
+ALTER TABLE rooms ADD COLUMN IF NOT EXISTS empresa_usuario_id INTEGER]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:41:25,889 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacciÛn abortada, las Ûrdenes ser·n ignoradas hasta el fin de bloque de transacciÛn
+
+[SQL: ALTER TABLE rooms 
+    ADD CONSTRAINT fk_room_empresa_usuario 
+    FOREIGN KEY (empresa_usuario_id)
+    REFERENCES empresa_usuarios(id)
+    ON DELETE CASCADE]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:41:25,890 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacciÛn abortada, las Ûrdenes ser·n ignoradas hasta el fin de bloque de transacciÛn
+
+[SQL: -- Cambiar UNIQUE de solo numero a (empresa_usuario_id, numero)
+DROP INDEX IF EXISTS uq_room_numero]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:41:25,891 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacciÛn abortada, las Ûrdenes ser·n ignoradas hasta el fin de bloque de transacciÛn
+
+[SQL: CREATE UNIQUE INDEX uq_room_empresa_numero ON rooms(empresa_usuario_id, numero)]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:41:25,892 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacciÛn abortada, las Ûrdenes ser·n ignoradas hasta el fin de bloque de transacciÛn
+
+[SQL: CREATE INDEX idx_room_empresa ON rooms(empresa_usuario_id)]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:41:25,893 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacciÛn abortada, las Ûrdenes ser·n ignoradas hasta el fin de bloque de transacciÛn
+
+[SQL: -- ============================================================
+-- 4. DAILY_RATES: Agregar FK empresa_usuario_id
+-- ============================================================
+
+ALTER TABLE daily_rates ADD COLUMN IF NOT EXISTS empresa_usuario_id INTEGER]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:41:25,894 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacciÛn abortada, las Ûrdenes ser·n ignoradas hasta el fin de bloque de transacciÛn
+
+[SQL: ALTER TABLE daily_rates 
+    ADD CONSTRAINT fk_daily_rate_empresa_usuario 
+    FOREIGN KEY (empresa_usuario_id)
+    REFERENCES empresa_usuarios(id)
+    ON DELETE CASCADE]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:41:25,896 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacciÛn abortada, las Ûrdenes ser·n ignoradas hasta el fin de bloque de transacciÛn
+
+[SQL: DROP INDEX IF EXISTS uq_rate_day]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:41:25,897 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacciÛn abortada, las Ûrdenes ser·n ignoradas hasta el fin de bloque de transacciÛn
+
+[SQL: CREATE UNIQUE INDEX uq_rate_day_empresa ON daily_rates(empresa_usuario_id, room_type_id, fecha, rate_plan_id)]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:41:25,898 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacciÛn abortada, las Ûrdenes ser·n ignoradas hasta el fin de bloque de transacciÛn
+
+[SQL: CREATE INDEX idx_rate_empresa ON daily_rates(empresa_usuario_id)]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:41:25,899 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacciÛn abortada, las Ûrdenes ser·n ignoradas hasta el fin de bloque de transacciÛn
+
+[SQL: -- ============================================================
+-- 5. RESERVATIONS: Agregar FK empresa_usuario_id
+-- ============================================================
+
+ALTER TABLE reservations ADD COLUMN IF NOT EXISTS empresa_usuario_id INTEGER]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:41:25,901 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacciÛn abortada, las Ûrdenes ser·n ignoradas hasta el fin de bloque de transacciÛn
+
+[SQL: ALTER TABLE reservations 
+    ADD CONSTRAINT fk_reservation_empresa_usuario 
+    FOREIGN KEY (empresa_usuario_id)
+    REFERENCES empresa_usuarios(id)
+    ON DELETE CASCADE]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:41:25,902 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacciÛn abortada, las Ûrdenes ser·n ignoradas hasta el fin de bloque de transacciÛn
+
+[SQL: CREATE INDEX idx_res_empresa ON reservations(empresa_usuario_id)]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:41:25,904 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacciÛn abortada, las Ûrdenes ser·n ignoradas hasta el fin de bloque de transacciÛn
+
+[SQL: -- ============================================================
+-- 6. STAYS: Agregar FK empresa_usuario_id
+-- ============================================================
+
+ALTER TABLE stays ADD COLUMN IF NOT EXISTS empresa_usuario_id INTEGER]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:41:25,906 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacciÛn abortada, las Ûrdenes ser·n ignoradas hasta el fin de bloque de transacciÛn
+
+[SQL: ALTER TABLE stays 
+    ADD CONSTRAINT fk_stay_empresa_usuario 
+    FOREIGN KEY (empresa_usuario_id)
+    REFERENCES empresa_usuarios(id)
+    ON DELETE CASCADE]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:41:25,907 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacciÛn abortada, las Ûrdenes ser·n ignoradas hasta el fin de bloque de transacciÛn
+
+[SQL: CREATE INDEX idx_stay_empresa ON stays(empresa_usuario_id)]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:41:25,909 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacciÛn abortada, las Ûrdenes ser·n ignoradas hasta el fin de bloque de transacciÛn
+
+[SQL: -- ============================================================
+-- 7. HOUSEKEEPING_TASKS: Agregar FK empresa_usuario_id
+-- ============================================================
+
+ALTER TABLE housekeeping_tasks ADD COLUMN IF NOT EXISTS empresa_usuario_id INTEGER]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:41:25,910 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacciÛn abortada, las Ûrdenes ser·n ignoradas hasta el fin de bloque de transacciÛn
+
+[SQL: ALTER TABLE housekeeping_tasks 
+    ADD CONSTRAINT fk_hk_task_empresa_usuario 
+    FOREIGN KEY (empresa_usuario_id)
+    REFERENCES empresa_usuarios(id)
+    ON DELETE CASCADE]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:41:25,911 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacciÛn abortada, las Ûrdenes ser·n ignoradas hasta el fin de bloque de transacciÛn
+
+[SQL: CREATE INDEX idx_hk_task_empresa ON housekeeping_tasks(empresa_usuario_id)]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:41:25,913 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacciÛn abortada, las Ûrdenes ser·n ignoradas hasta el fin de bloque de transacciÛn
+
+[SQL: -- ============================================================
+-- 8. ROLES: Agregar FK empresa_usuario_id (opcional, nullable)
+-- ============================================================
+
+ALTER TABLE roles ADD COLUMN IF NOT EXISTS empresa_usuario_id INTEGER]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:41:25,915 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacciÛn abortada, las Ûrdenes ser·n ignoradas hasta el fin de bloque de transacciÛn
+
+[SQL: ALTER TABLE roles 
+    ADD CONSTRAINT fk_role_empresa_usuario 
+    FOREIGN KEY (empresa_usuario_id)
+    REFERENCES empresa_usuarios(id)
+    ON DELETE CASCADE]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:41:25,917 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacciÛn abortada, las Ûrdenes ser·n ignoradas hasta el fin de bloque de transacciÛn
+
+[SQL: -- Cambiar UNIQUE de solo nombre a (empresa_usuario_id, nombre) para permitir roles globales
+DROP INDEX IF EXISTS roles_nombre_key]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:41:25,918 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacciÛn abortada, las Ûrdenes ser·n ignoradas hasta el fin de bloque de transacciÛn
+
+[SQL: CREATE UNIQUE INDEX uq_rol_empresa_nombre ON roles(nombre, empresa_usuario_id)]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:41:25,920 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacciÛn abortada, las Ûrdenes ser·n ignoradas hasta el fin de bloque de transacciÛn
+
+[SQL: CREATE INDEX idx_rol_empresa ON roles(empresa_usuario_id)]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:41:25,921 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacciÛn abortada, las Ûrdenes ser·n ignoradas hasta el fin de bloque de transacciÛn
+
+[SQL: -- ============================================================
+-- 9. HOTEL_SETTINGS: Cambiar FK de empresa_id a empresa_usuario_id
+-- ============================================================
+
+-- Crear columna nueva
+ALTER TABLE hotel_settings ADD COLUMN IF NOT EXISTS empresa_usuario_id INTEGER]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:41:25,923 - WARNING - Warning during statement execution: (psycopg2.ProgrammingError) can't execute an empty query
+[SQL: -- Migrar datos si existen (FK de empresa_id a empresa_usuario_id)
+-- Nota: Esto requiere que ya exista una tabla empresa_usuarios mapeada con empresas
+-- Por ahora dejamos NULL y ser√° rellenado en script de migraci√≥n de datos
+-- UPDATE hotel_settings SET empresa_usuario_id = <mapeo de empresa_id> WHERE empresa_usuario_id IS NULL]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2026-01-26 20:41:25,924 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacciÛn abortada, las Ûrdenes ser·n ignoradas hasta el fin de bloque de transacciÛn
+
+[SQL: -- Agregar FK nuevo
+ALTER TABLE hotel_settings 
+    ADD CONSTRAINT fk_hotel_settings_empresa_usuario 
+    FOREIGN KEY (empresa_usuario_id)
+    REFERENCES empresa_usuarios(id)
+    ON DELETE CASCADE]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:41:25,926 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacciÛn abortada, las Ûrdenes ser·n ignoradas hasta el fin de bloque de transacciÛn
+
+[SQL: -- Cambiar UNIQUE constraint
+DROP INDEX IF EXISTS uq_hotel_settings_empresa]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:41:25,927 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacciÛn abortada, las Ûrdenes ser·n ignoradas hasta el fin de bloque de transacciÛn
+
+[SQL: CREATE UNIQUE INDEX uq_hotel_settings_empresa_usuario ON hotel_settings(empresa_usuario_id)]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:41:25,929 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacciÛn abortada, las Ûrdenes ser·n ignoradas hasta el fin de bloque de transacciÛn
+
+[SQL: CREATE INDEX idx_hotel_settings_empresa ON hotel_settings(empresa_usuario_id)]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:41:25,930 - WARNING - Warning during statement execution: (psycopg2.ProgrammingError) can't execute an empty query
+[SQL: -- Opcionalmente, mantener FK antigua para compatibilidad temporal
+-- ALTER TABLE hotel_settings ADD CONSTRAINT fk_hotel_settings_empresa_legacy 
+--     FOREIGN KEY (empresa_id) REFERENCES empresas(id) ON DELETE SET NULL]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2026-01-26 20:41:25,937 - INFO - Executing migration 007: 007_enable_rls_security.sql
+2026-01-26 20:41:25,985 - ERROR - Error: "psql" no se reconoce como un comando interno o externo,
+programa o archivo por lotes ejecutable.
+
+2026-01-26 20:41:25,990 - INFO - ======================================================================
+2026-01-26 20:42:33,422 - INFO - ======================================================================
+2026-01-26 20:42:33,512 - INFO - STARTING MULTI-TENANT MIGRATIONS
+2026-01-26 20:42:33,512 - INFO -    Migrations: 007 to 008
+2026-01-26 20:42:33,512 - INFO -    Timestamp: 2026-01-26T20:42:33.512474
+2026-01-26 20:42:33,512 - INFO - ======================================================================
+2026-01-26 20:42:33,512 - INFO - Database: hotelbeta_db @ localhost:5432
+2026-01-26 20:42:33,513 - INFO - Executing migration 007: 007_enable_rls_security.sql
+2026-01-26 20:42:33,549 - ERROR - Migration 007 failed
+2026-01-26 20:42:33,549 - ERROR - Error: "psql" no se reconoce como un comando interno o externo,
+programa o archivo por lotes ejecutable.
+
+2026-01-26 20:42:33,550 - INFO - Retrying migration 007 with SQLAlchemy...
+2026-01-26 20:42:33,550 - INFO - Executing migration 007: 007_enable_rls_security.sql
+2026-01-26 20:42:33,551 - ERROR - Migration 007 failed: 'charmap' codec can't decode byte 0x8d in position 7239: character maps to <undefined>
+2026-01-26 20:42:33,552 - ERROR - Migration 007 FAILED - stopping here
+2026-01-26 20:42:33,552 - INFO - ======================================================================
+2026-01-26 20:42:33,552 - ERROR - MIGRATIONS FAILED: 007
+2026-01-26 20:42:40,762 - INFO - ======================================================================
+2026-01-26 20:42:40,762 - INFO - STARTING MULTI-TENANT MIGRATIONS
+2026-01-26 20:42:40,763 - INFO -    Migrations: 007 to 008
+2026-01-26 20:42:40,763 - INFO -    Timestamp: 2026-01-26T20:42:40.763405
+2026-01-26 20:42:40,763 - INFO - ======================================================================
+2026-01-26 20:42:40,763 - INFO - Database: hotelbeta_db @ localhost:5432
+2026-01-26 20:42:40,764 - INFO - Executing migration 007: 007_enable_rls_security.sql
+2026-01-26 20:42:40,797 - ERROR - Migration 007 failed
+2026-01-26 20:42:40,797 - ERROR - Error: "psql" no se reconoce como un comando interno o externo,
+programa o archivo por lotes ejecutable.
+
+2026-01-26 20:42:40,798 - INFO - Retrying migration 007 with SQLAlchemy...
+2026-01-26 20:42:40,798 - INFO - Executing migration 007: 007_enable_rls_security.sql
+2026-01-26 20:42:40,910 - WARNING - Warning during statement execution: (psycopg2.ProgrammingError) can't execute an empty query
+[SQL: -- Migraci√≥n 007: Habilitar Row Level Security (RLS) en PostgreSQL
+-- Esta migraci√≥n implementa la capa de seguridad bulletproof para aislamiento de tenants
+
+-- ============================================================
+-- 1. CREAR EXTENSI√ìN y CONFIGURAR RLS
+-- ============================================================
+
+-- Verificar que psql tiene acceso necesario (ejecutar como superuser si falla)
+-- Crear aplicaci√≥n role para ejecutar queries
+-- DO $$ BEGIN
+--    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'app_user') THEN
+--       CREATE ROLE app_user WITH LOGIN]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2026-01-26 20:42:40,911 - WARNING - Warning during statement execution: (psycopg2.ProgrammingError) can't execute an empty query
+[SQL: --    END IF]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2026-01-26 20:42:40,911 - WARNING - Warning during statement execution: (psycopg2.ProgrammingError) can't execute an empty query
+[SQL: -- END
+-- $$]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2026-01-26 20:42:40,918 - WARNING - Warning during statement execution: (psycopg2.errors.SyntaxError) una cadena separada por $ est√° inconclusa en o cerca de ¬´$$
+    SELECT current_setting('app.current_tenant_id')::INTEGER¬ª
+LINE 6: ...PLACE FUNCTION get_current_tenant_id() RETURNS INTEGER AS $$
+                                                                     ^
+
+[SQL: -- ============================================================
+-- 2. HABILITAR RLS en todas las tablas multi-tenant
+-- ============================================================
+
+-- Funci√≥n para obtener tenant_id actual desde app.current_tenant_id
+CREATE OR REPLACE FUNCTION get_current_tenant_id() RETURNS INTEGER AS $$
+    SELECT current_setting('app.current_tenant_id')::INTEGER]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2026-01-26 20:42:40,919 - WARNING - Warning during statement execution: (psycopg2.errors.SyntaxError) una cadena separada por $ est√° inconclusa en o cerca de ¬´$$ LANGUAGE SQL¬ª
+LINE 1: $$ LANGUAGE SQL
+        ^
+
+[SQL: $$ LANGUAGE SQL]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2026-01-26 20:42:40,920 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: -- Tabla: empresa_usuarios (el tenant mismo - acceso global para super_admin)
+ALTER TABLE empresa_usuarios ENABLE ROW LEVEL SECURITY]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,922 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: -- Pol√≠tica: Super admin puede ver todos
+-- Pol√≠tica: Regular admin solo su propio tenant
+CREATE POLICY rls_empresa_usuarios_access ON empresa_usuarios
+    FOR ALL
+    USING (
+        -- Super admin OR es el tenant owner
+        (SELECT es_super_admin FROM usuarios WHERE id = current_user_id()) 
+        OR id = get_current_tenant_id()
+    )]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,923 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: -- Tabla: usuarios
+ALTER TABLE usuarios ENABLE ROW LEVEL SECURITY]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,924 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: CREATE POLICY rls_usuarios_access ON usuarios
+    FOR ALL
+    USING (
+        -- Super admin puede ver todos
+        es_super_admin = TRUE
+        OR
+        -- Usuario ve su propio tenant
+        empresa_usuario_id = get_current_tenant_id()
+        OR
+        -- Usuario se ve a s√≠ mismo
+        id = current_user_id()
+    )]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,925 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: -- Tabla: cliente_corporativo
+ALTER TABLE cliente_corporativo ENABLE ROW LEVEL SECURITY]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,926 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: CREATE POLICY rls_cliente_corporativo_access ON cliente_corporativo
+    FOR ALL
+    USING (empresa_usuario_id = get_current_tenant_id())]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,927 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: -- Tabla: clientes
+ALTER TABLE clientes ENABLE ROW LEVEL SECURITY]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,928 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: CREATE POLICY rls_clientes_access ON clientes
+    FOR ALL
+    USING (
+        -- El cliente pertenece a un cliente_corporativo del tenant actual
+        cliente_corporativo_id IN (
+            SELECT id FROM cliente_corporativo 
+            WHERE empresa_usuario_id = get_current_tenant_id()
+        )
+    )]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,929 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: -- Tabla: room_types
+ALTER TABLE room_types ENABLE ROW LEVEL SECURITY]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,930 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: CREATE POLICY rls_room_types_access ON room_types
+    FOR ALL
+    USING (empresa_usuario_id = get_current_tenant_id())]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,931 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: -- Tabla: rooms
+ALTER TABLE rooms ENABLE ROW LEVEL SECURITY]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,932 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: CREATE POLICY rls_rooms_access ON rooms
+    FOR ALL
+    USING (empresa_usuario_id = get_current_tenant_id())]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,933 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: -- Tabla: daily_rates
+ALTER TABLE daily_rates ENABLE ROW LEVEL SECURITY]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,934 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: CREATE POLICY rls_daily_rates_access ON daily_rates
+    FOR ALL
+    USING (empresa_usuario_id = get_current_tenant_id())]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,935 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: -- Tabla: rate_plans
+ALTER TABLE rate_plans ENABLE ROW LEVEL SECURITY]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,936 - WARNING - Warning during statement execution: (psycopg2.ProgrammingError) can't execute an empty query
+[SQL: -- Rate plans pueden ser globales o per-tenant (para flexibilidad)
+-- Por ahora los hacemos accesibles globalmente (mejor: agregar empresa_usuario_id si necesario)
+-- CREATE POLICY rls_rate_plans_access ON rate_plans FOR ALL USING (TRUE)]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2026-01-26 20:42:40,937 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: -- Tabla: reservations
+ALTER TABLE reservations ENABLE ROW LEVEL SECURITY]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,938 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: CREATE POLICY rls_reservations_access ON reservations
+    FOR ALL
+    USING (empresa_usuario_id = get_current_tenant_id())]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,939 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: -- Tabla: reservation_rooms
+ALTER TABLE reservation_rooms ENABLE ROW LEVEL SECURITY]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,940 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: CREATE POLICY rls_reservation_rooms_access ON reservation_rooms
+    FOR ALL
+    USING (
+        reservation_id IN (
+            SELECT id FROM reservations 
+            WHERE empresa_usuario_id = get_current_tenant_id()
+        )
+    )]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,941 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: -- Tabla: reservation_guests
+ALTER TABLE reservation_guests ENABLE ROW LEVEL SECURITY]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,942 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: CREATE POLICY rls_reservation_guests_access ON reservation_guests
+    FOR ALL
+    USING (
+        reservation_id IN (
+            SELECT id FROM reservations 
+            WHERE empresa_usuario_id = get_current_tenant_id()
+        )
+    )]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,943 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: -- Tabla: stays
+ALTER TABLE stays ENABLE ROW LEVEL SECURITY]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,944 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: CREATE POLICY rls_stays_access ON stays
+    FOR ALL
+    USING (empresa_usuario_id = get_current_tenant_id())]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,945 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: -- Tabla: stay_room_occupancies
+ALTER TABLE stay_room_occupancies ENABLE ROW LEVEL SECURITY]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,946 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: CREATE POLICY rls_stay_room_occupancies_access ON stay_room_occupancies
+    FOR ALL
+    USING (
+        stay_id IN (
+            SELECT id FROM stays 
+            WHERE empresa_usuario_id = get_current_tenant_id()
+        )
+    )]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,947 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: -- Tabla: stay_charges
+ALTER TABLE stay_charges ENABLE ROW LEVEL SECURITY]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,949 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: CREATE POLICY rls_stay_charges_access ON stay_charges
+    FOR ALL
+    USING (
+        stay_id IN (
+            SELECT id FROM stays 
+            WHERE empresa_usuario_id = get_current_tenant_id()
+        )
+    )]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,950 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: -- Tabla: stay_payments
+ALTER TABLE stay_payments ENABLE ROW LEVEL SECURITY]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,952 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: CREATE POLICY rls_stay_payments_access ON stay_payments
+    FOR ALL
+    USING (
+        stay_id IN (
+            SELECT id FROM stays 
+            WHERE empresa_usuario_id = get_current_tenant_id()
+        )
+    )]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,953 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: -- Tabla: housekeeping_tasks
+ALTER TABLE housekeeping_tasks ENABLE ROW LEVEL SECURITY]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,954 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: CREATE POLICY rls_housekeeping_tasks_access ON housekeeping_tasks
+    FOR ALL
+    USING (empresa_usuario_id = get_current_tenant_id())]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,955 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: -- Tabla: roles
+ALTER TABLE roles ENABLE ROW LEVEL SECURITY]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,957 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: CREATE POLICY rls_roles_access ON roles
+    FOR ALL
+    USING (
+        -- Global roles (null empresa_usuario_id) solo para super_admin
+        (empresa_usuario_id IS NULL AND (SELECT es_super_admin FROM usuarios WHERE id = current_user_id()))
+        OR
+        -- Tenant roles para el tenant actual
+        empresa_usuario_id = get_current_tenant_id()
+    )]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,958 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: -- Tabla: subscriptions
+ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,959 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: CREATE POLICY rls_subscriptions_access ON subscriptions
+    FOR ALL
+    USING (
+        empresa_usuario_id = get_current_tenant_id()
+        OR
+        (SELECT es_super_admin FROM usuarios WHERE id = current_user_id()) = TRUE
+    )]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,960 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: -- Tabla: payment_attempts
+ALTER TABLE payment_attempts ENABLE ROW LEVEL SECURITY]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,961 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: CREATE POLICY rls_payment_attempts_access ON payment_attempts
+    FOR ALL
+    USING (
+        subscription_id IN (
+            SELECT id FROM subscriptions 
+            WHERE empresa_usuario_id = get_current_tenant_id()
+                  OR (SELECT es_super_admin FROM usuarios WHERE id = current_user_id()) = TRUE
+        )
+    )]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,961 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: -- Tabla: hotel_settings
+ALTER TABLE hotel_settings ENABLE ROW LEVEL SECURITY]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,962 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: CREATE POLICY rls_hotel_settings_access ON hotel_settings
+    FOR ALL
+    USING (empresa_usuario_id = get_current_tenant_id())]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,964 - WARNING - Warning during statement execution: (psycopg2.errors.InFailedSqlTransaction) transacci√≥n abortada, las √≥rdenes ser√°n ignoradas hasta el fin de bloque de transacci√≥n
+
+[SQL: -- ============================================================
+-- 3. CREAR TABLA DE AUDITOR√çA RLS (opcional pero recomendado)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS rls_access_log (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER,
+    tenant_id INTEGER,
+    table_name VARCHAR(100),
+    action VARCHAR(20),  -- SELECT, INSERT, UPDATE, DELETE
+    accessed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+2026-01-26 20:42:40,965 - WARNING - Warning during statement execution: (sqlalchemy.exc.InvalidRequestError) A value is required for bind parameter 'tenant_id'
+[SQL: -- ============================================================
+-- 4. DOCUMENTACI√ìN PARA DEVELOPERS
+-- ============================================================
+
+-- C√≥mo setear el tenant_id desde la aplicaci√≥n FastAPI:
+-- 
+-- En middleware (despu√©s de validar JWT):
+-- set_tenant_id_query = "SET app.current_tenant_id = %(tenant_id)s"
+-- session.execute(text(set_tenant_id_query), {"tenant_id": tenant_id})
+-- session.commit()
+--
+-- O para una sesi√≥n:
+-- SET app.current_tenant_id = 123]
+(Background on this error at: https://sqlalche.me/e/20/cd3x)
+2026-01-26 20:42:40,966 - WARNING - Warning during statement execution: (psycopg2.ProgrammingError) can't execute an empty query
+[SQL: -- Set tenant_id to 123
+-- SELECT * FROM habitaciones]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2026-01-26 20:42:40,967 - WARNING - Warning during statement execution: (psycopg2.ProgrammingError) can't execute an empty query
+[SQL: -- Solo devuelve habitaciones del tenant 123
+--
+-- Verificar RLS activo:
+-- SELECT tablename, rowsecurity FROM pg_tables 
+-- WHERE schemaname = 'public' AND rowsecurity = true]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2026-01-26 20:42:40,968 - INFO - Migration 007 completed successfully
+2026-01-26 20:42:40,969 - INFO - Executing migration 008: 008_rename_subscription_metadata.sql
+2026-01-26 20:42:41,006 - ERROR - Migration 008 failed
+2026-01-26 20:42:41,007 - ERROR - Error: "psql" no se reconoce como un comando interno o externo,
+programa o archivo por lotes ejecutable.
+
+2026-01-26 20:42:41,007 - INFO - Retrying migration 008 with SQLAlchemy...
+2026-01-26 20:42:41,008 - INFO - Executing migration 008: 008_rename_subscription_metadata.sql
+2026-01-26 20:42:41,010 - WARNING - Warning during statement execution: (psycopg2.errors.SyntaxError) error de sintaxis en o cerca de ¬´EXISTS¬ª
+LINE 4:   RENAME COLUMN IF EXISTS metadata TO metadata_json
+                           ^
+
+[SQL: -- Rename reserved column to avoid SQLAlchemy Declarative reserved name conflict
+-- Safe to run multiple times thanks to IF EXISTS
+ALTER TABLE subscriptions
+  RENAME COLUMN IF EXISTS metadata TO metadata_json]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2026-01-26 20:42:41,011 - INFO - Migration 008 completed successfully
+2026-01-26 20:42:41,011 - INFO - ======================================================================
+2026-01-26 20:42:41,012 - INFO - ALL MIGRATIONS COMPLETED SUCCESSFULLY
+2026-01-26 20:42:41,012 - INFO - ======================================================================
+2026-01-26 20:43:01,874 - INFO - ======================================================================
+2026-01-26 20:43:01,874 - INFO - STARTING MULTI-TENANT MIGRATIONS
+2026-01-26 20:43:01,874 - INFO -    Migrations: 007 to 008
+2026-01-26 20:43:01,874 - INFO -    Timestamp: 2026-01-26T20:43:01.874874
+2026-01-26 20:43:01,875 - INFO - ======================================================================
+2026-01-26 20:43:01,875 - INFO - Database: hotelbeta_db @ localhost:5432
+2026-01-26 20:43:01,875 - INFO - Executing migration 007: 007_enable_rls_security.sql
+2026-01-26 20:43:01,904 - ERROR - Migration 007 failed
+2026-01-26 20:43:01,905 - ERROR - Error: "psql" no se reconoce como un comando interno o externo,
+programa o archivo por lotes ejecutable.
+
+2026-01-26 20:43:01,905 - INFO - Retrying migration 007 with SQLAlchemy...
+2026-01-26 20:43:01,906 - INFO - Executing migration 007: 007_enable_rls_security.sql
+2026-01-26 20:43:02,085 - ERROR - Migration 007 failed: no existe la columna ¬´es_super_admin¬ª
+
+2026-01-26 20:43:02,085 - ERROR - Migration 007 FAILED - stopping here
+2026-01-26 20:43:02,086 - INFO - ======================================================================
+2026-01-26 20:43:02,086 - ERROR - MIGRATIONS FAILED: 007
+2026-01-26 20:43:19,499 - INFO - ======================================================================
+2026-01-26 20:43:19,499 - INFO - STARTING MULTI-TENANT MIGRATIONS
+2026-01-26 20:43:19,499 - INFO -    Migrations: 006 to 008
+2026-01-26 20:43:19,500 - INFO -    Timestamp: 2026-01-26T20:43:19.500164
+2026-01-26 20:43:19,500 - INFO - ======================================================================
+2026-01-26 20:43:19,500 - INFO - Database: hotelbeta_db @ localhost:5432
+2026-01-26 20:43:19,501 - INFO - Executing migration 006: 006_add_tenant_id_all_tables.sql
+2026-01-26 20:43:19,538 - ERROR - Migration 006 failed
+2026-01-26 20:43:19,539 - ERROR - Error: "psql" no se reconoce como un comando interno o externo,
+programa o archivo por lotes ejecutable.
+
+2026-01-26 20:43:19,539 - INFO - Retrying migration 006 with SQLAlchemy...
+2026-01-26 20:43:19,540 - INFO - Executing migration 006: 006_add_tenant_id_all_tables.sql
+2026-01-26 20:43:19,685 - ERROR - Migration 006 failed: no se puede eliminar √≠ndice uq_roomtype_nombre porque restricci√≥n ¬´uq_roomtype_nombre¬ª en tabla room_types lo requiere
+HINT:  Puede eliminar restricci√≥n ¬´uq_roomtype_nombre¬ª en tabla room_types en su lugar.
+
+2026-01-26 20:43:19,685 - ERROR - Migration 006 FAILED - stopping here
+2026-01-26 20:43:19,686 - INFO - ======================================================================
+2026-01-26 20:43:19,686 - ERROR - MIGRATIONS FAILED: 006
+2026-01-26 20:44:52,856 - INFO - ======================================================================
+2026-01-26 20:44:52,857 - INFO - STARTING MULTI-TENANT MIGRATIONS
+2026-01-26 20:44:52,857 - INFO -    Migrations: 006 to 008
+2026-01-26 20:44:52,857 - INFO -    Timestamp: 2026-01-26T20:44:52.857707
+2026-01-26 20:44:52,857 - INFO - ======================================================================
+2026-01-26 20:44:52,858 - INFO - Database: hotelbeta_db @ localhost:5432
+2026-01-26 20:44:52,858 - INFO - Executing migration 006: 006_add_tenant_id_all_tables.sql
+2026-01-26 20:44:52,890 - ERROR - Migration 006 failed
+2026-01-26 20:44:52,891 - ERROR - Error: "psql" no se reconoce como un comando interno o externo,
+programa o archivo por lotes ejecutable.
+
+2026-01-26 20:44:52,891 - INFO - Retrying migration 006 with SQLAlchemy...
+2026-01-26 20:44:52,891 - INFO - Executing migration 006: 006_add_tenant_id_all_tables.sql
+2026-01-26 20:44:53,100 - INFO - Migration 006 completed successfully
+2026-01-26 20:44:53,100 - INFO - Executing migration 007: 007_enable_rls_security.sql
+2026-01-26 20:44:53,133 - ERROR - Migration 007 failed
+2026-01-26 20:44:53,133 - ERROR - Error: "psql" no se reconoce como un comando interno o externo,
+programa o archivo por lotes ejecutable.
+
+2026-01-26 20:44:53,134 - INFO - Retrying migration 007 with SQLAlchemy...
+2026-01-26 20:44:53,135 - INFO - Executing migration 007: 007_enable_rls_security.sql
+2026-01-26 20:44:53,144 - ERROR - Migration 007 failed: no existe la funci√≥n current_user_id()
+HINT:  Ninguna funci√≥n coincide en el nombre y tipos de argumentos. Puede ser necesario agregar conversi√≥n expl√≠cita de tipos.
+
+2026-01-26 20:44:53,144 - ERROR - Migration 007 FAILED - stopping here
+2026-01-26 20:44:53,144 - INFO - ======================================================================
+2026-01-26 20:44:53,145 - ERROR - MIGRATIONS FAILED: 007
+2026-01-26 20:45:09,517 - INFO - ======================================================================
+2026-01-26 20:45:09,518 - INFO - STARTING MULTI-TENANT MIGRATIONS
+2026-01-26 20:45:09,518 - INFO -    Migrations: 007 to 008
+2026-01-26 20:45:09,519 - INFO -    Timestamp: 2026-01-26T20:45:09.519023
+2026-01-26 20:45:09,519 - INFO - ======================================================================
+2026-01-26 20:45:09,519 - INFO - Database: hotelbeta_db @ localhost:5432
+2026-01-26 20:45:09,520 - INFO - Executing migration 007: 007_enable_rls_security.sql
+2026-01-26 20:45:09,588 - ERROR - Migration 007 failed
+2026-01-26 20:45:09,589 - ERROR - Error: "psql" no se reconoce como un comando interno o externo,
+programa o archivo por lotes ejecutable.
+
+2026-01-26 20:45:09,590 - INFO - Retrying migration 007 with SQLAlchemy...
+2026-01-26 20:45:09,590 - INFO - Executing migration 007: 007_enable_rls_security.sql
+2026-01-26 20:45:09,779 - ERROR - Migration 007 failed: no existe la columna ¬´cliente_corporativo_id¬ª
+
+2026-01-26 20:45:09,779 - ERROR - Migration 007 FAILED - stopping here
+2026-01-26 20:45:09,780 - INFO - ======================================================================
+2026-01-26 20:45:09,780 - ERROR - MIGRATIONS FAILED: 007
+2026-01-26 20:45:39,122 - INFO - ======================================================================
+2026-01-26 20:45:39,122 - INFO - STARTING MULTI-TENANT MIGRATIONS
+2026-01-26 20:45:39,122 - INFO -    Migrations: 007 to 008
+2026-01-26 20:45:39,123 - INFO -    Timestamp: 2026-01-26T20:45:39.122961
+2026-01-26 20:45:39,123 - INFO - ======================================================================
+2026-01-26 20:45:39,123 - INFO - Database: hotelbeta_db @ localhost:5432
+2026-01-26 20:45:39,124 - INFO - Executing migration 007: 007_enable_rls_security.sql
+2026-01-26 20:45:39,159 - ERROR - Migration 007 failed
+2026-01-26 20:45:39,160 - ERROR - Error: "psql" no se reconoce como un comando interno o externo,
+programa o archivo por lotes ejecutable.
+
+2026-01-26 20:45:39,160 - INFO - Retrying migration 007 with SQLAlchemy...
+2026-01-26 20:45:39,161 - INFO - Executing migration 007: 007_enable_rls_security.sql
+2026-01-26 20:45:39,329 - INFO - Migration 007 completed successfully
+2026-01-26 20:45:39,330 - INFO - Executing migration 008: 008_rename_subscription_metadata.sql
+2026-01-26 20:45:39,371 - ERROR - Migration 008 failed
+2026-01-26 20:45:39,371 - ERROR - Error: "psql" no se reconoce como un comando interno o externo,
+programa o archivo por lotes ejecutable.
+
+2026-01-26 20:45:39,372 - INFO - Retrying migration 008 with SQLAlchemy...
+2026-01-26 20:45:39,372 - INFO - Executing migration 008: 008_rename_subscription_metadata.sql
+2026-01-26 20:45:39,375 - ERROR - Migration 008 failed: error de sintaxis en o cerca de ¬´EXISTS¬ª
+LINE 4:   RENAME COLUMN IF EXISTS metadata TO metadata_json;
+                           ^
+
+2026-01-26 20:45:39,376 - ERROR - Migration 008 FAILED - stopping here
+2026-01-26 20:45:39,376 - INFO - ======================================================================
+2026-01-26 20:45:39,376 - ERROR - MIGRATIONS FAILED: 008
+2026-01-26 20:45:49,972 - INFO - ======================================================================
+2026-01-26 20:45:49,972 - INFO - STARTING MULTI-TENANT MIGRATIONS
+2026-01-26 20:45:49,973 - INFO -    Migrations: 008 to 008
+2026-01-26 20:45:49,973 - INFO -    Timestamp: 2026-01-26T20:45:49.973391
+2026-01-26 20:45:49,973 - INFO - ======================================================================
+2026-01-26 20:45:49,974 - INFO - Database: hotelbeta_db @ localhost:5432
+2026-01-26 20:45:49,974 - INFO - Executing migration 008: 008_rename_subscription_metadata.sql
+2026-01-26 20:45:50,006 - ERROR - Migration 008 failed
+2026-01-26 20:45:50,006 - ERROR - Error: "psql" no se reconoce como un comando interno o externo,
+programa o archivo por lotes ejecutable.
+
+2026-01-26 20:45:50,007 - INFO - Retrying migration 008 with SQLAlchemy...
+2026-01-26 20:45:50,007 - INFO - Executing migration 008: 008_rename_subscription_metadata.sql
+2026-01-26 20:45:50,153 - INFO - Migration 008 completed successfully
+2026-01-26 20:45:50,154 - INFO - ======================================================================
+2026-01-26 20:45:50,154 - INFO - ALL MIGRATIONS COMPLETED SUCCESSFULLY
+2026-01-26 20:45:50,154 - INFO - ======================================================================

@@ -4,7 +4,7 @@ Incluye: Tipos categorizados, control de activos, auditoría
 """
 
 from sqlalchemy import (
-    Column, Integer, String, DateTime, Boolean, Numeric, Text, Index
+    Column, Integer, String, DateTime, Boolean, Numeric, Text, Index, ForeignKey
 )
 from sqlalchemy.orm import relationship
 from database.conexion import Base
@@ -17,6 +17,7 @@ class ProductoServicio(Base):
     __table_args__ = (
         Index('idx_producto_tipo', 'tipo'),
         Index('idx_producto_activo', 'activo'),
+        Index('idx_producto_empresa_usuario', 'empresa_usuario_id'),
     )
 
     id = Column(Integer, primary_key=True, index=True)
@@ -24,6 +25,9 @@ class ProductoServicio(Base):
     tipo = Column(String(20), nullable=False)  # producto, servicio, descuento, extra
     descripcion = Column(Text, nullable=True)
     precio_unitario = Column(Numeric(10, 2), nullable=False)
+    
+    # Multi-tenant
+    empresa_usuario_id = Column(Integer, ForeignKey('empresa_usuarios.id', ondelete='CASCADE'), nullable=True)
     
     # Control
     activo = Column(Boolean, default=True)
