@@ -587,3 +587,116 @@ WHERE transactions.empresa_usuario_id = %(empresa_usuario_id_1)s AND transaction
 2026-02-04 16:25:44,095 | INFO | ADMIN | Usuario: admin | Accion: Listar tenants | Detalle: total=3
 2026-02-04 17:17:19,764 | INFO | AUTH | Usuario: admin | Accion: Login exitoso | Detalle: rol=admin
 2026-02-04 17:17:19,786 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2026-02-04 18:24:09,710 | INFO | AUTH | Usuario: system | Accion: Error al renovar token | Detalle: error=create_access_token() got an unexpected keyword argument 'data'
+2026-02-04 18:24:09,710 | INFO | AUTH | Usuario: system | Accion: Error al renovar token | Detalle: error=create_access_token() got an unexpected keyword argument 'data'
+2026-02-04 18:24:09,735 | INFO | AUTH | Usuario: system | Accion: Error al renovar token | Detalle: error=create_access_token() got an unexpected keyword argument 'data'
+2026-02-04 18:24:09,735 | INFO | AUTH | Usuario: system | Accion: Error al renovar token | Detalle: error=create_access_token() got an unexpected keyword argument 'data'
+2026-02-05 10:25:58,163 | INFO | AUTH | Usuario: hoteladmin | Accion: Empresa registrada - Trial iniciado | Detalle: empresa_id=18, nombre=Lima, dias_trial=10
+2026-02-05 10:25:58,176 | INFO | AUTH | Usuario: hoteladmin | Accion: Consulta de perfil
+2026-02-05 10:25:58,210 | INFO | SETTINGS | Usuario: 7 | Accion: hotel_settings_created | Detalle: empresa_usuario_id=18 action=default_settings_created
+2026-02-05 10:26:25,090 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=0 from=2026-02-05 to=2026-03-08 include_history=False
+2026-02-05 10:26:25,106 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=0 from=2026-02-05 to=2026-02-23 include_history=False
+2026-02-05 10:26:25,107 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2026-02-05 to=2026-03-08
+2026-02-05 10:26:25,114 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2026-02-05 to=2026-02-23
+2026-02-05 10:26:25,115 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2026-02-05 to=2026-03-08 blocks=0 history=False cancelled=False no_show=False
+2026-02-05 10:26:25,117 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2026-02-05 to=2026-02-23 blocks=0 history=False cancelled=False no_show=False
+2026-02-05 10:26:25,140 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=0 from=2026-02-05 to=2026-03-08 include_history=False
+2026-02-05 10:26:25,140 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2026-02-05 to=2026-03-08
+2026-02-05 10:26:25,140 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2026-02-05 to=2026-03-08 blocks=0 history=False cancelled=False no_show=False
+2026-02-05 10:26:25,171 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=0 from=2026-02-05 to=2026-03-08 include_history=False
+2026-02-05 10:26:25,176 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2026-02-05 to=2026-03-08
+2026-02-05 10:26:25,179 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2026-02-05 to=2026-03-08 blocks=0 history=False cancelled=False no_show=False
+2026-02-05 10:26:44,549 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=0 from=2026-02-05 to=2026-03-08 include_history=False
+2026-02-05 10:26:44,555 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2026-02-05 to=2026-03-08
+2026-02-05 10:26:44,561 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2026-02-05 to=2026-03-08 blocks=0 history=False cancelled=False no_show=False
+2026-02-05 10:26:44,570 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=0 from=2026-02-05 to=2026-02-23 include_history=False
+2026-02-05 10:26:44,576 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2026-02-05 to=2026-02-23
+2026-02-05 10:26:44,579 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2026-02-05 to=2026-02-23 blocks=0 history=False cancelled=False no_show=False
+2026-02-05 10:26:44,586 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=0 from=2026-02-05 to=2026-03-08 include_history=False
+2026-02-05 10:26:44,590 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=0 from=2026-02-05 to=2026-03-08
+2026-02-05 10:26:44,593 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2026-02-05 to=2026-03-08 blocks=0 history=False cancelled=False no_show=False
+2026-02-05 10:36:56,975 | INFO | AUTH | Usuario: admin | Accion: Login exitoso | Detalle: rol=admin
+2026-02-05 10:36:56,983 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2026-02-05 10:37:02,878 | INFO | ADMIN | Usuario: admin | Accion: Listar tenants | Detalle: total=4
+2026-02-05 10:37:02,968 | INFO | ADMIN | Usuario: admin | Accion: Listar tenants | Detalle: total=4
+2026-02-05 10:37:11,821 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2026-02-05 10:37:11,827 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2026-02-05 10:37:12,159 | INFO | ADMIN | Usuario: admin | Accion: Listar tenants | Detalle: total=4
+2026-02-05 10:37:12,276 | INFO | ADMIN | Usuario: admin | Accion: Listar tenants | Detalle: total=4
+2026-02-05 10:42:15,216 | INFO | AUTH | Usuario: admin | Accion: Login exitoso | Detalle: rol=admin
+2026-02-05 10:42:15,227 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2026-02-05 10:42:18,303 | INFO | ADMIN | Usuario: admin | Accion: Listar tenants | Detalle: total=4
+2026-02-05 10:42:18,373 | INFO | ADMIN | Usuario: admin | Accion: Listar tenants | Detalle: total=4
+2026-02-05 10:42:22,965 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2026-02-05 10:42:22,972 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2026-02-05 10:42:23,369 | INFO | ADMIN | Usuario: admin | Accion: Listar tenants | Detalle: total=4
+2026-02-05 10:42:23,424 | INFO | ADMIN | Usuario: admin | Accion: Listar tenants | Detalle: total=4
+2026-02-05 10:42:31,091 | INFO | AUTH | Usuario: admin | Accion: Login exitoso | Detalle: rol=admin
+2026-02-05 10:42:31,098 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2026-02-05 10:42:41,412 | INFO | ADMIN | Usuario: admin | Accion: Listar tenants | Detalle: total=4
+2026-02-05 10:42:41,463 | INFO | ADMIN | Usuario: admin | Accion: Listar tenants | Detalle: total=4
+2026-02-05 11:13:55,006 | INFO | AUTH | Usuario: system | Accion: Error al renovar token | Detalle: error=create_access_token() got an unexpected keyword argument 'data'
+2026-02-05 11:13:55,017 | INFO | AUTH | Usuario: system | Accion: Error al renovar token | Detalle: error=create_access_token() got an unexpected keyword argument 'data'
+2026-02-05 11:13:55,046 | INFO | AUTH | Usuario: system | Accion: Error al renovar token | Detalle: error=create_access_token() got an unexpected keyword argument 'data'
+2026-02-05 11:13:55,054 | INFO | AUTH | Usuario: system | Accion: Error al renovar token | Detalle: error=create_access_token() got an unexpected keyword argument 'data'
+2026-02-05 11:13:57,327 | INFO | AUTH | Usuario: admin | Accion: Login exitoso | Detalle: rol=admin
+2026-02-05 11:13:57,343 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2026-02-05 11:14:02,163 | INFO | AUTH | Usuario: admin | Accion: Listar usuarios | Detalle: total=4
+2026-02-05 11:14:02,171 | INFO | AUTH | Usuario: admin | Accion: Listar usuarios | Detalle: total=4
+2026-02-05 11:14:05,016 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2026-02-05 11:14:05,023 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2026-02-05 11:14:05,340 | INFO | AUTH | Usuario: admin | Accion: Listar usuarios | Detalle: total=4
+2026-02-05 11:14:05,347 | INFO | AUTH | Usuario: admin | Accion: Listar usuarios | Detalle: total=4
+2026-02-05 11:14:13,616 | INFO | ADMIN | Usuario: admin | Accion: Listar tenants | Detalle: total=4
+2026-02-05 11:14:13,713 | INFO | ADMIN | Usuario: admin | Accion: Listar tenants | Detalle: total=4
+2026-02-05 11:14:20,700 | INFO | AUTH | Usuario: admin | Accion: Login exitoso | Detalle: rol=admin
+2026-02-05 11:14:20,711 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2026-02-05 11:14:24,401 | INFO | ADMIN | Usuario: admin | Accion: Listar tenants | Detalle: total=4
+2026-02-05 11:14:24,438 | INFO | ADMIN | Usuario: admin | Accion: Listar tenants | Detalle: total=4
+2026-02-05 11:14:25,196 | INFO | AUTH | Usuario: admin | Accion: Listar usuarios | Detalle: total=4
+2026-02-05 11:14:25,205 | INFO | AUTH | Usuario: admin | Accion: Listar usuarios | Detalle: total=4
+2026-02-05 11:14:35,416 | INFO | ADMIN | Usuario: admin | Accion: Listar tenants | Detalle: total=4
+2026-02-05 11:14:35,512 | INFO | ADMIN | Usuario: admin | Accion: Listar tenants | Detalle: total=4
+2026-02-05 11:14:39,244 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2026-02-05 11:14:39,250 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2026-02-05 11:14:39,655 | INFO | ADMIN | Usuario: admin | Accion: Listar tenants | Detalle: total=4
+2026-02-05 11:14:39,708 | INFO | ADMIN | Usuario: admin | Accion: Listar tenants | Detalle: total=4
+2026-02-05 11:15:08,566 | INFO | AUTH | Usuario: admin | Accion: Login exitoso | Detalle: rol=admin
+2026-02-05 11:15:08,573 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2026-02-05 11:15:14,740 | INFO | ADMIN | Usuario: admin | Accion: Listar tenants | Detalle: total=4
+2026-02-05 11:15:14,933 | INFO | ADMIN | Usuario: admin | Accion: Listar tenants | Detalle: total=4
+2026-02-05 11:15:18,527 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2026-02-05 11:15:18,534 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2026-02-05 11:15:18,940 | INFO | ADMIN | Usuario: admin | Accion: Listar tenants | Detalle: total=4
+2026-02-05 11:15:18,988 | INFO | ADMIN | Usuario: admin | Accion: Listar tenants | Detalle: total=4
+2026-02-05 11:18:08,653 | INFO | AUTH | Usuario: lifeders@hotmail.com | Accion: Intento de login con password incorrecta | Detalle: intentos=1
+2026-02-05 11:18:15,523 | INFO | AUTH | Usuario: lifeders@hotmail.com | Accion: Intento de login con password incorrecta | Detalle: intentos=2
+2026-02-05 11:19:36,364 | INFO | AUTH | Usuario: lifeders@hotmail.com | Accion: Intento de login con password incorrecta | Detalle: intentos=3
+2026-02-05 11:22:41,414 | INFO | AUTH | Usuario: Life | Accion: Login exitoso | Detalle: rol=admin
+2026-02-05 11:22:49,758 | INFO | AUTH | Usuario: admin | Accion: Login exitoso | Detalle: rol=admin
+2026-02-05 11:22:49,775 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2026-02-05 11:22:55,316 | INFO | ADMIN | Usuario: admin | Accion: Listar tenants | Detalle: total=4
+2026-02-05 11:22:55,486 | INFO | ADMIN | Usuario: admin | Accion: Listar tenants | Detalle: total=4
+2026-02-05 11:22:57,249 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2026-02-05 11:22:57,262 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2026-02-05 11:22:57,791 | INFO | ADMIN | Usuario: admin | Accion: Listar tenants | Detalle: total=4
+2026-02-05 11:22:57,862 | INFO | ADMIN | Usuario: admin | Accion: Listar tenants | Detalle: total=4
+2026-02-05 11:23:01,792 | INFO | ADMIN | Usuario: admin | Accion: Actualizar tenant | Detalle: tenant_id=17
+2026-02-05 11:23:06,940 | INFO | AUTH | Usuario: Life | Accion: Login exitoso | Detalle: rol=admin
+2026-02-05 11:23:06,963 | INFO | AUTH | Usuario: Life | Accion: Consulta de perfil
+2026-02-05 11:23:08,981 | INFO | AUTH | Usuario: Life | Accion: Listar usuarios | Detalle: total=1
+2026-02-05 11:23:08,997 | INFO | AUTH | Usuario: Life | Accion: Listar usuarios | Detalle: total=1
+2026-02-05 11:23:12,477 | INFO | AUTH | Usuario: Life | Accion: Listar usuarios | Detalle: total=1
+2026-02-05 11:23:14,450 | INFO | AUTH | Usuario: Life | Accion: Consulta de perfil
+2026-02-05 11:23:14,465 | INFO | AUTH | Usuario: Life | Accion: Consulta de perfil
+2026-02-05 11:23:14,796 | INFO | AUTH | Usuario: Life | Accion: Listar usuarios | Detalle: total=1
+2026-02-05 11:23:14,812 | INFO | AUTH | Usuario: Life | Accion: Listar usuarios | Detalle: total=1
+2026-02-05 11:23:30,428 | INFO | AUTH | Usuario: admin | Accion: Login exitoso | Detalle: rol=admin
+2026-02-05 11:23:30,440 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2026-02-05 11:23:35,509 | INFO | ADMIN | Usuario: admin | Accion: Listar tenants | Detalle: total=4
+2026-02-05 11:23:35,582 | INFO | ADMIN | Usuario: admin | Accion: Listar tenants | Detalle: total=4
+2026-02-05 11:23:38,424 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2026-02-05 11:23:38,435 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2026-02-05 11:23:38,814 | INFO | ADMIN | Usuario: admin | Accion: Listar tenants | Detalle: total=4
+2026-02-05 11:23:38,990 | INFO | ADMIN | Usuario: admin | Accion: Listar tenants | Detalle: total=4
+2026-02-05 11:26:30,799 | INFO | AUTH | Usuario: admin | Accion: Login exitoso | Detalle: rol=admin

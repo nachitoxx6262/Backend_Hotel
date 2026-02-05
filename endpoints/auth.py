@@ -16,7 +16,8 @@ from models.core import EmpresaUsuario, Plan, Subscription, PlanType, Subscripti
 from schemas.auth import (
     UsuarioCreate, UsuarioUpdate, UsuarioRead, UsuarioInDB,
     LoginRequest, Token, RefreshTokenRequest, ChangePasswordRequest,
-    RegisterEmpresaUsuarioRequest, MultiTenantLoginResponse, TrialStatusResponse
+    RegisterEmpresaUsuarioRequest, MultiTenantLoginResponse, TrialStatusResponse,
+    InviteUserRequest, ResetPasswordResponse
 )
 from utils.auth import (
     verify_password, get_password_hash,
@@ -397,7 +398,10 @@ def listar_usuarios(
     """
     Lista todos los usuarios activos (admin/gerente)
     """
-    usuarios = db.query(Usuario).filter(Usuario.deleted.is_(False)).all()
+    query = db.query(Usuario).filter(Usuario.deleted.is_(False))
+    if not current_user.es_super_admin:
+        query = query.filter(Usuario.empresa_usuario_id == current_user.empresa_usuario_id)
+    usuarios = query.all()
     log_event("auth", current_user.username, "Listar usuarios", f"total={len(usuarios)}")
     return usuarios
 
@@ -420,6 +424,12 @@ def obtener_usuario(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Usuario no encontrado"
+        )
+
+    if not current_user.es_super_admin and usuario.empresa_usuario_id != current_user.empresa_usuario_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tiene permisos para acceder a este usuario"
         )
     
     log_event("auth", current_user.username, "Consultar usuario", f"usuario_id={usuario_id}")
@@ -446,6 +456,12 @@ def actualizar_usuario(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Usuario no encontrado"
+            )
+
+        if not current_user.es_super_admin and usuario.empresa_usuario_id != current_user.empresa_usuario_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No tiene permisos para modificar este usuario"
             )
         
         # Verificar permisos
@@ -514,6 +530,12 @@ def eliminar_usuario(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Usuario no encontrado"
             )
+
+        if not current_user.es_super_admin and usuario.empresa_usuario_id != current_user.empresa_usuario_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No tiene permisos para eliminar este usuario"
+            )
         
         # Verificar permisos
         if not usuario_puede_eliminar(current_user, usuario):
@@ -536,6 +558,176 @@ def eliminar_usuario(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error al eliminar el usuario"
+        )
+
+
+# ========== ENDPOINTS DE INVITACIÓN Y RESET DE CONTRASEÑA ==========
+
+def generar_contrasena_temporal() -> str:
+    """Genera una contraseña temporal segura"""
+    import secrets
+    import string
+    chars = string.ascii_letters + string.digits
+    password = ''.join(secrets.choice(chars) for _ in range(12))
+    # Asegurar que tiene mayúscula, minúscula y número
+    password = 'P' + password[1:] if password[0].islower() else password
+    return password
+
+
+@router.post("/usuarios/invitar", response_model=dict)
+def invitar_usuario(
+    payload: InviteUserRequest,
+    db: Session = Depends(conexion.get_db),
+    current_user: Usuario = Depends(require_admin_or_manager)
+):
+    """
+    Invita a un nuevo usuario a la empresa (solo admin/gerente)
+    Crea un usuario con contraseña temporal
+    """
+    try:
+        # Validar que el email no exista
+        existe_email = db.query(Usuario).filter(
+            Usuario.email == payload.email,
+            Usuario.deleted.is_(False)
+        ).first()
+        
+        if existe_email:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="El email ya está registrado en el sistema"
+            )
+        
+        # Generar username basado en email
+        username_base = payload.email.split('@')[0].lower()
+        username = username_base
+        counter = 1
+        while db.query(Usuario).filter(Usuario.username == username, Usuario.deleted.is_(False)).first():
+            username = f"{username_base}{counter}"
+            counter += 1
+        
+        # Generar contraseña temporal
+        temporal_password = generar_contrasena_temporal()
+        from utils.auth import get_password_hash
+        
+        # Crear usuario
+        nuevo_usuario = Usuario(
+            username=username,
+            email=payload.email,
+            nombre=payload.nombre,
+            apellido=payload.apellido,
+            rol=payload.rol,
+            hashed_password=get_password_hash(temporal_password),
+            activo=True,
+            empresa_usuario_id=current_user.empresa_usuario_id,
+            es_super_admin=False
+        )
+        
+        db.add(nuevo_usuario)
+        db.commit()
+        db.refresh(nuevo_usuario)
+        
+        log_event(
+            "auth",
+            current_user.username,
+            "Usuario invitado",
+            f"nuevo_usuario={nuevo_usuario.username} email={payload.email} rol={payload.rol}"
+        )
+        
+        return {
+            "message": "Usuario invitado exitosamente",
+            "id": nuevo_usuario.id,
+            "username": nuevo_usuario.username,
+            "email": nuevo_usuario.email,
+            "temporal_password": temporal_password,
+            "rol": nuevo_usuario.rol
+        }
+        
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        db.rollback()
+        log_event("auth", current_user.username, "Error al invitar usuario", f"error={str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error al crear el usuario"
+        )
+
+
+@router.post("/usuarios/{usuario_id}/reset-password", response_model=dict)
+def reset_password_usuario(
+    usuario_id: int,
+    db: Session = Depends(conexion.get_db),
+    current_user: Usuario = Depends(require_admin_or_manager)
+):
+    """
+    Resetea la contraseña de un usuario y genera una temporal (solo admin/gerente)
+    """
+    try:
+        usuario = db.query(Usuario).filter(
+            Usuario.id == usuario_id,
+            Usuario.deleted.is_(False)
+        ).first()
+        
+        if not usuario:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Usuario no encontrado"
+            )
+        
+        # Verificar que no pueda resetear su propia contraseña desde aquí
+        if usuario.id == current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Para cambiar tu contraseña, usa el endpoint de cambio de contraseña"
+            )
+        
+        # Verificar permisos de tenant
+        if not current_user.es_super_admin and usuario.empresa_usuario_id != current_user.empresa_usuario_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No tiene permisos para resetear la contraseña de este usuario"
+            )
+        
+        # Verificar que no pueda resetear la contraseña de un admin siendo gerente
+        if not current_user.es_super_admin and current_user.rol == "gerente" and usuario.rol == "admin":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No puede resetear la contraseña de un administrador"
+            )
+        
+        # Generar nueva contraseña temporal
+        temporal_password = generar_contrasena_temporal()
+        from utils.auth import get_password_hash
+        
+        usuario.hashed_password = get_password_hash(temporal_password)
+        usuario.fecha_ultima_modificacion = datetime.utcnow()
+        usuario.intentos_fallidos = 0  # Resetear intentos fallidos
+        usuario.bloqueado_hasta = None  # Desbloquear si estaba bloqueado
+        
+        db.commit()
+        
+        log_event(
+            "auth",
+            current_user.username,
+            "Contraseña reseteada",
+            f"usuario_id={usuario_id} username={usuario.username}"
+        )
+        
+        return {
+            "message": "Contraseña reseteada exitosamente",
+            "username": usuario.username,
+            "email": usuario.email,
+            "temporal_password": temporal_password
+        }
+        
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        db.rollback()
+        log_event("auth", current_user.username, "Error al resetear contraseña", f"error={str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error al resetear la contraseña"
         )
 
 

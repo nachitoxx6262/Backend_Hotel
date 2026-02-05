@@ -115,6 +115,33 @@ class PasswordResetToken(BaseModel):
     new_password: str = Field(..., min_length=8, max_length=72)
 
 
+class InviteUserRequest(BaseModel):
+    email: EmailStr
+    nombre: Optional[str] = Field(None, max_length=60)
+    apellido: Optional[str] = Field(None, max_length=60)
+    rol: str = Field(default="recepcionista", pattern="^(admin|gerente|recepcionista|readonly)$")
+
+
+class InviteUserResponse(BaseModel):
+    id: int
+    username: str
+    email: str
+    nombre: Optional[str]
+    apellido: Optional[str]
+    rol: str
+    activo: bool
+    temporal_password: str  # Contraseña temporal para el nuevo usuario
+    
+    class Config:
+        from_attributes = True
+
+
+class ResetPasswordResponse(BaseModel):
+    username: str
+    email: str
+    temporal_password: str  # Contraseña temporal
+
+
 # ========== SCHEMAS MULTI-TENANT ==========
 
 class TrialStatusResponse(BaseModel):

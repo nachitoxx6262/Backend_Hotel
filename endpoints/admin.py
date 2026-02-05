@@ -365,6 +365,31 @@ def convert_demo_to_subscription(
     )
 
 
+@router.delete("/tenants/{tenant_id}")
+def delete_tenant(
+    tenant_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(require_super_admin)
+):
+    """Elimina un tenant (empresa/demo) de forma lógica (soft delete)"""
+    tenant = db.query(EmpresaUsuario).filter(
+        EmpresaUsuario.id == tenant_id,
+        EmpresaUsuario.deleted.is_(False)
+    ).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant no encontrado")
+
+    # Soft delete: marcar como eliminado
+    tenant.deleted = True
+    tenant.updated_at = datetime.utcnow()
+    
+    db.commit()
+    
+    log_event("admin", current_user.username, "Eliminar tenant", f"tenant_id={tenant_id} nombre={tenant.nombre_hotel}")
+    
+    return {"message": "Tenant eliminado correctamente", "tenant_id": tenant_id}
+
+
 @router.get("/tenants/{tenant_id}/usuarios", response_model=List[UserSummary])
 def list_tenant_users(
     tenant_id: int,

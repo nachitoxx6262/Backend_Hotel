@@ -52,8 +52,8 @@ def create_admin():
         # Crear usuario super admin
         admin = Usuario(
             username="admin",
-            email="admin@hotel.com",
-            hashed_password=get_password_hash("admin123"),
+            email="ignachio2003@hotmail.com",
+            hashed_password=get_password_hash("N4ch1t0_2025"),
             nombre="Super",
             apellido="Admin",
             rol="admin",
