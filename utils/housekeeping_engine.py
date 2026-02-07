@@ -81,6 +81,7 @@ def generate_checkout_tasks(stay: Stay, db: Session) -> Optional[HousekeepingTas
     room_id = last_occupancy.room_id
     
     new_task = HousekeepingTask(
+        empresa_usuario_id=stay.empresa_usuario_id,
         room_id=room_id,
         stay_id=stay.id,
         reservation_id=stay.reservation_id,
