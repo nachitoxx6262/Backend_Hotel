@@ -26,7 +26,7 @@ from utils.dependencies import get_current_user
 from utils.invoice_engine import compute_invoice
 
 
-router = APIRouter(prefix="/api/pms", tags=["PMS Professional"])
+router = APIRouter(prefix="/pms", tags=["PMS Professional"])
 
 
 # ========================================================================
