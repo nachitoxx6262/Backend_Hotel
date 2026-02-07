@@ -1027,7 +1027,7 @@ def get_calendar(
     log_event("calendar", "usuario", "Ver calendario", 
               f"from={from_date} to={to_date} blocks={len(blocks)} history={include_history} cancelled={include_cancelled} no_show={include_no_show}")
     
-    from utils.timezone import get_hotel_now, HOTEL_TIMEZONE_STR
+    from utils.timezone import HOTEL_TIMEZONE_STR
     hotel_now = get_hotel_now()
 
     return CalendarResponse(
