@@ -3,7 +3,7 @@ Hotel Calendar Endpoints
 Endpoints para el nuevo sistema de calendario con Reservations y Stays separados
 """
 
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, time
 from typing import List, Optional
 from decimal import Decimal
 from typing import Union
@@ -23,7 +23,7 @@ from models.servicios import ProductoServicio
 from utils.logging_utils import log_event
 from utils.dependencies import get_current_user_optional, get_current_user
 from utils.invoice_engine import compute_invoice
-from utils.timezone import get_hotel_now
+from utils.timezone import get_hotel_now, HOTEL_TZ, to_hotel_time
 from utils.overstay_engine import check_overstay_status, OVERSTAY_DETECTED
 from utils.housekeeping_engine import generate_checkout_tasks
 
@@ -386,6 +386,22 @@ def parse_to_datetime(value: Union[str, datetime]) -> datetime:
     raise TypeError(f"Unsupported datetime type: {type(value)}")
 
 
+def localize_hotel_date(value: date) -> datetime:
+    """Localize a date at midnight in hotel timezone."""
+    if value is None:
+        raise ValueError("Date value is None")
+    return HOTEL_TZ.localize(datetime.combine(value, time.min))
+
+
+def normalize_hotel_dt(value: Union[date, datetime]) -> datetime:
+    """Normalize date/datetime to hotel timezone (aware)."""
+    if isinstance(value, datetime):
+        return to_hotel_time(value)
+    if isinstance(value, date):
+        return localize_hotel_date(value)
+    raise TypeError(f"Unsupported datetime type: {type(value)}")
+
+
 def _get_active_empresa_or_404(
     db: Session,
     empresa_id: int,
@@ -590,10 +606,9 @@ def get_calendar(
     if not tenant_id:
         raise HTTPException(401, "Usuario no autenticado o sin tenant asociado")
     
-    # Convertir a datetime para overlap (from inclusivo, to exclusivo)
-    from datetime import time
-    from_dt = datetime.combine(fecha_desde, time.min)
-    to_dt = datetime.combine(fecha_hasta, time.min) + timedelta(days=1)  # to exclusivo
+    # Convertir a datetime para overlap (from inclusivo, to exclusivo) en horario del hotel
+    from_dt = localize_hotel_date(fecha_desde)
+    to_dt = localize_hotel_date(fecha_hasta) + timedelta(days=1)  # to exclusivo
     
     blocks = []
     reservation_ids_with_stay = set()
@@ -648,19 +663,19 @@ def get_calendar(
             stay_end_dt = None
             
             if stay.checkin_real:
-                stay_start_dt = stay.checkin_real if isinstance(stay.checkin_real, datetime) else datetime.combine(stay.checkin_real, time.min)
+                stay_start_dt = normalize_hotel_dt(stay.checkin_real)
             elif stay.occupancies and stay.occupancies[0].desde:
                 occ_desde = stay.occupancies[0].desde
-                stay_start_dt = occ_desde if isinstance(occ_desde, datetime) else datetime.combine(occ_desde, time.min)
+                stay_start_dt = normalize_hotel_dt(occ_desde)
             elif res and res.fecha_checkin:
-                stay_start_dt = datetime.combine(res.fecha_checkin, time.min)
+                stay_start_dt = normalize_hotel_dt(res.fecha_checkin)
             else:
                 stay_start_dt = from_dt
             
             if stay.checkout_real:
-                stay_end_dt = stay.checkout_real if isinstance(stay.checkout_real, datetime) else datetime.combine(stay.checkout_real, time.min)
+                stay_end_dt = normalize_hotel_dt(stay.checkout_real)
             elif res and res.fecha_checkout:
-                stay_end_dt = datetime.combine(res.fecha_checkout, time.min)
+                stay_end_dt = normalize_hotel_dt(res.fecha_checkout)
             else:
                 stay_end_dt = to_dt
             
@@ -669,9 +684,9 @@ def get_calendar(
             # Si el stay está ACTIVO (ocupada/pendiente_checkout) y su fecha de fin ya pasó (o es hoy),
             # forzamos que visualmente termine "Mañana" para que ocupe el slot de hoy.
             if stay.estado in ["ocupada", "pendiente_checkout"]:
-                now = datetime.utcnow()
+                now = get_hotel_now()
                 # Definir "Mañana" a las 00:00 como límite mínimo para que bloquee el día de hoy
-                tomorrow_min = datetime(now.year, now.month, now.day) + timedelta(days=1)
+                tomorrow_min = localize_hotel_date(now.date()) + timedelta(days=1)
                 
                 if stay_end_dt < tomorrow_min:
                     stay_end_dt = tomorrow_min

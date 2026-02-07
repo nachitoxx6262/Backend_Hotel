@@ -700,3 +700,47 @@ WHERE transactions.empresa_usuario_id = %(empresa_usuario_id_1)s AND transaction
 2026-02-05 11:23:38,814 | INFO | ADMIN | Usuario: admin | Accion: Listar tenants | Detalle: total=4
 2026-02-05 11:23:38,990 | INFO | ADMIN | Usuario: admin | Accion: Listar tenants | Detalle: total=4
 2026-02-05 11:26:30,799 | INFO | AUTH | Usuario: admin | Accion: Login exitoso | Detalle: rol=admin
+2026-02-05 11:48:01,536 | INFO | AUTH | Usuario: admin | Accion: Login exitoso | Detalle: rol=admin
+2026-02-05 11:48:22,006 | INFO | AUTH | Usuario: admin | Accion: Intento de login con password incorrecta | Detalle: intentos=1
+2026-02-05 11:51:55,950 | INFO | AUTH | Usuario: admin | Accion: Intento de login con password incorrecta | Detalle: intentos=2
+2026-02-05 11:52:52,349 | INFO | AUTH | Usuario: admin | Accion: Intento de login con password incorrecta | Detalle: intentos=3
+2026-02-05 11:53:19,047 | INFO | AUTH | Usuario: admin | Accion: Intento de login con password incorrecta | Detalle: intentos=4
+2026-02-07 11:42:05,823 | INFO | AUTH | Usuario: admin | Accion: Login exitoso | Detalle: rol=admin
+2026-02-07 11:42:06,065 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2026-02-07 11:47:48,820 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2026-02-07 11:47:48,824 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2026-02-07 11:47:55,436 | INFO | AUTH | Usuario: admin | Accion: Login exitoso | Detalle: rol=admin
+2026-02-07 11:47:55,447 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2026-02-07 11:50:57,824 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=1 from=2026-02-07 to=2026-02-25 include_history=False
+2026-02-07 11:50:57,825 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=1 from=2026-02-07 to=2026-03-10 include_history=False
+2026-02-07 11:50:57,865 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=7 from=2026-02-07 to=2026-02-25
+2026-02-07 11:50:57,867 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=8 from=2026-02-07 to=2026-03-10
+2026-02-07 11:50:57,885 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2026-02-07 to=2026-02-25 blocks=1 history=False cancelled=False no_show=False
+2026-02-07 11:50:57,890 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2026-02-07 to=2026-03-10 blocks=1 history=False cancelled=False no_show=False
+2026-02-07 11:50:57,927 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=1 from=2026-02-07 to=2026-03-10 include_history=False
+2026-02-07 11:50:57,937 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=8 from=2026-02-07 to=2026-03-10
+2026-02-07 11:50:57,948 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2026-02-07 to=2026-03-10 blocks=1 history=False cancelled=False no_show=False
+2026-02-07 11:50:58,004 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=1 from=2026-02-07 to=2026-03-10 include_history=False
+2026-02-07 11:50:58,017 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=8 from=2026-02-07 to=2026-03-10
+2026-02-07 11:50:58,031 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2026-02-07 to=2026-03-10 blocks=1 history=False cancelled=False no_show=False
+2026-02-07 11:51:05,732 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2026-02-07 11:51:05,744 | INFO | AUTH | Usuario: admin | Accion: Consulta de perfil
+2026-02-07 11:51:18,923 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=1 from=2026-02-07 to=2026-03-10 include_history=False
+2026-02-07 11:51:18,934 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=1 from=2026-02-07 to=2026-02-25 include_history=False
+2026-02-07 11:51:18,937 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=8 from=2026-02-07 to=2026-03-10
+2026-02-07 11:51:18,951 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=7 from=2026-02-07 to=2026-02-25
+2026-02-07 11:51:18,965 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2026-02-07 to=2026-03-10 blocks=1 history=False cancelled=False no_show=False
+2026-02-07 11:51:18,973 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2026-02-07 to=2026-02-25 blocks=1 history=False cancelled=False no_show=False
+2026-02-07 11:51:19,014 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=1 from=2026-02-07 to=2026-02-25 include_history=False
+2026-02-07 11:51:19,022 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=1 from=2026-02-07 to=2026-03-10 include_history=False
+2026-02-07 11:51:19,024 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=7 from=2026-02-07 to=2026-02-25
+2026-02-07 11:51:19,036 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=8 from=2026-02-07 to=2026-03-10
+2026-02-07 11:51:19,044 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2026-02-07 to=2026-02-25 blocks=1 history=False cancelled=False no_show=False
+2026-02-07 11:51:19,054 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2026-02-07 to=2026-03-10 blocks=1 history=False cancelled=False no_show=False
+2026-02-07 11:51:19,081 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=1 from=2026-02-07 to=2026-03-10 include_history=False
+2026-02-07 11:51:19,091 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=8 from=2026-02-07 to=2026-03-10
+2026-02-07 11:51:19,103 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2026-02-07 to=2026-03-10 blocks=1 history=False cancelled=False no_show=False
+2026-02-07 11:51:29,246 | INFO | RESERVATIONS | Usuario: usuario | Accion: Crear reserva | Detalle: id=252
+2026-02-07 11:51:29,276 | INFO | CALENDAR | Usuario: debug | Accion: stays_loaded | Detalle: count=1 from=2026-02-07 to=2026-02-25 include_history=False
+2026-02-07 11:51:29,286 | INFO | CALENDAR | Usuario: debug | Accion: reservations_loaded | Detalle: count=8 from=2026-02-07 to=2026-02-25
+2026-02-07 11:51:29,299 | INFO | CALENDAR | Usuario: usuario | Accion: Ver calendario | Detalle: from=2026-02-07 to=2026-02-25 blocks=2 history=False cancelled=False no_show=False
