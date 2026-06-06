@@ -9,8 +9,15 @@ load_dotenv()
 # URL de conexión clásica (síncrona) — usa psycopg2 por defecto
 DATABASE_URL = f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
 
-# Crear el engine sincronico
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+# Crear el engine sincronico con configuración de pool
+engine = create_engine(
+    DATABASE_URL,
+    pool_pre_ping=True,          # Verifica conexión antes de usar
+    pool_size=int(os.getenv("DB_POOL_SIZE", "10")),          # Conexiones permanentes
+    max_overflow=int(os.getenv("DB_MAX_OVERFLOW", "20")),    # Conexiones extra bajo carga
+    pool_timeout=int(os.getenv("DB_POOL_TIMEOUT", "30")),    # Segundos de espera por conexión libre
+    pool_recycle=int(os.getenv("DB_POOL_RECYCLE", "1800")),  # Reciclar conexiones cada 30 min
+)
 
 # Crear la sesión sincronica
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
