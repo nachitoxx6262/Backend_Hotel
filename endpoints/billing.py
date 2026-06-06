@@ -173,6 +173,43 @@ async def get_subscription_status(
         )
 
 
+
+@router.get("/payment-history")
+async def get_payment_history(
+    limit: int = 10,
+    current_user: Usuario = Depends(get_current_user),
+    db: Session = Depends(conexion.get_db)
+):
+    """Historial de pagos de la suscripción del tenant (últimos `limit`)."""
+    try:
+        if current_user.es_super_admin or not current_user.empresa_usuario_id:
+            return {"items": []}
+        subscription = db.query(Subscription).filter_by(
+            empresa_usuario_id=current_user.empresa_usuario_id
+        ).first()
+        if not subscription:
+            return {"items": []}
+        limit = max(1, min(limit, 100))
+        pagos = db.query(PaymentAttempt).filter_by(
+            subscription_id=subscription.id
+        ).order_by(PaymentAttempt.created_at.desc()).limit(limit).all()
+        return {
+            "items": [
+                {
+                    "id": p.id,
+                    "monto": float(p.monto),
+                    "estado": p.estado.value if p.estado else None,
+                    "proveedor": p.proveedor.value if p.proveedor else None,
+                    "created_at": p.created_at.isoformat() if p.created_at else None,
+                }
+                for p in pagos
+            ]
+        }
+    except Exception as e:
+        log_event("billing", current_user.username, "Error al obtener historial de pagos", f"error={str(e)}")
+        return {"items": []}
+
+
 # ========== POST ENDPOINTS ==========
 
 @router.post("/upgrade", response_model=UpgradeResponse)

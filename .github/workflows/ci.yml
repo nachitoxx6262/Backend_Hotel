@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Compile · Unit tests
+    runs-on: ubuntu-latest
+    # DB dummy: database/conexion.py arma DATABASE_URL desde estas vars y crea el
+    # engine al importar. No conecta (pool_pre_ping es lazy y el unit test mockea
+    # la Session); solo necesita una URL parseable para que el import no falle.
+    env:
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: localhost
+      DB_PORT: '5432'
+      DB_NAME: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+
+      # Chequeo de sintaxis de todo el código de la app.
+      # Atajaría errores de import/sintaxis antes de llegar a producción.
+      - name: Syntax check (compileall)
+        run: python -m compileall -q endpoints models utils schemas database config.py main.py
+
+      # Unit test puro (sin DB ni servidor). Los tests de integración
+      # (test_api_full, test_invoice_nights/preview, test_precio_base) requieren
+      # la API viva en localhost:8000 y se corren aparte.
+      - name: Unit tests
+        run: pytest tests/test_invoice_engine.py -q
