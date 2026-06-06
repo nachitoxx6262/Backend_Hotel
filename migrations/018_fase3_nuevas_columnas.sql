@@ -21,7 +21,12 @@ ALTER TABLE hotel_settings
     ADD COLUMN IF NOT EXISTS smtp_port INTEGER,
     ADD COLUMN IF NOT EXISTS smtp_user VARCHAR(200),
     ADD COLUMN IF NOT EXISTS smtp_password_encrypted VARCHAR(500),
-    ADD COLUMN IF NOT EXISTS smtp_from_email VARCHAR(200);
+    ADD COLUMN IF NOT EXISTS smtp_from_email VARCHAR(200),
+    ADD COLUMN IF NOT EXISTS housekeeping_enabled BOOLEAN NOT NULL DEFAULT false;
+
+-- Preservar comportamiento de hoteles existentes (housekeeping ya en uso):
+-- los nuevos quedan en false (default del modelo), los actuales en true.
+UPDATE hotel_settings SET housekeeping_enabled = true;
 
 -- ============================================================
 -- 3. USUARIOS: campos para reset de contraseña por email
