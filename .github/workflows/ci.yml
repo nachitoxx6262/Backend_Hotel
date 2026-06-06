@@ -13,6 +13,15 @@ jobs:
   test:
     name: Compile · Unit tests
     runs-on: ubuntu-latest
+    # DB dummy: database/conexion.py arma DATABASE_URL desde estas vars y crea el
+    # engine al importar. No conecta (pool_pre_ping es lazy y el unit test mockea
+    # la Session); solo necesita una URL parseable para que el import no falle.
+    env:
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: localhost
+      DB_PORT: '5432'
+      DB_NAME: test
     steps:
       - uses: actions/checkout@v4
 
