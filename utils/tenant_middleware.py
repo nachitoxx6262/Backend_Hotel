@@ -5,7 +5,7 @@ Middleware para multi-tenant: Configura el contexto del tenant en cada request
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 from typing import Optional
 
@@ -203,7 +203,7 @@ def check_trial_expiration(empresa_usuario) -> dict:
             "message": "Trial expirado sin fecha de expiración registrada"
         }
     
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     
     if now > empresa_usuario.fecha_fin_demo:
         # Trial expirado
