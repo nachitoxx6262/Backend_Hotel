@@ -30,7 +30,7 @@ def crear_rol(payload: RolCreate, db: Session = Depends(get_db)):
                 db.add(RolPermiso(rol_id=rol.id, permiso_id=p.id))
         db.commit()
         db.refresh(rol)
-        log_event("roles", f"Rol creado: {rol.nombre}")
+        log_event("roles", "sistema", f"Rol creado: {rol.nombre}")
         # Build response with permisos
         permisos = [PermisoRead.model_validate(p.permiso) for p in rol.permisos]
         return RolRead(id=rol.id, nombre=rol.nombre, descripcion=rol.descripcion, activo=rol.activo, permisos=permisos)
@@ -75,7 +75,7 @@ def actualizar_rol(rol_id: int, payload: RolUpdate, db: Session = Depends(get_db
                     db.add(RolPermiso(rol_id=rol.id, permiso_id=p.id))
         db.commit()
         db.refresh(rol)
-        log_event("roles", f"Rol actualizado: {rol.nombre}")
+        log_event("roles", "sistema", f"Rol actualizado: {rol.nombre}")
         permisos = [PermisoRead.model_validate(rp.permiso) for rp in rol.permisos]
         return RolRead(id=rol.id, nombre=rol.nombre, descripcion=rol.descripcion, activo=rol.activo, permisos=permisos)
     except IntegrityError:
@@ -94,7 +94,7 @@ def eliminar_rol(rol_id: int, db: Session = Depends(get_db)):
     try:
         db.delete(rol)
         db.commit()
-        log_event("roles", f"Rol eliminado: {rol.nombre}")
+        log_event("roles", "sistema", f"Rol eliminado: {rol.nombre}")
     except SQLAlchemyError as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error al eliminar rol: {str(e)}")
@@ -108,7 +108,7 @@ def crear_permiso(payload: PermisoCreate, db: Session = Depends(get_db)):
         db.add(p)
         db.commit()
         db.refresh(p)
-        log_event("roles", f"Permiso creado: {p.codigo}")
+        log_event("roles", "sistema", f"Permiso creado: {p.codigo}")
         return p
     except IntegrityError:
         db.rollback()
@@ -137,7 +137,7 @@ def actualizar_permiso(permiso_id: int, payload: PermisoUpdate, db: Session = De
             p.activo = payload.activo
         db.commit()
         db.refresh(p)
-        log_event("roles", f"Permiso actualizado: {p.codigo}")
+        log_event("roles", "sistema", f"Permiso actualizado: {p.codigo}")
         return p
     except IntegrityError:
         db.rollback()
@@ -155,7 +155,7 @@ def eliminar_permiso(permiso_id: int, db: Session = Depends(get_db)):
     try:
         db.delete(p)
         db.commit()
-        log_event("roles", f"Permiso eliminado: {p.codigo}")
+        log_event("roles", "sistema", f"Permiso eliminado: {p.codigo}")
     except SQLAlchemyError as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error al eliminar permiso: {str(e)}")
@@ -207,12 +207,12 @@ def asignar_roles_a_usuario(usuario_id: int, payload: AsignarRolesRequest, db: S
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     try:
         roles = db.query(Rol).filter(Rol.nombre.in_(payload.roles_nombres)).all()
-        existing = {(ur.rol_id) for ur in user.roles}
+        existing = {ur.rol_id for ur in db.query(UsuarioRol).filter(UsuarioRol.usuario_id == user.id).all()}
         for r in roles:
             if r.id not in existing:
                 db.add(UsuarioRol(usuario_id=user.id, rol_id=r.id))
         db.commit()
-        log_event("roles", f"Roles asignados a usuario {user.username}")
+        log_event("roles", "sistema", f"Roles asignados a usuario {user.username}")
         return {"message": "Roles asignados"}
     except SQLAlchemyError as e:
         db.rollback()
@@ -229,7 +229,7 @@ def quitar_roles_de_usuario(usuario_id: int, payload: AsignarRolesRequest, db: S
         role_ids = [r.id for r in roles]
         db.query(UsuarioRol).filter(UsuarioRol.usuario_id == user.id, UsuarioRol.rol_id.in_(role_ids)).delete(synchronize_session=False)
         db.commit()
-        log_event("roles", f"Roles quitados de usuario {user.username}")
+        log_event("roles", "sistema", f"Roles quitados de usuario {user.username}")
         return {"message": "Roles removidos"}
     except SQLAlchemyError as e:
         db.rollback()

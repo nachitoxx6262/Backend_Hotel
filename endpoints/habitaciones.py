@@ -6,7 +6,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, or_, func
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
 from database import conexion
 from models.core import Room, RoomType, Reservation, ReservationRoom
@@ -16,19 +16,30 @@ from utils.dependencies import get_current_user
 router = APIRouter(prefix="/api/rooms", tags=["rooms"])
 
 # Schemas
+_ESTADOS_OPERATIVOS = {"disponible", "ocupada", "mantenimiento", "fuera_de_servicio", "bloqueada"}
+
+
 class RoomTypeCreate(BaseModel):
-    nombre: str
-    descripcion: Optional[str] = None
-    capacidad: int
-    precio_base: Optional[float] = None
+    nombre: str = Field(..., min_length=1, max_length=100, strip_whitespace=True)
+    descripcion: Optional[str] = Field(None, max_length=500)
+    capacidad: int = Field(..., ge=1, le=100)
+    precio_base: Optional[float] = Field(None, ge=0)
     amenidades: Optional[List[str]] = None
     activo: bool = True
 
+    @field_validator("amenidades")
+    @classmethod
+    def amenidades_no_vacias(cls, v):
+        if v is not None:
+            return [a.strip() for a in v if a and a.strip()]
+        return v
+
+
 class RoomTypeUpdate(BaseModel):
-    nombre: Optional[str] = None
-    descripcion: Optional[str] = None
-    capacidad: Optional[int] = None
-    precio_base: Optional[float] = None
+    nombre: Optional[str] = Field(None, min_length=1, max_length=100, strip_whitespace=True)
+    descripcion: Optional[str] = Field(None, max_length=500)
+    capacidad: Optional[int] = Field(None, ge=1, le=100)
+    precio_base: Optional[float] = Field(None, ge=0)
     amenidades: Optional[List[str]] = None
     activo: Optional[bool] = None
 
@@ -45,22 +56,54 @@ class RoomTypeRead(BaseModel):
         from_attributes = True
 
 class RoomCreate(BaseModel):
-    numero: str
-    room_type_id: int
-    estado_operativo: str = "disponible"
-    piso: Optional[int] = None
-    notas: Optional[str] = None
+    numero: str = Field(..., min_length=1, max_length=20, strip_whitespace=True)
+    room_type_id: int = Field(..., gt=0)
+    estado_operativo: str = Field(default="disponible")
+    piso: Optional[int] = Field(None, ge=0, le=200)
+    notas: Optional[str] = Field(None, max_length=1000)
     particularidades: Optional[dict] = None
     activo: bool = True
 
+    @field_validator("numero")
+    @classmethod
+    def normalizar_numero(cls, v):
+        # Normalizar: eliminar espacios internos múltiples, uppercase
+        return " ".join(v.split()).upper()
+
+    @field_validator("estado_operativo")
+    @classmethod
+    def validar_estado(cls, v):
+        if v not in _ESTADOS_OPERATIVOS:
+            raise ValueError(
+                f"estado_operativo debe ser uno de: {', '.join(sorted(_ESTADOS_OPERATIVOS))}"
+            )
+        return v
+
+
 class RoomUpdate(BaseModel):
-    numero: Optional[str] = None
-    room_type_id: Optional[int] = None
+    numero: Optional[str] = Field(None, min_length=1, max_length=20, strip_whitespace=True)
+    room_type_id: Optional[int] = Field(None, gt=0)
     estado_operativo: Optional[str] = None
-    piso: Optional[int] = None
-    notas: Optional[str] = None
+    piso: Optional[int] = Field(None, ge=0, le=200)
+    notas: Optional[str] = Field(None, max_length=1000)
     particularidades: Optional[dict] = None
     activo: Optional[bool] = None
+
+    @field_validator("numero")
+    @classmethod
+    def normalizar_numero(cls, v):
+        if v is not None:
+            return " ".join(v.split()).upper()
+        return v
+
+    @field_validator("estado_operativo")
+    @classmethod
+    def validar_estado(cls, v):
+        if v is not None and v not in _ESTADOS_OPERATIVOS:
+            raise ValueError(
+                f"estado_operativo debe ser uno de: {', '.join(sorted(_ESTADOS_OPERATIVOS))}"
+            )
+        return v
 
 class RoomRead(BaseModel):
     id: int

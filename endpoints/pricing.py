@@ -6,17 +6,18 @@ Endpoints para gestionar Planes de Tarifa (RatePlan) y Tarifas Diarias (DailyRat
 from datetime import datetime, date
 from typing import List, Optional
 from decimal import Decimal
-from fastapi import APIRouter, Depends, HTTPException, Query, Path, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Path, status, UploadFile, File
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, or_, func
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from database.conexion import get_db
 from models.core import RatePlan, DailyRate, RoomType, Reservation, Stay
 from utils.logging_utils import log_event
 from utils.invoice_engine import compute_invoice
+from utils.dependencies import get_current_user
 
-router = APIRouter(prefix="/api/calendar", tags=["Hotel Pricing"])
+router = APIRouter(prefix="/api/pricing", tags=["Hotel Pricing"])
 
 
 # ========================================================================
@@ -41,8 +42,15 @@ class DailyRateSchema(BaseModel):
     fecha: str  # YYYY-MM-DD
     precio: Decimal
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
+
+    @field_validator("fecha", mode="before")
+    @classmethod
+    def coerce_fecha(cls, v):
+        """Accept datetime objects and convert to YYYY-MM-DD string."""
+        if hasattr(v, "date"):
+            return v.date().isoformat()
+        return str(v)
 
 
 # ========================================================================
@@ -212,7 +220,8 @@ def get_daily_rates(
 @router.post("/daily-rates", response_model=DailyRateSchema, status_code=status.HTTP_201_CREATED)
 def create_daily_rate(
     payload: DailyRateSchema,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """
     Crear una nueva tarifa diaria
@@ -245,7 +254,8 @@ def create_daily_rate(
         room_type_id=payload.room_type_id,
         rate_plan_id=payload.rate_plan_id,
         fecha=fecha_dt,
-        precio=payload.precio
+        precio=payload.precio,
+        empresa_usuario_id=current_user.empresa_usuario_id
     )
     
     db.add(rate)
@@ -360,5 +370,142 @@ def get_daily_rate_for_date(
             DailyRate.rate_plan_id.is_(None)
         )
     ).first()
-    
-    return rate
+    if rate:
+        return rate
+
+    # 3. Fallback: construir una tarifa virtual con el precio_base del RoomType
+    room_type = db.query(RoomType).filter(RoomType.id == room_type_id).first()
+    if room_type and room_type.precio_base:
+        virtual = DailyRate.__new__(DailyRate)
+        virtual.id = None
+        virtual.room_type_id = room_type_id
+        virtual.fecha = fecha_dt
+        virtual.rate_plan_id = None
+        virtual.precio = room_type.precio_base
+        virtual.disponible = True
+        virtual.min_estancia = 1
+        virtual.notas = None
+        return virtual
+
+    return None
+
+
+# ============================================================================
+# BULK UPLOAD DE TARIFAS VIA CSV
+# ============================================================================
+
+@router.post("/daily-rates/bulk-upload")
+async def bulk_upload_rates(
+    file: UploadFile = File(..., description="CSV con columnas: room_type_id,fecha,precio[,rate_plan_id,disponible]"),
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user),
+):
+    """
+    Importa tarifas diarias desde un archivo CSV.
+
+    Formato del CSV:
+        room_type_id,fecha,precio[,rate_plan_id,disponible]
+
+    - `fecha` en formato YYYY-MM-DD
+    - `precio` valor numérico positivo
+    - `rate_plan_id` opcional
+    - `disponible` opcional (true/false), default true
+
+    Retorna: {inserted, updated, errors, error_detail}
+    """
+    import csv, io
+
+    if not file.filename.lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="El archivo debe ser .csv")
+
+    tenant_id = current_user.empresa_usuario_id
+    if not tenant_id:
+        raise HTTPException(status_code=401, detail="Sin tenant asociado")
+
+    contents = await file.read()
+    try:
+        text = contents.decode("utf-8-sig")  # utf-8-sig elimina BOM de Excel
+    except UnicodeDecodeError:
+        text = contents.decode("latin-1")
+
+    reader = csv.DictReader(io.StringIO(text))
+
+    required = {"room_type_id", "fecha", "precio"}
+    if not reader.fieldnames or not required.issubset({f.strip().lower() for f in reader.fieldnames}):
+        raise HTTPException(
+            status_code=422,
+            detail=f"El CSV debe tener columnas: {', '.join(required)}. Columnas encontradas: {reader.fieldnames}"
+        )
+
+    inserted = 0
+    updated = 0
+    error_detail = []
+
+    for row_num, row in enumerate(reader, start=2):  # start=2 porque row 1 es header
+        # Normalizar claves
+        row = {k.strip().lower(): v.strip() for k, v in row.items()}
+
+        try:
+            room_type_id = int(row["room_type_id"])
+            precio = float(row["precio"])
+            fecha_str = row["fecha"]
+            rate_plan_id = int(row["rate_plan_id"]) if row.get("rate_plan_id") else None
+            disponible_str = row.get("disponible", "true").lower()
+            disponible = disponible_str not in ("false", "0", "no")
+
+            # Validar precio positivo
+            if precio <= 0:
+                raise ValueError("El precio debe ser mayor a 0")
+
+            # Parsear fecha
+            try:
+                fecha_dt = datetime.strptime(fecha_str, "%Y-%m-%d")
+            except ValueError:
+                raise ValueError(f"Fecha inválida '{fecha_str}' — usar formato YYYY-MM-DD")
+
+            # Validar room_type pertenece al tenant
+            rt = db.query(RoomType).filter(
+                RoomType.id == room_type_id,
+                RoomType.empresa_usuario_id == tenant_id,
+            ).first()
+            if not rt:
+                raise ValueError(f"room_type_id={room_type_id} no existe en este tenant")
+
+            # Upsert
+            existing = db.query(DailyRate).filter(
+                DailyRate.room_type_id == room_type_id,
+                DailyRate.fecha == fecha_dt,
+                DailyRate.rate_plan_id == rate_plan_id,
+            ).first()
+
+            if existing:
+                existing.precio = precio
+                existing.disponible = disponible
+                updated += 1
+            else:
+                new_rate = DailyRate(
+                    room_type_id=room_type_id,
+                    rate_plan_id=rate_plan_id,
+                    fecha=fecha_dt,
+                    precio=precio,
+                    disponible=disponible,
+                    empresa_usuario_id=tenant_id,
+                )
+                db.add(new_rate)
+                inserted += 1
+
+        except Exception as exc:
+            error_detail.append({"row": row_num, "error": str(exc), "data": dict(row)})
+            continue
+
+    db.commit()
+
+    log_event("pricing", current_user.username, "Bulk upload tarifas",
+              f"inserted={inserted} updated={updated} errors={len(error_detail)}")
+
+    return {
+        "inserted": inserted,
+        "updated": updated,
+        "errors": len(error_detail),
+        "error_detail": error_detail[:20],  # Máx 20 errores detallados
+    }

@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, UniqueConstraint, Index
 from sqlalchemy.orm import relationship
 from datetime import datetime
+from utils.datetime_utils import utcnow
 
 from database.conexion import Base
 
@@ -21,8 +22,8 @@ class Rol(Base):
     empresa_usuario_id = Column(Integer, ForeignKey("empresa_usuarios.id", ondelete="CASCADE"), nullable=True)
     
     activo = Column(Boolean, default=True)
-    creado_en = Column(DateTime, default=datetime.utcnow)
-    actualizado_en = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    creado_en = Column(DateTime, default=utcnow)
+    actualizado_en = Column(DateTime, default=utcnow, onupdate=utcnow)
 
     permisos = relationship("RolPermiso", back_populates="rol", cascade="all, delete-orphan")
     usuarios = relationship("UsuarioRol", back_populates="rol", cascade="all, delete-orphan")
@@ -37,8 +38,8 @@ class Permiso(Base):
     nombre = Column(String(100), nullable=False)
     descripcion = Column(String(255), nullable=True)
     activo = Column(Boolean, default=True)
-    creado_en = Column(DateTime, default=datetime.utcnow)
-    actualizado_en = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    creado_en = Column(DateTime, default=utcnow)
+    actualizado_en = Column(DateTime, default=utcnow, onupdate=utcnow)
 
     roles = relationship("RolPermiso", back_populates="permiso", cascade="all, delete-orphan")
 

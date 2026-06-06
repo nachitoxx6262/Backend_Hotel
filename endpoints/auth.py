@@ -2,6 +2,7 @@
 Endpoints de autenticación y gestión de usuarios
 """
 from datetime import datetime, timedelta
+from utils.datetime_utils import utcnow
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, status
@@ -134,8 +135,8 @@ def login(
             )
         
         # Verificar si está bloqueado
-        if usuario.bloqueado_hasta and usuario.bloqueado_hasta > datetime.utcnow():
-            tiempo_restante = (usuario.bloqueado_hasta - datetime.utcnow()).seconds // 60
+        if usuario.bloqueado_hasta and usuario.bloqueado_hasta > utcnow():
+            tiempo_restante = (usuario.bloqueado_hasta - utcnow()).seconds // 60
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Usuario bloqueado temporalmente. Intente en {tiempo_restante} minutos"
@@ -148,7 +149,7 @@ def login(
             
             # Bloquear después de 5 intentos fallidos
             if usuario.intentos_fallidos >= 5:
-                usuario.bloqueado_hasta = datetime.utcnow() + timedelta(minutes=30)
+                usuario.bloqueado_hasta = utcnow() + timedelta(minutes=30)
                 db.commit()
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
@@ -173,7 +174,7 @@ def login(
         # Resetear intentos fallidos y actualizar último login
         usuario.intentos_fallidos = 0
         usuario.bloqueado_hasta = None
-        usuario.ultimo_login = datetime.utcnow()
+        usuario.ultimo_login = utcnow()
         db.commit()
         
         # Crear tokens con nueva firma multitenant
@@ -249,15 +250,23 @@ def refresh_token(
                 detail="Usuario no encontrado o inactivo"
             )
         
-        # Crear nuevos tokens
+        # Crear nuevos tokens (misma firma multitenant que el login)
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
-            data={"sub": usuario.username, "user_id": usuario.id, "rol": usuario.rol},
+            user_id=usuario.id,
+            username=usuario.username,
+            rol=usuario.rol,
+            empresa_usuario_id=usuario.empresa_usuario_id,
+            es_super_admin=usuario.es_super_admin,
+            extra_data={},
             expires_delta=access_token_expires
         )
-        
+
         refresh_token = create_refresh_token(
-            data={"sub": usuario.username, "user_id": usuario.id}
+            user_id=usuario.id,
+            username=usuario.username,
+            empresa_usuario_id=usuario.empresa_usuario_id,
+            es_super_admin=usuario.es_super_admin
         )
         
         log_event("auth", usuario.username, "Token renovado", "")
@@ -325,7 +334,7 @@ def actualizar_perfil(
         for campo, valor in datos_update.items():
             setattr(current_user, campo, valor)
         
-        current_user.fecha_ultima_modificacion = datetime.utcnow()
+        current_user.fecha_ultima_modificacion = utcnow()
         db.commit()
         db.refresh(current_user)
         
@@ -370,7 +379,7 @@ def cambiar_password(
         
         # Actualizar contraseña
         current_user.hashed_password = get_password_hash(datos.new_password)
-        current_user.fecha_ultima_modificacion = datetime.utcnow()
+        current_user.fecha_ultima_modificacion = utcnow()
         db.commit()
         
         log_event("auth", current_user.username, "Contraseña cambiada", "")
@@ -491,7 +500,7 @@ def actualizar_usuario(
         for campo, valor in datos_update.items():
             setattr(usuario, campo, valor)
         
-        usuario.fecha_ultima_modificacion = datetime.utcnow()
+        usuario.fecha_ultima_modificacion = utcnow()
         db.commit()
         db.refresh(usuario)
         
@@ -700,7 +709,7 @@ def reset_password_usuario(
         from utils.auth import get_password_hash
         
         usuario.hashed_password = get_password_hash(temporal_password)
-        usuario.fecha_ultima_modificacion = datetime.utcnow()
+        usuario.fecha_ultima_modificacion = utcnow()
         usuario.intentos_fallidos = 0  # Resetear intentos fallidos
         usuario.bloqueado_hasta = None  # Desbloquear si estaba bloqueado
         
@@ -784,7 +793,7 @@ def register_empresa_usuario(
             )
         
         # 1. Crear EmpresaUsuario (tenant) con período de prueba de 10 días
-        ahora = datetime.utcnow()
+        ahora = utcnow()
         fecha_fin_demo = ahora + timedelta(days=10)
         
         nueva_empresa = EmpresaUsuario(
@@ -805,13 +814,19 @@ def register_empresa_usuario(
         db.add(nueva_empresa)
         db.flush()  # Necesario para obtener el ID
         
-        # 2. Obtener o crear Plan DEMO
-        plan_demo = db.query(Plan).filter(
-            Plan.nombre == "demo"
+        # 2. Obtener o crear el Plan solicitado (default: demo)
+        plan_nombre = (empresa_data.selected_plan or "demo").lower().strip()
+        # Solo permite planes válidos; si es desconocido, cae a demo
+        if plan_nombre not in ("demo", "basico", "premium"):
+            plan_nombre = "demo"
+
+        plan_seleccionado = db.query(Plan).filter(
+            Plan.nombre == plan_nombre
         ).first()
-        
-        if not plan_demo:
-            plan_demo = Plan(
+
+        if not plan_seleccionado:
+            # Fallback: crear plan demo si no existe ningún plan con ese nombre
+            plan_seleccionado = Plan(
                 nombre="demo",
                 descripcion="Plan de demostración - 10 días gratis",
                 precio_mensual=0.0,
@@ -819,13 +834,13 @@ def register_empresa_usuario(
                 max_usuarios=2,
                 activo=True
             )
-            db.add(plan_demo)
+            db.add(plan_seleccionado)
             db.flush()
-        
+
         # 3. Crear Subscription linking EmpresaUsuario → Plan
         subscription = Subscription(
             empresa_usuario_id=nueva_empresa.id,
-            plan_id=plan_demo.id,
+            plan_id=plan_seleccionado.id,
             estado="activo",
             fecha_proxima_renovacion=fecha_fin_demo  # Fin del período de prueba
         )
@@ -918,3 +933,114 @@ def register_empresa_usuario(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error al registrar la empresa"
         )
+
+
+# ─────────────────────────────────────────────────────────────
+# PASSWORD RESET POR EMAIL
+# ─────────────────────────────────────────────────────────────
+
+@router.post("/forgot-password", status_code=status.HTTP_200_OK)
+async def forgot_password(
+    body: dict,
+    request: Request,
+    db: Session = Depends(conexion.get_db),
+):
+    """
+    Solicitar reset de contraseña por email.
+    Siempre responde 200 (no leak de si el email existe).
+    """
+    import secrets
+    from utils.email_service import send_password_reset
+    from models.core import HotelSettings
+
+    email = (body.get("email") or "").strip().lower()
+    if not email:
+        return {"message": "Si el email existe, recibirás instrucciones"}
+
+    usuario = db.query(Usuario).filter(
+        Usuario.email == email,
+        Usuario.deleted == False,
+        Usuario.activo == True,
+    ).first()
+
+    if usuario:
+        token = secrets.token_urlsafe(32)
+        expires = utcnow() + timedelta(hours=1)
+        usuario.reset_token = token
+        usuario.reset_token_expires = expires
+        db.commit()
+
+        # No derivar la URL del frontend del request (Host header es manipulable
+        # -> password reset poisoning). Usar un valor configurado server-side.
+        import os
+        frontend_url = os.getenv("FRONTEND_URL", "https://hotel.cuneusdata.com").rstrip("/")
+        reset_url = f"{frontend_url}/reset-password?token={token}"
+
+        settings = None
+        if usuario.empresa_usuario_id:
+            settings = db.query(HotelSettings).filter_by(
+                empresa_usuario_id=usuario.empresa_usuario_id
+            ).first()
+
+        hotel_nombre = "Hotel"
+        if usuario.empresa_usuario_id:
+            from models.core import EmpresaUsuario
+            empresa = db.query(EmpresaUsuario).filter_by(id=usuario.empresa_usuario_id).first()
+            if empresa:
+                hotel_nombre = empresa.nombre_hotel
+
+        try:
+            await send_password_reset(
+                to=email,
+                username=usuario.username,
+                reset_url=reset_url,
+                hotel_nombre=hotel_nombre,
+                settings=settings,
+            )
+        except Exception:
+            pass  # Never fail the endpoint if email sending fails
+
+        log_event("auth", usuario.username, "Solicitud de reset de contraseña", f"email={email}")
+
+    return {"message": "Si el email existe, recibirás instrucciones en los próximos minutos"}
+
+
+@router.post("/reset-password-confirm", status_code=status.HTTP_200_OK)
+def reset_password_confirm(
+    body: dict,
+    db: Session = Depends(conexion.get_db),
+):
+    """
+    Confirmar reset de contraseña con token.
+    """
+    from utils.auth import get_password_hash
+
+    token = (body.get("token") or "").strip()
+    new_password = (body.get("new_password") or "").strip()
+
+    if not token or not new_password:
+        raise HTTPException(status_code=400, detail="Token y nueva contraseña son requeridos")
+
+    if len(new_password) < 8:
+        raise HTTPException(status_code=422, detail="La contraseña debe tener al menos 8 caracteres")
+
+    usuario = db.query(Usuario).filter(
+        Usuario.reset_token == token,
+        Usuario.deleted == False,
+    ).first()
+
+    if not usuario:
+        raise HTTPException(status_code=400, detail="Token inválido o ya utilizado")
+
+    if not usuario.reset_token_expires or usuario.reset_token_expires < utcnow():
+        raise HTTPException(status_code=400, detail="El token ha expirado. Solicitá uno nuevo")
+
+    usuario.hashed_password = get_password_hash(new_password)
+    usuario.reset_token = None
+    usuario.reset_token_expires = None
+    usuario.intentos_fallidos = 0
+    usuario.bloqueado_hasta = None
+    db.commit()
+
+    log_event("auth", usuario.username, "Contraseña restablecida via token", "")
+    return {"message": "Contraseña restablecida exitosamente"}

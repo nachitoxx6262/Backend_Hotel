@@ -4,6 +4,7 @@ Endpoints para el nuevo sistema de calendario con Reservations y Stays separados
 """
 
 from datetime import datetime, date, timedelta, time
+from utils.datetime_utils import utcnow
 from typing import List, Optional
 from decimal import Decimal
 from typing import Union
@@ -154,6 +155,11 @@ class CheckoutRequest(BaseModel):
     allow_close_with_debt: bool = Field(False, description="Permitir cerrar con saldo pendiente")
     debt_reason: Optional[str] = Field(None, description="Motivo de deuda (obligatorio si hay deuda)")
     notes: Optional[str] = Field(None, description="Notas finales del checkout")
+
+    # Pago a registrar durante el checkout
+    pago_monto: Optional[float] = Field(None, ge=0, description="Monto de pago a registrar")
+    pago_metodo: Optional[str] = Field(None, description="Método de pago: efectivo|tarjeta|transferencia|cheque|otro")
+    pago_referencia: Optional[str] = Field(None, description="Referencia del pago (nro. transferencia, etc.)")
 
     # Idempotencia (opcional, por ahora no persistida pero buen hook)
     idempotency_key: Optional[str] = None
@@ -518,7 +524,7 @@ def _check_room_availability(
 
 def upsert_checkout_task(db: Session, stay: Stay, room: Room) -> HousekeepingTask:
     """Crea o devuelve la tarea de checkout para la estadía (idempotente)."""
-    today = datetime.utcnow().date()
+    today = utcnow().date()
 
     existing = (
         db.query(HousekeepingTask)
@@ -542,7 +548,7 @@ def upsert_checkout_task(db: Session, stay: Stay, room: Room) -> HousekeepingTas
             existing.task_date = today
             updated = True
         if updated:
-            existing.updated_at = datetime.utcnow()
+            existing.updated_at = utcnow()
         return existing
 
     task = HousekeepingTask(
@@ -1258,7 +1264,7 @@ def update_reservation(
         reservation.fecha_checkout = nueva_checkout
         cambios.append(f"fechas={nueva_checkin} a {nueva_checkout}")
     
-    reservation.updated_at = datetime.utcnow()
+    reservation.updated_at = utcnow()
     
     # Auditoría
     audit = AuditEvent(
@@ -1345,9 +1351,9 @@ async def cancel_reservation(
     # Soft delete: marcar como cancelada
     reservation.estado = "cancelada"
     reservation.cancel_reason = req.reason
-    reservation.cancelled_at = datetime.utcnow()
+    reservation.cancelled_at = utcnow()
     reservation.cancelled_by = current_user.id
-    reservation.updated_at = datetime.utcnow()
+    reservation.updated_at = utcnow()
     
     # Liberar habitaciones (estado_operativo)
     for res_room in reservation.rooms:
@@ -1488,7 +1494,7 @@ def move_block(
         if res_room and res_room.room_id != req.room_id:
             res_room.room_id = req.room_id
         
-        reservation.updated_at = datetime.utcnow()
+        reservation.updated_at = utcnow()
         
         audit = AuditEvent(
             entity_type="reservation",
@@ -1575,7 +1581,7 @@ def move_block(
         # Si cambió de habitación, crear nueva ocupación y cerrar la anterior
         if occupancy.room_id != req.room_id:
             # Cerrar ocupación actual
-            occupancy.hasta = datetime.utcnow()
+            occupancy.hasta = utcnow()
             
             # Crear nueva ocupación
             room_nueva = db.query(Room).filter(
@@ -1588,7 +1594,7 @@ def move_block(
             nueva_occ = StayRoomOccupancy(
                 stay_id=stay.id,
                 room_id=req.room_id,
-                desde=datetime.utcnow(),
+                desde=utcnow(),
                 hasta=None,
                 motivo=req.motivo or "Cambio de habitación",
                 creado_por="sistema"
@@ -1703,7 +1709,7 @@ def checkin_from_reservation(
     
     # VALIDACIÓN 3: Check-in no debe estar fuera de rango (warning)
     # Permitir con warning, no bloquear
-    today = datetime.utcnow().date()
+    today = utcnow().date()
     fecha_checkin = reservation.fecha_checkin
     fecha_checkout = reservation.fecha_checkout
     
@@ -1716,11 +1722,38 @@ def checkin_from_reservation(
             detail=f"Check-in fuera de rango: fecha_checkout ({fecha_checkout}) ya pasó o es hoy"
         )
     
+    # === C1: VALIDACIÓN DE DOCUMENTOS REQUERIDOS ===
+    settings_obj = db.query(HotelSettings).filter_by(empresa_usuario_id=tenant_id).first()
+    docs_requeridos = getattr(settings_obj, "documentos_requeridos", None) or []
+    if docs_requeridos and req.huespedes:
+        import re
+        patrones = {
+            "DNI": re.compile(r"^\d{7,8}$"),
+            "Pasaporte": re.compile(r"^[A-Z0-9]{6,9}$", re.IGNORECASE),
+            "CUIL": re.compile(r"^\d{11}$"),
+            "CUIT": re.compile(r"^\d{11}$"),
+        }
+        for h in req.huespedes:
+            tipo_doc = h.get("tipo_documento", "DNI")
+            documento = (h.get("documento") or h.get("numero_documento", "") or "").strip()
+            if not documento:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Documento requerido para el huésped {h.get('nombre', '')} {h.get('apellido', '')}. "
+                           f"Tipos aceptados: {', '.join(docs_requeridos)}"
+                )
+            if tipo_doc in patrones and not patrones[tipo_doc].match(documento):
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Formato inválido para {tipo_doc}: '{documento}'. "
+                           f"DNI=7-8 dígitos, Pasaporte=6-9 alfanumérico, CUIL/CUIT=11 dígitos"
+                )
+
     # === AUTO-CREACIÓN DE CLIENTES ===
     # Procesar la lista de huéspedes enviada en el request
-    
+
     processed_guests = []
-    
+
     for h in req.huespedes:
         nombre = h.get("nombre", "").strip()
         apellido = h.get("apellido", "").strip()
@@ -1778,7 +1811,7 @@ def checkin_from_reservation(
         empresa_usuario_id=tenant_id,
         reservation_id=reservation.id,
         estado="ocupada",
-        checkin_real=datetime.utcnow(),
+        checkin_real=utcnow(),
         notas_internas=req.notas
     )
     db.add(stay)
@@ -1789,7 +1822,7 @@ def checkin_from_reservation(
         occupancy = StayRoomOccupancy(
             stay_id=stay.id,
             room_id=res_room.room_id,
-            desde=datetime.utcnow(),
+            desde=utcnow(),
             hasta=None,  # Sigue ocupando
             motivo="Check-in inicial",
             creado_por="sistema"
@@ -1895,7 +1928,7 @@ def checkout_stay(
         empresa = _get_active_empresa_or_404(db, req.empresa_id, tenant_id)
         reservation.empresa_id = empresa.id
         reservation.empresa = empresa
-        reservation.updated_at = datetime.utcnow()
+        reservation.updated_at = utcnow()
     
     # =====================================================================
     # 2) IDEMPOTENCIA: Si ya está cerrada, retornar datos sin modificar
@@ -2004,7 +2037,7 @@ def checkout_stay(
             referencia=getattr(req, "pago_referencia", None),
             usuario="sistema",
             notas="Pago en checkout",
-            timestamp=datetime.utcnow()
+            timestamp=utcnow()
         )
         db.add(payment)
         db.flush()
@@ -2016,7 +2049,7 @@ def checkout_stay(
     # =====================================================================
     # 7) CERRAR OCUPACIONES ACTIVAS
     # =====================================================================
-    ahora = datetime.utcnow()
+    ahora = utcnow()
     closed_rooms = []
     
     for occ in stay.occupancies:
@@ -2779,7 +2812,65 @@ def get_invoice_preview(
         payments=calc.payments_breakdown if include_items else [],
         warnings=warnings_list,
         readonly=calc.readonly,
-        generated_at=datetime.utcnow().isoformat(),
+        generated_at=utcnow().isoformat(),
+    )
+
+
+@router.get("/stays/{stay_id}/invoice")
+def download_invoice_pdf(
+    stay_id: int = Path(..., gt=0),
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user),
+):
+    """
+    Descarga la factura PDF de una estadía.
+    Requiere que la estadía esté cerrada o tenga al menos un pago.
+    """
+    from fastapi.responses import Response
+    from utils.pdf_engine import generate_invoice_pdf
+    from models.core import EmpresaUsuario, HotelSettings
+
+    tenant_id = current_user.empresa_usuario_id
+    stay = db.query(Stay).filter(
+        Stay.id == stay_id,
+        Stay.empresa_usuario_id == tenant_id
+    ).first()
+    if not stay:
+        raise HTTPException(status_code=404, detail="Estadía no encontrada")
+
+    try:
+        calc = compute_invoice(stay, db)
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"No se pudo calcular la factura: {str(e)}")
+
+    empresa = db.query(EmpresaUsuario).filter_by(id=tenant_id).first()
+    settings = db.query(HotelSettings).filter_by(empresa_usuario_id=tenant_id).first()
+
+    # Incrementar contador de facturas si aún no tiene número guardado
+    empresa.invoice_counter = (empresa.invoice_counter or 0) + 1
+    invoice_number = f"FCT-{empresa.invoice_counter:06d}"
+    db.commit()
+
+    hotel_nombre = empresa.nombre_hotel if empresa else "Hotel"
+    hotel_direccion = empresa.direccion if empresa else None
+    nombre_fiscal = getattr(settings, "nombre_fiscal", None) or hotel_nombre
+    moneda = getattr(settings, "moneda_simbolo", None) or "$"
+    iva_pct = float(getattr(settings, "iva_porcentaje", None) or 21.0)
+
+    pdf_bytes = generate_invoice_pdf(
+        calc=calc,
+        hotel_nombre=hotel_nombre,
+        hotel_direccion=hotel_direccion,
+        hotel_nombre_fiscal=nombre_fiscal,
+        invoice_number=invoice_number,
+        moneda=moneda,
+        iva_porcentaje=iva_pct,
+    )
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="factura-{invoice_number}.pdf"'},
     )
 
 
@@ -2814,7 +2905,7 @@ def confirm_checkout(
         empresa = _get_active_empresa_or_404(db, req.empresa_id, tenant_id)
         reservation.empresa_id = empresa.id
         reservation.empresa = empresa
-        reservation.updated_at = datetime.utcnow()
+        reservation.updated_at = utcnow()
 
     # 2. Validar Retroactive Time
     actual_checkout_at = datetime.now() # Default server time
@@ -2940,7 +3031,7 @@ def confirm_checkout(
     db.add(audit)
     
     # 8. Housekeeping + Estado de habitaciones
-    ahora = datetime.utcnow()
+    ahora = utcnow()
     for occ in stay.occupancies:
         if occ.room:
             if req.housekeeping:
@@ -3140,7 +3231,7 @@ def confirm_checkout(
         payments=calc.payments_breakdown,
         warnings=warnings_list,
         readonly=True,
-        generated_at=datetime.utcnow().isoformat(),
+        generated_at=utcnow().isoformat(),
     )
     
     return CheckoutResult(
@@ -3228,7 +3319,7 @@ def checkout_stay(
             raise HTTPException(422, "Debe especificar 'debt_reason' para cerrar con deuda.")
 
     # 6. COMMIT
-    ahora = datetime.utcnow()
+    ahora = utcnow()
     
     # Stay
     stay.estado = "cerrada"
@@ -3393,7 +3484,7 @@ def _build_preview_response(stay, calc, discount_override_pct, tax_override_mode
         empresa_contacto=empresa_contacto,
         currency="ARS",
         period=InvoicePeriod(
-            checkin_real=stay.checkin_real.isoformat() if stay.checkin_real else datetime.utcnow().isoformat(),
+            checkin_real=stay.checkin_real.isoformat() if stay.checkin_real else utcnow().isoformat(),
             checkout_candidate=calc.checkout_candidate_date.isoformat(),
             checkout_planned=calc.checkout_planned_date.isoformat()
         ),
@@ -3427,7 +3518,7 @@ def _build_preview_response(stay, calc, discount_override_pct, tax_override_mode
         payments=calc.payments_breakdown,
         warnings=warnings_list,
         readonly=calc.readonly,
-        generated_at=datetime.utcnow().isoformat()
+        generated_at=utcnow().isoformat()
     )
 
 

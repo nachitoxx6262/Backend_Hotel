@@ -4,6 +4,7 @@ SINGLE SOURCE OF TRUTH para cálculos de checkout e invoice-preview
 """
 
 from datetime import datetime, date, timedelta
+from utils.datetime_utils import utcnow
 from decimal import Decimal
 from typing import List, Optional, Dict, Any, Tuple
 from sqlalchemy.orm import Session
@@ -42,7 +43,7 @@ def _safe_decimal(value, fallback: Decimal = Decimal("0")) -> Decimal:
 
 def _today_date() -> date:
     """Retorna la fecha de hoy sin hora"""
-    return datetime.utcnow().date()
+    return utcnow().date()
 
 
 def parse_to_date(value) -> date:

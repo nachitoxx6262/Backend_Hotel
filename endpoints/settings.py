@@ -40,6 +40,26 @@ class HotelSettingsUpdate(BaseModel):
     timezone: Optional[str] = None
     overstay_price: Optional[float] = None
 
+    # Documentos requeridos en check-in
+    documentos_requeridos: Optional[list] = None
+
+    # Datos fiscales
+    nombre_fiscal: Optional[str] = Field(None, max_length=200)
+    direccion_fiscal: Optional[str] = None
+    iva_porcentaje: Optional[float] = Field(None, ge=0, le=100)
+    moneda_simbolo: Optional[str] = Field(None, max_length=10)
+    logo_url: Optional[str] = Field(None, max_length=500)
+
+    # SMTP por tenant
+    smtp_host: Optional[str] = Field(None, max_length=200)
+    smtp_port: Optional[int] = Field(None, ge=1, le=65535)
+    smtp_user: Optional[str] = Field(None, max_length=200)
+    smtp_password: Optional[str] = None  # se guardará cifrado
+    smtp_from_email: Optional[str] = Field(None, max_length=200)
+
+    # Feature flags
+    housekeeping_enabled: Optional[bool] = None
+
     class Config:
         from_attributes = True
 
@@ -54,6 +74,26 @@ class HotelSettingsRead(BaseModel):
     auto_extend_stays: bool
     timezone: str
     overstay_price: Optional[float] = None
+
+    # Datos fiscales
+    nombre_fiscal: Optional[str] = None
+    direccion_fiscal: Optional[str] = None
+    iva_porcentaje: Optional[float] = None
+    moneda_simbolo: Optional[str] = None
+    logo_url: Optional[str] = None
+
+    # Documentos requeridos en check-in
+    documentos_requeridos: Optional[list] = None
+
+    # SMTP (nunca exponer password)
+    smtp_host: Optional[str] = None
+    smtp_port: Optional[int] = None
+    smtp_user: Optional[str] = None
+    smtp_from_email: Optional[str] = None
+
+    # Feature flags
+    housekeeping_enabled: bool = False
+
     created_at: str
     updated_at: str
 
@@ -219,6 +259,53 @@ def update_hotel_settings(
             settings.timezone = settings_data.timezone
         if settings_data.overstay_price is not None:
             settings.overstay_price = settings_data.overstay_price
+
+        # Datos fiscales
+        if settings_data.documentos_requeridos is not None:
+            settings.documentos_requeridos = settings_data.documentos_requeridos
+        if settings_data.nombre_fiscal is not None:
+            settings.nombre_fiscal = settings_data.nombre_fiscal
+        if settings_data.direccion_fiscal is not None:
+            settings.direccion_fiscal = settings_data.direccion_fiscal
+        if settings_data.iva_porcentaje is not None:
+            settings.iva_porcentaje = settings_data.iva_porcentaje
+        if settings_data.moneda_simbolo is not None:
+            settings.moneda_simbolo = settings_data.moneda_simbolo
+        if settings_data.logo_url is not None:
+            settings.logo_url = settings_data.logo_url
+
+        # SMTP
+        if settings_data.smtp_host is not None:
+            settings.smtp_host = settings_data.smtp_host
+        if settings_data.smtp_port is not None:
+            settings.smtp_port = settings_data.smtp_port
+        if settings_data.smtp_user is not None:
+            settings.smtp_user = settings_data.smtp_user
+        if settings_data.smtp_from_email is not None:
+            settings.smtp_from_email = settings_data.smtp_from_email
+        if settings_data.smtp_password is not None:
+            import os
+            fernet_key = os.getenv("FERNET_KEY", "")
+            # Nunca persistir la contraseña SMTP en texto plano: si no se puede
+            # cifrar (sin FERNET_KEY o clave inválida), se rechaza el guardado.
+            if not fernet_key:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Servidor sin FERNET_KEY configurada — no se puede guardar la contraseña SMTP de forma segura.",
+                )
+            try:
+                from cryptography.fernet import Fernet
+                f = Fernet(fernet_key.encode())
+                settings.smtp_password_encrypted = f.encrypt(settings_data.smtp_password.encode()).decode()
+            except Exception:
+                raise HTTPException(
+                    status_code=500,
+                    detail="FERNET_KEY inválida — no se pudo cifrar la contraseña SMTP.",
+                )
+
+        # Feature flags
+        if settings_data.housekeeping_enabled is not None:
+            settings.housekeeping_enabled = settings_data.housekeeping_enabled
 
         db.commit()
         db.refresh(settings)

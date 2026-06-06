@@ -4,6 +4,7 @@ Modelos de Usuario para autenticación y autorización
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Index
 from sqlalchemy.orm import relationship
 from datetime import datetime
+from utils.datetime_utils import utcnow
 from database.conexion import Base
 from .rol import Rol, UsuarioRol
 
@@ -42,13 +43,17 @@ class Usuario(Base):
     deleted = Column(Boolean, default=False, nullable=False)
     
     # Auditoría
-    fecha_creacion = Column(DateTime, default=datetime.utcnow, nullable=False)
-    fecha_ultima_modificacion = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    fecha_creacion = Column(DateTime, default=utcnow, nullable=False)
+    fecha_ultima_modificacion = Column(DateTime, default=utcnow, onupdate=utcnow)
     ultimo_login = Column(DateTime, nullable=True)
     
     # Seguridad
     intentos_fallidos = Column(Integer, default=0, nullable=False)
     bloqueado_hasta = Column(DateTime, nullable=True)
+
+    # Reset de contraseña por email
+    reset_token = Column(String(200), nullable=True)
+    reset_token_expires = Column(DateTime, nullable=True)
     
     # Relaciones
     usuario_roles = relationship("UsuarioRol", back_populates="usuario", cascade="all, delete-orphan")

@@ -3,6 +3,7 @@ Decorators para endpoints - Validaciones específicas de negocio
 """
 from functools import wraps
 from datetime import datetime
+from utils.datetime_utils import utcnow
 from typing import Callable
 
 from fastapi import HTTPException, status, Depends
@@ -76,7 +77,7 @@ def require_trial_writable(func: Callable) -> Callable:
         if is_trial_write_blocked(subscription):
             dias_restantes = 0
             if empresa.fecha_fin_demo:
-                dias_restantes = max(0, (empresa.fecha_fin_demo - datetime.utcnow()).days)
+                dias_restantes = max(0, (empresa.fecha_fin_demo - utcnow()).days)
             
             raise HTTPException(
                 status_code=402,  # Payment Required

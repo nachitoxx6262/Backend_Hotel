@@ -9,6 +9,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 from database.conexion import Base
 from datetime import datetime
+from utils.datetime_utils import utcnow
 
 
 # ----------- PRODUCTO / SERVICIO / DESCUENTO -----------
@@ -33,8 +34,8 @@ class ProductoServicio(Base):
     activo = Column(Boolean, default=True)
     
     # Auditoría
-    creado_en = Column(DateTime, default=datetime.utcnow)
-    actualizado_en = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    creado_en = Column(DateTime, default=utcnow)
+    actualizado_en = Column(DateTime, default=utcnow, onupdate=utcnow)
     actualizado_por = Column(String(50), nullable=True)
     
     # Nota: En el nuevo modelo, los cargos se manejan a través de StayCharge

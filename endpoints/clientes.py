@@ -50,16 +50,17 @@ class ClienteRead(ClienteBase):
 
 # --- Endpoints ---
 
-@router.get("", response_model=List[ClienteRead])
+@router.get("")
 def get_clientes(
     skip: int = 0,
-    limit: int = 50,
+    limit: int = 20,
     q: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
     """
     Listar clientes activos con paginación y búsqueda opcional.
+    Retorna {items: [...], total: N, skip: N, limit: N}
     """
     tenant_id = current_user.empresa_usuario_id
     if not tenant_id:
@@ -80,8 +81,9 @@ def get_clientes(
             )
         )
 
+    total = query.count()
     clientes = query.order_by(Cliente.apellido, Cliente.nombre).offset(skip).limit(limit).all()
-    return clientes
+    return {"items": clientes, "total": total, "skip": skip, "limit": limit}
 
 
 @router.get("/eliminados", response_model=List[ClienteRead])
@@ -197,6 +199,40 @@ def delete_cliente(cliente_id: int, db: Session = Depends(get_db), current_user 
     
     # Soft delete
     db_cliente.activo = False
+    db.commit()
+
+
+@router.delete("/{cliente_id}/permanente", status_code=status.HTTP_204_NO_CONTENT)
+def delete_cliente_permanente(
+    cliente_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """
+    Elimina permanentemente un cliente (hard delete).
+    Solo posible si el cliente no tiene estancias asociadas.
+    """
+    tenant_id = current_user.empresa_usuario_id
+    if not tenant_id:
+        raise HTTPException(status_code=401, detail="Usuario no autenticado o sin tenant asociado")
+
+    db_cliente = db.query(Cliente).filter(
+        Cliente.id == cliente_id,
+        Cliente.empresa_usuario_id == tenant_id
+    ).first()
+    if not db_cliente:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado")
+
+    # Verificar que no tenga estancias — evita violar integridad referencial
+    tiene_stays = db.query(Stay).filter(Stay.cliente_id == cliente_id).first()
+    if tiene_stays:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No se puede eliminar el cliente porque tiene estancias registradas. Puede archivarlo en su lugar."
+        )
+
+    log_event("clientes", current_user.username, "Cliente eliminado permanentemente", f"cliente_id={cliente_id}")
+    db.delete(db_cliente)
     db.commit()
 
 
@@ -330,7 +366,10 @@ def get_cliente_perfil(
         },
         "historial_estancias": historial_estancias,
         "total_estancias_cerradas": total_estancias_cerradas,
-        "ultima_salida": None,  # Simplificado por ahora
+        "ultima_salida": max(
+            (e["fecha_salida"] for e in historial_estancias if e["fecha_salida"]),
+            default=None
+        ),
         "es_blacklist": cliente.blacklist,
         "motivo_blacklist": cliente.motivo_blacklist
     }

@@ -3,31 +3,44 @@ Schemas Pydantic para autenticación y autorización
 """
 from typing import Optional
 from datetime import datetime
-from pydantic import BaseModel, EmailStr, Field, validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
+
+
+def _validate_password_strength(v: str) -> str:
+    """Validación de fortaleza de contraseña reutilizable."""
+    if not any(c.isupper() for c in v):
+        raise ValueError('La contraseña debe contener al menos una mayúscula')
+    if not any(c.islower() for c in v):
+        raise ValueError('La contraseña debe contener al menos una minúscula')
+    if not any(c.isdigit() for c in v):
+        raise ValueError('La contraseña debe contener al menos un número')
+    return v
 
 
 # ========== SCHEMAS DE USUARIO ==========
 
 class UsuarioBase(BaseModel):
-    username: str = Field(..., min_length=3, max_length=50)
+    username: str = Field(..., min_length=3, max_length=50, strip_whitespace=True)
     email: EmailStr
     nombre: Optional[str] = Field(None, max_length=60)
     apellido: Optional[str] = Field(None, max_length=60)
     rol: str = Field(default="readonly", pattern="^(admin|gerente|recepcionista|readonly)$")
 
+    @field_validator("username")
+    @classmethod
+    def username_sin_espacios(cls, v: str) -> str:
+        if " " in v:
+            raise ValueError("El nombre de usuario no puede contener espacios")
+        return v.lower()
+
 
 class UsuarioCreate(UsuarioBase):
     password: str = Field(..., min_length=8, max_length=72)
-    
-    @validator('password')
-    def validate_password(cls, v):
-        if not any(c.isupper() for c in v):
-            raise ValueError('La contraseña debe contener al menos una mayúscula')
-        if not any(c.islower() for c in v):
-            raise ValueError('La contraseña debe contener al menos una minúscula')
-        if not any(c.isdigit() for c in v):
-            raise ValueError('La contraseña debe contener al menos un número')
-        return v
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        return _validate_password_strength(v)
 
 
 class UsuarioUpdate(BaseModel):
@@ -94,16 +107,11 @@ class RefreshTokenRequest(BaseModel):
 class ChangePasswordRequest(BaseModel):
     current_password: str = Field(..., min_length=1, max_length=72)
     new_password: str = Field(..., min_length=8, max_length=72)
-    
-    @validator('new_password')
-    def validate_password(cls, v):
-        if not any(c.isupper() for c in v):
-            raise ValueError('La contraseña debe contener al menos una mayúscula')
-        if not any(c.islower() for c in v):
-            raise ValueError('La contraseña debe contener al menos una minúscula')
-        if not any(c.isdigit() for c in v):
-            raise ValueError('La contraseña debe contener al menos un número')
-        return v
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        return _validate_password_strength(v)
 
 
 class ResetPasswordRequest(BaseModel):
@@ -203,6 +211,7 @@ class RegisterEmpresaUsuarioRequest(BaseModel):
     """Request para registrar nuevo hotel (SaaS signup)"""
     nombre_hotel: str = Field(..., min_length=3, max_length=150)
     cuit: str = Field(..., pattern=r"^\d{11}$")  # CUIT argentino: 11 dígitos
+    selected_plan: Optional[str] = Field(default="demo", description="Plan inicial: demo|basico|premium")
     
     contacto_nombre: str = Field(..., min_length=2, max_length=100)
     contacto_email: EmailStr
@@ -212,17 +221,12 @@ class RegisterEmpresaUsuarioRequest(BaseModel):
     ciudad: str = Field(..., min_length=2, max_length=100)
     provincia: str = Field(..., min_length=2, max_length=100)
     
-    admin_username: str = Field(..., min_length=3, max_length=50)
+    admin_username: str = Field(..., min_length=3, max_length=50, strip_whitespace=True)
     admin_email: EmailStr
     admin_password: str = Field(..., min_length=8, max_length=72)
-    
-    @validator('admin_password')
-    def validate_password(cls, v):
-        if not any(c.isupper() for c in v):
-            raise ValueError('La contraseña debe contener al menos una mayúscula')
-        if not any(c.islower() for c in v):
-            raise ValueError('La contraseña debe contener al menos una minúscula')
-        if not any(c.isdigit() for c in v):
-            raise ValueError('La contraseña debe contener al menos un número')
-        return v
+
+    @field_validator("admin_password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        return _validate_password_strength(v)
 

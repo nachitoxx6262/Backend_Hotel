@@ -4,6 +4,7 @@ Diseño Senior: Single Source of Truth, sin duplicidades, sin hacks
 """
 
 from datetime import datetime, date, timedelta
+from utils.datetime_utils import utcnow
 from typing import List, Optional
 from decimal import Decimal
 
@@ -41,8 +42,8 @@ class BlockUI(BaseModel):
     stay_id: Optional[int] = None
     occupancy_id: Optional[int] = None
     room_id: int
-    fecha_checkin: str  # ISO date (para reservas)
-    fecha_checkout: str  # ISO date (para reservas)
+    fecha_checkin: Optional[str] = None  # ISO date (para reservas)
+    fecha_checkout: Optional[str] = None  # ISO date (para reservas)
     desde: Optional[str] = None  # ISO date (para stays)
     hasta: Optional[str] = None  # ISO date (para stays)
     guest_label: str
@@ -207,7 +208,7 @@ def create_housekeeping_task(
     if not req.task_names:
         raise HTTPException(400, "Se requiere al menos una tarea")
 
-    task_date = datetime.fromisoformat(req.task_date).date() if req.task_date else datetime.utcnow().date()
+    task_date = datetime.fromisoformat(req.task_date).date() if req.task_date else utcnow().date()
 
     meta = req.meta or {}
     meta["task_list"] = req.task_names
@@ -233,7 +234,7 @@ def create_housekeeping_task(
 
     if req.block_room and room.estado_operativo == "disponible":
         room.estado_operativo = "limpieza"
-        room.updated_at = datetime.utcnow()
+        room.updated_at = utcnow()
 
     try:
         db.commit()
@@ -271,7 +272,7 @@ def _get_is_high_priority(db: Session, room_id: int, target_date: date, tenant_i
 
 def _auto_generate_daily_tasks(db: Session, target_date: date, tenant_id: int):
     """Lógica interna para generar tareas diarias faltantes para habitaciones ocupadas"""
-    now = datetime.utcnow()
+    now = utcnow()
     # Solo generar si ya pasamos la hora configurada (o si se fuerza, pero aquí automatizamos)
     # if now.hour < HOUSEKEEPING_DAILY_GEN_HOUR: return
 
@@ -332,7 +333,7 @@ def generate_daily_tasks_endpoint(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    target_date = datetime.utcnow().date() if not date else datetime.fromisoformat(date).date()
+    target_date = utcnow().date() if not date else datetime.fromisoformat(date).date()
     tenant_id = current_user.empresa_usuario_id
     if not tenant_id:
         raise HTTPException(401, "Usuario no autenticado o sin tenant asociado")
@@ -348,13 +349,13 @@ def housekeeping_board(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    target_date = datetime.utcnow().date() if not date else datetime.fromisoformat(date).date()
+    target_date = utcnow().date() if not date else datetime.fromisoformat(date).date()
     tenant_id = current_user.empresa_usuario_id
     if not tenant_id:
         raise HTTPException(401, "Usuario no autenticado o sin tenant asociado")
     
     # Automatización: generar diarias para el día consultado si es hoy o futuro cercano
-    if target_date >= datetime.utcnow().date():
+    if target_date >= utcnow().date():
         _auto_generate_daily_tasks(db, target_date, tenant_id)
 
     # Optimización: Eager load de Room para evitar N+1
@@ -424,9 +425,6 @@ def housekeeping_board(
                 "Dejar habitación en estado 'disponible'"
             ]}
         
-        # Debug log
-        if meta.get("incidents") or meta.get("lost_items"):
-            print(f"DEBUG Task {t.id}: meta has incidents={meta.get('incidents')} lost_items={meta.get('lost_items')}")
         
         return {
             "id": t.id,
@@ -479,7 +477,7 @@ def housekeeping_start_task(
         raise HTTPException(404, "Tarea no encontrada")
     
     task.status = "in_progress"
-    task.started_at = datetime.utcnow()
+    task.started_at = utcnow()
     db.commit()
     return {"status": "in_progress", "started_at": task.started_at}
 
@@ -509,7 +507,7 @@ def housekeeping_report_incident(
             "tipo": req.tipo,
             "descripcion": req.descripcion,
             "gravedad": req.gravedad,
-            "fecha": datetime.utcnow().isoformat(),
+            "fecha": utcnow().isoformat(),
             "room_id": req.room_id,
             "resolved": False,
             "resolved_at": None,
@@ -519,7 +517,7 @@ def housekeeping_report_incident(
         meta["has_incident"] = True
         task.meta = meta
         flag_modified(task, "meta")
-        task.updated_at = datetime.utcnow()
+        task.updated_at = utcnow()
         db.commit()
         db.refresh(task)
     else:
@@ -556,7 +554,7 @@ def housekeeping_report_lost_item(
         lost_items.append({
             "descripcion": req.descripcion,
             "lugar": req.lugar,
-            "fecha": datetime.utcnow().isoformat(),
+            "fecha": utcnow().isoformat(),
             "room_id": req.room_id,
             "resolved": False,
             "resolved_at": None,
@@ -566,7 +564,7 @@ def housekeeping_report_lost_item(
         meta["has_lost_item"] = True
         task.meta = meta
         flag_modified(task, "meta")
-        task.updated_at = datetime.utcnow()
+        task.updated_at = utcnow()
         db.commit()
         db.refresh(task)
     else:
@@ -605,7 +603,7 @@ def resolve_alert(
             raise HTTPException(400, "Índice de incidente inválido")
         
         incidents[req.alert_index]["resolved"] = True
-        incidents[req.alert_index]["resolved_at"] = datetime.utcnow().isoformat()
+        incidents[req.alert_index]["resolved_at"] = utcnow().isoformat()
         incidents[req.alert_index]["resolved_by"] = current_user.username
         meta["incidents"] = incidents
         
@@ -615,7 +613,7 @@ def resolve_alert(
             raise HTTPException(400, "Índice de objeto extraviado inválido")
         
         lost_items[req.alert_index]["resolved"] = True
-        lost_items[req.alert_index]["resolved_at"] = datetime.utcnow().isoformat()
+        lost_items[req.alert_index]["resolved_at"] = utcnow().isoformat()
         lost_items[req.alert_index]["resolved_by"] = current_user.username
         meta["lost_items"] = lost_items
     else:
@@ -623,7 +621,7 @@ def resolve_alert(
     
     task.meta = meta
     flag_modified(task, "meta")
-    task.updated_at = datetime.utcnow()
+    task.updated_at = utcnow()
     db.commit()
     db.refresh(task)
     
@@ -677,16 +675,16 @@ def housekeeping_patch_task(
         if not task.meta or not task.meta.get("skip_reason"):
             raise HTTPException(400, "skip_reason requerido para estado skipped")
 
-    task.updated_at = datetime.utcnow()
+    task.updated_at = utcnow()
 
     # If completed a checkout task, unlock room
     if task.status == "done":
         if getattr(task, "done_at", None) is None:
-            task.done_at = datetime.utcnow()
+            task.done_at = utcnow()
         room = db.query(Room).filter(Room.id == task.room_id).first()
         if room and room.estado_operativo == "limpieza":
             room.estado_operativo = "disponible"
-            room.updated_at = datetime.utcnow()
+            room.updated_at = utcnow()
 
     db.commit()
     db.refresh(task)
@@ -728,7 +726,7 @@ def housekeeping_claim_task(
 
     task.assigned_to_user_id = req.assigned_to_user_id
     task.status = "in_progress"
-    task.updated_at = datetime.utcnow()
+    task.updated_at = utcnow()
     db.commit()
     db.refresh(task)
     return {"id": task.id, "status": task.status, "assigned_to_user_id": task.assigned_to_user_id}
@@ -747,7 +745,7 @@ def housekeeping_daily(
     """
     from models.core import DailyCleanLog
     
-    target_date = datetime.utcnow().date() if not date else datetime.fromisoformat(date).date()
+    target_date = utcnow().date() if not date else datetime.fromisoformat(date).date()
     tenant_id = current_user.empresa_usuario_id
     if not tenant_id:
         raise HTTPException(401, "Usuario no autenticado o sin tenant asociado")
@@ -843,14 +841,14 @@ def housekeeping_daily_log(
 
     if log:
         log.user_id = req.user_id
-        log.completed_at = datetime.utcnow()
+        log.completed_at = utcnow()
         log.notes = req.notes
     else:
         log = DailyCleanLog(
             room_id=req.room_id,
             date=target_date,
             user_id=req.user_id,
-            completed_at=datetime.utcnow(),
+            completed_at=utcnow(),
             notes=req.notes,
         )
         db.add(log)
@@ -1123,7 +1121,7 @@ def _check_availability(
 
 def upsert_checkout_task(db: Session, stay: Stay, room: Room) -> HousekeepingTask:
     """Crea o devuelve la tarea de checkout para la estadía (idempotente)."""
-    today = datetime.utcnow().date()
+    today = utcnow().date()
 
     # Check for existing task by the unique constraint: (room_id, task_date, task_type)
     existing = (
@@ -1146,7 +1144,7 @@ def upsert_checkout_task(db: Session, stay: Stay, room: Room) -> HousekeepingTas
             existing.reservation_id = stay.reservation_id
             updated = True
         if updated:
-            existing.updated_at = datetime.utcnow()
+            existing.updated_at = utcnow()
         return existing
 
     task = HousekeepingTask(
@@ -1208,7 +1206,7 @@ def move_block(
         # Actualizar fechas
         res.fecha_checkin = nueva_checkin
         res.fecha_checkout = nueva_checkout
-        res.updated_at = datetime.utcnow()
+        res.updated_at = utcnow()
 
         # Si cambió de habitación (solo primera)
         if req.room_id and res.rooms and res.rooms[0].room_id != req.room_id:
@@ -1244,17 +1242,17 @@ def move_block(
 
         # Si cambió de habitación: cerrar ocupación anterior, crear nueva
         if occ.room_id != req.room_id:
-            if not _check_availability(db, req.room_id, occ.desde, occ.hasta or datetime.utcnow(), exclude_occupancy_id=req.occupancy_id):
+            if not _check_availability(db, req.room_id, occ.desde, occ.hasta or utcnow(), exclude_occupancy_id=req.occupancy_id):
                 raise HTTPException(409, "Habitación destino no disponible")
 
             # Cerrar ocupación actual
-            occ.hasta = datetime.utcnow()
+            occ.hasta = utcnow()
 
             # Crear nueva
             nueva_occ = StayRoomOccupancy(
                 stay_id=stay.id,
                 room_id=req.room_id,
-                desde=datetime.utcnow(),
+                desde=utcnow(),
                 hasta=None,
                 motivo=f"Move: {req.motivo}",
                 creado_por="sistema"
@@ -1456,7 +1454,7 @@ def checkin_from_reservation(
     stay = Stay(
         reservation_id=res.id,
         estado="ocupada",
-        checkin_real=datetime.utcnow(),
+        checkin_real=utcnow(),
         notas_internas=req.notas
     )
     db.add(stay)
@@ -1467,7 +1465,7 @@ def checkin_from_reservation(
         occ = StayRoomOccupancy(
             stay_id=stay.id,
             room_id=res_room.room_id,
-            desde=datetime.utcnow(),
+            desde=utcnow(),
             hasta=None,
             motivo="Check-in inicial",
             creado_por="sistema"
@@ -1850,7 +1848,7 @@ def checkout_stay(
     # =====================================================================
     # 6) CERRAR OCUPACIONES
     # =====================================================================
-    ahora = datetime.utcnow()
+    ahora = utcnow()
     closed_rooms = []
 
     for occ in stay.occupancies:

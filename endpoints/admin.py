@@ -2,6 +2,7 @@
 Admin SaaS endpoints (super admin only)
 """
 from datetime import datetime, timedelta
+from utils.datetime_utils import utcnow
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -152,7 +153,7 @@ def list_tenants(
 
         dias_restantes_demo = None
         if _plan_type_value(tenant.plan_tipo) == PlanType.DEMO.value and tenant.fecha_fin_demo:
-            dias_restantes_demo = (tenant.fecha_fin_demo.date() - datetime.utcnow().date()).days
+            dias_restantes_demo = (tenant.fecha_fin_demo.date() - utcnow().date()).days
 
         subscription = None
         if tenant.subscription:
@@ -230,7 +231,7 @@ def update_tenant(
 
     dias_restantes_demo = None
     if _plan_type_value(tenant.plan_tipo) == PlanType.DEMO.value and tenant.fecha_fin_demo:
-        dias_restantes_demo = (tenant.fecha_fin_demo.date() - datetime.utcnow().date()).days
+        dias_restantes_demo = (tenant.fecha_fin_demo.date() - utcnow().date()).days
 
     subscription = None
     if tenant.subscription:
@@ -299,7 +300,7 @@ def convert_demo_to_subscription(
         raise HTTPException(status_code=404, detail="Plan no encontrado")
 
     subscription = db.query(Subscription).filter(Subscription.empresa_usuario_id == tenant.id).first()
-    next_renewal = payload.fecha_proxima_renovacion or (datetime.utcnow() + timedelta(days=30))
+    next_renewal = payload.fecha_proxima_renovacion or (utcnow() + timedelta(days=30))
 
     if subscription:
         subscription.plan_id = plan.id
@@ -381,7 +382,7 @@ def delete_tenant(
 
     # Soft delete: marcar como eliminado
     tenant.deleted = True
-    tenant.updated_at = datetime.utcnow()
+    tenant.updated_at = utcnow()
     
     db.commit()
     
@@ -446,7 +447,7 @@ def list_demos(
     for tenant in demos:
         dias_restantes_demo = None
         if tenant.fecha_fin_demo:
-            dias_restantes_demo = (tenant.fecha_fin_demo.date() - datetime.utcnow().date()).days
+            dias_restantes_demo = (tenant.fecha_fin_demo.date() - utcnow().date()).days
         results.append(DemoSummary(
             id=tenant.id,
             nombre_hotel=tenant.nombre_hotel,

@@ -2,6 +2,8 @@
 Endpoints de Billing - Gestión de suscripciones y planes
 """
 from datetime import datetime, timedelta
+from decimal import Decimal
+from utils.datetime_utils import utcnow
 from typing import List, Optional, Dict, Any
 import json
 import hmac
@@ -123,7 +125,8 @@ async def get_subscription_status(
         hab_porcentaje = (habitaciones_count / hab_limite * 100) if hab_limite > 0 else 0
         usr_porcentaje = (usuarios_count / usr_limite * 100) if usr_limite > 0 else 0
         
-        # Trial info
+        # Trial info — check_trial_expiration espera el EmpresaUsuario (tiene plan_tipo/fecha_fin_demo),
+        # no el Subscription. Pasar 'empresa' evita AttributeError -> 500.
         trial_info_dict = check_trial_expiration(empresa)
         trial_info = TrialInfo(
             is_active=trial_info_dict["is_active"],
@@ -149,8 +152,15 @@ async def get_subscription_status(
                 usuarios_limite=plan.max_usuarios,
                 usuarios_porcentaje=usr_porcentaje
             ),
-            payment_method_configured=False,  # TODO: Cuando integre Stripe
-            next_billing_date=subscription.fecha_proxima_renovacion
+            payment_method_configured=db.query(PaymentAttempt).filter(
+                PaymentAttempt.subscription_id == subscription.id,
+                PaymentAttempt.estado == PaymentStatus.EXITOSO
+            ).first() is not None,
+            next_billing_date=subscription.fecha_proxima_renovacion,
+            total_spent=float(db.query(func.coalesce(func.sum(PaymentAttempt.monto), 0)).filter(
+                PaymentAttempt.subscription_id == subscription.id,
+                PaymentAttempt.estado == PaymentStatus.EXITOSO
+            ).scalar() or 0)
         )
         
     except HTTPException:
@@ -256,7 +266,7 @@ async def upgrade_plan(
         # Actualizar subscription
         subscription.plan_id = nuevo_plan.id
         subscription.estado = SubscriptionStatus.ACTIVE
-        subscription.fecha_proxima_renovacion = datetime.utcnow() + timedelta(days=30)
+        subscription.fecha_proxima_renovacion = utcnow() + timedelta(days=30)
         
         db.commit()
         
@@ -272,7 +282,7 @@ async def upgrade_plan(
             status="upgraded",
             old_plan=_map_plan_to_response(plan_actual),
             new_plan=_map_plan_to_response(nuevo_plan),
-            effective_date=datetime.utcnow(),
+            effective_date=utcnow(),
             message=f"¡Bienvenido a {nuevo_plan.nombre}!",
             next_billing_date=subscription.fecha_proxima_renovacion
         )
@@ -336,7 +346,7 @@ async def cancel_subscription(
             ).first()
             
             if plan_demo:
-                ahora = datetime.utcnow()
+                ahora = utcnow()
                 empresa.plan_tipo = PlanType.DEMO
                 empresa.fecha_inicio_demo = ahora
                 empresa.fecha_fin_demo = ahora + timedelta(days=10)
@@ -376,7 +386,7 @@ async def cancel_subscription(
                 f"razón={cancel_data.reason}, feedback={cancel_data.feedback}"
             )
             
-            retention_date = datetime.utcnow() + timedelta(days=30)
+            retention_date = utcnow() + timedelta(days=30)
             
             return CancelSubscriptionResponse(
                 status="cancelled",
@@ -701,7 +711,7 @@ async def _handle_payment_succeeded(intent: Dict[str, Any], db: Session):
         # Actualizar subscription
         subscription.plan_id = plan.id
         subscription.estado = SubscriptionStatus.ACTIVO
-        subscription.fecha_proxima_renovacion = datetime.utcnow() + timedelta(days=30)
+        subscription.fecha_proxima_renovacion = utcnow() + timedelta(days=30)
         
         # Crear PaymentAttempt record
         payment = PaymentAttempt(
@@ -749,7 +759,7 @@ async def _handle_payment_succeeded(intent: Dict[str, Any], db: Session):
             monto=Decimal(str(intent["amount"] / 100)),
             metodo_pago="tarjeta",  # Stripe siempre es tarjeta - usar string directo
             referencia=f"Stripe Payment Intent: {intent['id']}",
-            fecha=datetime.utcnow(),
+            fecha=utcnow(),
             usuario_id=user_id if user_id > 0 else None,
             subscription_id=subscription.id,
             notas=f"Pago automático vía Stripe - Plan {plan_type}",
@@ -865,3 +875,51 @@ async def _handle_refund(charge: Dict[str, Any], db: Session):
             "Error handling refund",
             f"error={str(e)}"
         )
+
+
+# ============================================================================
+# C2 — HISTORIAL DE PAGOS SAAS
+# ============================================================================
+
+@router.get("/payment-history")
+def get_payment_history(
+    offset: int = 0,
+    limit: int = 20,
+    current_user: Usuario = Depends(get_current_user),
+    db: Session = Depends(conexion.get_db),
+):
+    """
+    Retorna el historial paginado de intentos de pago de la suscripción del tenant.
+    """
+    if current_user.es_super_admin or not current_user.empresa_usuario_id:
+        raise HTTPException(status_code=403, detail="No disponible para super admin")
+
+    subscription = db.query(Subscription).filter_by(
+        empresa_usuario_id=current_user.empresa_usuario_id
+    ).first()
+    if not subscription:
+        raise HTTPException(status_code=404, detail="Suscripción no encontrada")
+
+    query = db.query(PaymentAttempt).filter(
+        PaymentAttempt.subscription_id == subscription.id
+    ).order_by(PaymentAttempt.created_at.desc())
+
+    total = query.count()
+    items = query.offset(offset).limit(limit).all()
+
+    return {
+        "items": [
+            {
+                "id": p.id,
+                "monto": float(p.monto),
+                "estado": p.estado.value if hasattr(p.estado, "value") else str(p.estado),
+                "proveedor": p.proveedor.value if hasattr(p.proveedor, "value") else str(p.proveedor),
+                "external_id": p.external_id,
+                "created_at": p.created_at.isoformat() if p.created_at else None,
+            }
+            for p in items
+        ],
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+    }

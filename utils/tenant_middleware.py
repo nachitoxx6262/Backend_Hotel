@@ -6,6 +6,7 @@ from fastapi import Request, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from datetime import datetime, timezone
+from utils.datetime_utils import utcnow
 import logging
 from typing import Optional
 
@@ -147,15 +148,27 @@ def set_rls_context(db_session, tenant_id: Optional[int], user_id: int, is_super
     """
     try:
         # Setear app.current_tenant_id para RLS
-        if tenant_id:
-            db_session.execute(text(f"SET app.current_tenant_id = {tenant_id}"))
+        # Usamos SET LOCAL con cast explícito para evitar inyección SQL
+        if tenant_id is not None:
+            db_session.execute(
+                text("SELECT set_config('app.current_tenant_id', :val, false)"),
+                {"val": str(int(tenant_id))}
+            )
         else:
-            # Super admin: setear a null (las políticas RLS lo detectan)
-            db_session.execute(text("SET app.current_tenant_id = NULL"))
-        
-        # Setear app.current_user_id para auditoría (opcional)
-        db_session.execute(text(f"SET app.current_user_id = {user_id}"))
-        db_session.execute(text(f"SET app.is_super_admin = {str(is_super_admin).lower()}"))
+            # Super admin: setear a vacío (las políticas RLS lo detectan)
+            db_session.execute(
+                text("SELECT set_config('app.current_tenant_id', '', false)")
+            )
+
+        # Setear app.current_user_id para auditoría
+        db_session.execute(
+            text("SELECT set_config('app.current_user_id', :val, false)"),
+            {"val": str(int(user_id))}
+        )
+        db_session.execute(
+            text("SELECT set_config('app.is_super_admin', :val, false)"),
+            {"val": "true" if is_super_admin else "false"}
+        )
         
         db_session.commit()
         
@@ -203,9 +216,15 @@ def check_trial_expiration(empresa_usuario) -> dict:
             "message": "Trial expirado sin fecha de expiración registrada"
         }
     
-    now = datetime.now(timezone.utc)
-    
-    if now > empresa_usuario.fecha_fin_demo:
+    now = utcnow()
+
+    # utcnow() es naive (UTC); fecha_fin_demo puede venir aware (timestamptz).
+    # Normalizar a naive-UTC para comparar/restar sin TypeError.
+    fin_demo = empresa_usuario.fecha_fin_demo
+    if fin_demo.tzinfo is not None:
+        fin_demo = fin_demo.astimezone(timezone.utc).replace(tzinfo=None)
+
+    if now > fin_demo:
         # Trial expirado
         return {
             "is_active": False,
@@ -214,9 +233,9 @@ def check_trial_expiration(empresa_usuario) -> dict:
             "status": "expired",
             "message": "Trial expirado"
         }
-    
+
     # Trial activo
-    remaining_days = (empresa_usuario.fecha_fin_demo - now).days
+    remaining_days = (fin_demo - now).days
     
     return {
         "is_active": True,
