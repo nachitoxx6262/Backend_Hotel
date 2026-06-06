@@ -6,7 +6,7 @@ from typing import List, Optional
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import or_, and_
 from pydantic import BaseModel, Field, field_serializer, EmailStr
 
 from database.conexion import get_db
@@ -318,8 +318,10 @@ def get_empresa_detalles(
     stays = db.query(Stay).filter(
         Stay.empresa_usuario_id == tenant_id,
         Stay.reservation.has(
-            Reservation.empresa_id == empresa_id,
-            Reservation.empresa_usuario_id == tenant_id
+            and_(
+                Reservation.empresa_id == empresa_id,
+                Reservation.empresa_usuario_id == tenant_id
+            )
         ),
         Stay.estado.in_(["ocupada", "pendiente_checkout"])  # Estados donde está ocupada
     ).all()
@@ -336,27 +338,34 @@ def get_empresa_detalles(
     stays_con_cargos = db.query(Stay).filter(
         Stay.empresa_usuario_id == tenant_id,
         Stay.reservation.has(
-            Reservation.empresa_id == empresa_id,
-            Reservation.empresa_usuario_id == tenant_id
+            and_(
+                Reservation.empresa_id == empresa_id,
+                Reservation.empresa_usuario_id == tenant_id
+            )
         ),
     ).all()
     
     for stay in stays_con_cargos:
+        # Total pagado para toda la estancia
+        stay_total_pagado = sum(
+            float(p.monto) for p in stay.payments
+            if not p.es_reverso
+        )
+        # Total de cargos de la estancia (para calcular proporción)
+        stay_total_cargos = sum(float(c.monto_total or 0) for c in stay.charges) or 1
+
         for charge in stay.charges:
-            # Calcular monto pagado para este cargo
-            total_pagado = sum(
-                float(p.monto) for p in stay.payments 
-                if not p.es_reverso
-            )
-            
-            # Formatear fecha del cargo
+            # Distribuir el pago proporcionalmente entre los cargos
+            proporcion = float(charge.monto_total or 0) / stay_total_cargos
+            pagado_proporcional = round(stay_total_pagado * proporcion, 2)
+
             fecha_cargo = charge.created_at.strftime('%Y-%m-%d') if charge.created_at else None
-            
+
             cargos_list.append(CargoDetail(
                 id=charge.id,
                 descripcion=charge.descripcion or f"{charge.tipo.upper()}",
                 monto=float(charge.monto_total or 0),
-                pagado=total_pagado,  # Simplificado: repartir entre todos los cargos
+                pagado=pagado_proporcional,
                 fecha=fecha_cargo
             ))
 

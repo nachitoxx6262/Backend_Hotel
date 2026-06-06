@@ -293,6 +293,8 @@ def get_resumen_mes_actual(
 
     saldo_pendiente_mes = float(total_ingresos_mes) - float(total_pagado_mes)
 
+    revpar = round(float(total_ingresos_mes) / (total_rooms * dias_mes), 2) if total_rooms > 0 and dias_mes > 0 else 0
+
     return {
         "periodo": f"{hoy.year}-{hoy.month:02d}",
         "total_ingresos": float(total_ingresos_mes),
@@ -302,6 +304,8 @@ def get_resumen_mes_actual(
         "checkins": checkins_mes,
         "adr": round(adr, 2),
         "ocupacion_promedio": ocupacion_promedio,
+        "revpar": revpar,
+        "total_habitaciones": total_rooms,
     }
 
 

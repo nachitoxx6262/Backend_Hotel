@@ -2,6 +2,7 @@
 Endpoints de Caja - Sistema de Ingresos y Egresos
 """
 from datetime import datetime, date, timedelta
+from utils.datetime_utils import utcnow
 from typing import List, Optional
 from decimal import Decimal
 from io import StringIO
@@ -214,7 +215,7 @@ async def update_category(
 # TRANSACCIONES (INGRESOS Y EGRESOS)
 # ============================================================================
 
-@router.get("/transacciones", response_model=List[TransactionResponse])
+@router.get("/transacciones")
 async def get_transactions(
     fecha_desde: Optional[datetime] = None,
     fecha_hasta: Optional[datetime] = None,
@@ -228,8 +229,8 @@ async def get_transactions(
     db: Session = Depends(conexion.get_db)
 ):
     """
-    Lista transacciones con filtros opcionales.
-    Por defecto excluye transacciones anuladas.
+    Lista transacciones con filtros opcionales y paginación.
+    Retorna {items: [...], total: N} para paginación correcta en el frontend.
     """
     try:
         if not current_user.empresa_usuario_id:
@@ -237,38 +238,38 @@ async def get_transactions(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Usuario no pertenece a ningún hotel"
             )
-        
+
         query = db.query(Transaction).filter(
             Transaction.empresa_usuario_id == current_user.empresa_usuario_id
         )
-        
+
         # Aplicar filtros
         if fecha_desde:
             query = query.filter(Transaction.fecha >= fecha_desde)
-        
+
         if fecha_hasta:
             query = query.filter(Transaction.fecha <= fecha_hasta)
-        
+
         if tipo:
             query = query.filter(Transaction.tipo == tipo.value)
-        
+
         if category_id:
             query = query.filter(Transaction.category_id == category_id)
-        
+
         if metodo_pago:
             query = query.filter(Transaction.metodo_pago == metodo_pago.value)
-        
+
         if not incluir_anuladas:
             query = query.filter(Transaction.anulada == False)
-        
-        # Ordenar por fecha descendente
-        query = query.order_by(desc(Transaction.fecha))
-        
-        # Paginación
-        transactions = query.offset(offset).limit(limit).all()
-        
+
+        # Contar total ANTES de paginación
+        total = query.count()
+
+        # Ordenar y paginar
+        transactions = query.order_by(desc(Transaction.fecha)).offset(offset).limit(limit).all()
+
         # Enriquecer con datos relacionados
-        result = []
+        items = []
         for trans in transactions:
             trans_dict = {
                 "id": trans.id,
@@ -296,10 +297,10 @@ async def get_transactions(
                 "category_nombre": trans.category.nombre if trans.category else None,
                 "cliente_nombre": f"{trans.cliente.nombre} {trans.cliente.apellido}" if trans.cliente else None
             }
-            result.append(TransactionResponse(**trans_dict))
-        
-        return result
-        
+            items.append(TransactionResponse(**trans_dict))
+
+        return {"items": items, "total": total, "offset": offset, "limit": limit}
+
     except HTTPException:
         raise
     except Exception as e:
@@ -549,7 +550,7 @@ async def annul_transaction(
             monto=transaction.monto,
             metodo_pago=transaction.metodo_pago,
             referencia=f"Anulación de transacción #{transaction.id}",
-            fecha=datetime.utcnow(),
+            fecha=utcnow(),
             usuario_id=current_user.id,
             notas=f"Movimiento de ajuste por anulación. Motivo: {annul_data.motivo_anulacion}",
             es_automatica=True
@@ -561,7 +562,7 @@ async def annul_transaction(
         # Marcar transacción original como anulada
         transaction.anulada = True
         transaction.anulada_por_id = current_user.id
-        transaction.anulada_fecha = datetime.utcnow()
+        transaction.anulada_fecha = utcnow()
         transaction.motivo_anulacion = annul_data.motivo_anulacion
         transaction.transaction_anulacion_id = ajuste_transaction.id
         
@@ -826,7 +827,7 @@ async def create_cash_closing(
         transactions = db.query(Transaction).filter(
             Transaction.empresa_usuario_id == current_user.empresa_usuario_id,
             Transaction.fecha >= closing_data.fecha_apertura,
-            Transaction.fecha <= datetime.utcnow(),
+            Transaction.fecha <= utcnow(),
             Transaction.anulada == False,
             Transaction.metodo_pago == PaymentMethod.EFECTIVO  # Solo efectivo
         ).all()
@@ -847,7 +848,7 @@ async def create_cash_closing(
             empresa_usuario_id=current_user.empresa_usuario_id,
             usuario_id=current_user.id,
             fecha_apertura=closing_data.fecha_apertura,
-            fecha_cierre=datetime.utcnow(),
+            fecha_cierre=utcnow(),
             ingresos_sistema=ingresos_sistema,
             egresos_sistema=egresos_sistema,
             saldo_sistema=saldo_sistema,
@@ -1045,7 +1046,7 @@ async def create_automatic_transaction(
             monto=transaction_data.monto,
             metodo_pago=transaction_data.metodo_pago.value if hasattr(transaction_data.metodo_pago, 'value') else transaction_data.metodo_pago,
             referencia=transaction_data.referencia,
-            fecha=datetime.utcnow(),
+            fecha=utcnow(),
             usuario_id=usuario_id,
             stay_id=transaction_data.stay_id,
             subscription_id=transaction_data.subscription_id,
