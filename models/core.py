@@ -1,4 +1,5 @@
 from datetime import datetime, date
+from utils.datetime_utils import utcnow
 from sqlalchemy import (
     Column,
     Integer,
@@ -71,7 +72,7 @@ class Plan(Base):
     max_usuarios = Column(Integer, nullable=False, default=5)
     caracteristicas = Column(JSONB, nullable=True)  # {"feature1": true, "feature2": false}
     activo = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
 
     subscriptions = relationship("Subscription", back_populates="plan")
 
@@ -100,15 +101,18 @@ class EmpresaUsuario(Base):
     plan_tipo = Column(Enum(PlanType, values_callable=lambda obj: [e.value for e in obj]), default=PlanType.DEMO, nullable=False)
     
     # Trial: solo para plan DEMO
-    fecha_inicio_demo = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=True)
+    fecha_inicio_demo = Column(DateTime(timezone=True), default=utcnow, nullable=True)
     fecha_fin_demo = Column(DateTime(timezone=True), nullable=True)  # Seteado a hoy + 10 días en registro
     
+    # Facturación
+    invoice_counter = Column(Integer, default=0, nullable=False)
+
     # Control de acceso
     activa = Column(Boolean, default=True, nullable=False)
     deleted = Column(Boolean, default=False, nullable=False)
     
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     # Relationships
     usuarios = relationship("Usuario", back_populates="empresa_usuario")
@@ -144,8 +148,8 @@ class Subscription(Base):
     
     metadata_json = Column(JSONB, nullable=True)  # {last_payment_id, billing_email, etc}
     
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     # Relationships
     empresa_usuario = relationship("EmpresaUsuario", back_populates="subscription")
@@ -173,8 +177,8 @@ class PaymentAttempt(Base):
     webhook_url = Column(String(500), nullable=True)
     response_json = Column(JSONB, nullable=True)
     
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     # Relationships
     subscription = relationship("Subscription", back_populates="payment_attempts")
@@ -209,8 +213,8 @@ class ClienteCorporativo(Base):
     provincia = Column(String(100), nullable=True)
 
     activo = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     # Relationships
     empresa_usuario = relationship("EmpresaUsuario", back_populates="clientes_corporativos")
@@ -247,8 +251,8 @@ class Cliente(Base):
     motivo_blacklist = Column(Text, nullable=True)
 
     activo = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     # Relationships
     empresa_usuario = relationship("EmpresaUsuario", back_populates="clientes")
@@ -295,8 +299,8 @@ class Room(Base):
     particularidades = Column(JSONB, nullable=True)  # {"jacuzzi":true,...}
     activo = Column(Boolean, default=True, nullable=False)
 
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     tipo = relationship("RoomType")
     empresa_usuario = relationship("EmpresaUsuario", back_populates="habitaciones")
@@ -314,7 +318,7 @@ class RatePlan(Base):
     reglas = Column(JSONB, nullable=True)
 
     activo = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
 
 
 class DailyRate(Base):
@@ -375,8 +379,8 @@ class Reservation(Base):
     # Snapshot opcional: datos para reconstruir rápido sin 50 joins
     meta = Column(JSONB, nullable=True)
 
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     cliente = relationship("Cliente")
     empresa = relationship("ClienteCorporativo", foreign_keys=[empresa_id])
@@ -439,7 +443,7 @@ class ReservationGuest(Base):
     # principal | adulto | menor
     rol = Column(String(20), nullable=False)
 
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
 
     reservation = relationship("Reservation", back_populates="guests")
     cliente = relationship("Cliente")
@@ -465,8 +469,8 @@ class Stay(Base):
 
     notas_internas = Column(Text, nullable=True)
 
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     reservation = relationship("Reservation")
     empresa_usuario = relationship("EmpresaUsuario", back_populates="stays")
@@ -537,7 +541,7 @@ class StayRoomOccupancy(Base):
 
     motivo = Column(String(120), nullable=True)  # upgrade, mantenimiento, error, etc.
     creado_por = Column(String(50), nullable=True)
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
 
     stay = relationship("Stay", back_populates="occupancies")
     room = relationship("Room")
@@ -563,7 +567,7 @@ class StayCharge(Base):
     monto_unitario = Column(Numeric(12, 2), nullable=False)
     monto_total = Column(Numeric(12, 2), nullable=False)
 
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
     creado_por = Column(String(50), nullable=True)
 
     stay = relationship("Stay", back_populates="charges")
@@ -587,7 +591,7 @@ class StayPayment(Base):
     referencia = Column(String(120), nullable=True)
     es_reverso = Column(Boolean, default=False, nullable=False)
 
-    timestamp = Column(DateTime(timezone=True), default=datetime.utcnow)
+    timestamp = Column(DateTime(timezone=True), default=utcnow)
     usuario = Column(String(50), nullable=True)
     notas = Column(Text, nullable=True)
 
@@ -604,7 +608,7 @@ class HKTemplate(Base):
     minibar_default = Column(JSON, nullable=True)
 
     activo = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
 
 
 class HousekeepingTask(Base):
@@ -641,8 +645,8 @@ class HousekeepingTask(Base):
     notes = Column(Text, nullable=True)
     meta = Column(JSONB, nullable=True)
 
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     room = relationship("Room")
     stay = relationship("Stay")
@@ -678,8 +682,8 @@ class HKCycle(Base):
     minibar_snapshot = Column(JSON, nullable=True)
     notas = Column(Text, nullable=True)
 
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     room = relationship("Room")
     stay = relationship("Stay")
@@ -700,7 +704,7 @@ class HKIncident(Base):
     descripcion = Column(Text, nullable=False)
     fotos_url = Column(JSON, nullable=True)
 
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
     created_by = Column(String(100), nullable=True)
 
     cycle = relationship("HKCycle", back_populates="incidents")
@@ -716,7 +720,7 @@ class HKLostItem(Base):
     descripcion = Column(Text, nullable=False)
     lugar = Column(String(150), nullable=True)
     entregado_a = Column(String(120), nullable=True)
-    fecha_hallazgo = Column(DateTime(timezone=True), default=datetime.utcnow)
+    fecha_hallazgo = Column(DateTime(timezone=True), default=utcnow)
 
     created_by = Column(String(100), nullable=True)
 
@@ -744,7 +748,7 @@ class MaintenanceTicket(Base):
     creado_por = Column(String(50), nullable=True)
     asignado_a = Column(String(100), nullable=True)
 
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
     closed_at = Column(DateTime(timezone=True), nullable=True)
 
     room = relationship("Room")
@@ -767,7 +771,7 @@ class AuditEvent(Base):
     action = Column(String(50), nullable=False)  # CHECKIN, CHECKOUT, ROOM_MOVE, PAYMENT, UPDATE...
     usuario = Column(String(50), nullable=True)
 
-    timestamp = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    timestamp = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     descripcion = Column(Text, nullable=True)
     payload = Column(JSONB, nullable=True)
     ip_address = Column(String(45), nullable=True)
@@ -789,7 +793,7 @@ class DailyCleanLog(Base):
     room_id = Column(Integer, ForeignKey("rooms.id", ondelete="RESTRICT"), nullable=False)
     date = Column(Date, nullable=False)
     user_id = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
-    completed_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    completed_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     notes = Column(Text, nullable=True)
 
     room = relationship("Room")
@@ -811,9 +815,30 @@ class HotelSettings(Base):
     auto_extend_stays = Column(Boolean, default=True, nullable=False)
     timezone = Column(String(50), default="America/Argentina/Buenos_Aires", nullable=False)
     overstay_price = Column(Numeric(10, 2), nullable=True)
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
+    # Documentos requeridos en check-in (ej: ["DNI", "Pasaporte"])
+    documentos_requeridos = Column(JSONB, default=list, nullable=True)
+
+    # Datos fiscales para facturas
+    nombre_fiscal = Column(String(200), nullable=True)
+    direccion_fiscal = Column(Text, nullable=True)
+    iva_porcentaje = Column(Numeric(5, 2), default=21.0)
+    moneda_simbolo = Column(String(10), default="$")
+    logo_url = Column(String(500), nullable=True)
+
+    # Config SMTP por tenant
+    smtp_host = Column(String(200), nullable=True)
+    smtp_port = Column(Integer, nullable=True)
+    smtp_user = Column(String(200), nullable=True)
+    smtp_password_encrypted = Column(String(500), nullable=True)
+    smtp_from_email = Column(String(200), nullable=True)
+
+    # Feature flags
+    housekeeping_enabled = Column(Boolean, default=False, nullable=False)
+
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
     empresa_usuario = relationship("EmpresaUsuario", back_populates="hotel_settings")
 
 
@@ -855,7 +880,7 @@ class TransactionCategory(Base):
     descripcion = Column(Text, nullable=True)
     activo = Column(Boolean, default=True, nullable=False)
     es_sistema = Column(Boolean, default=False, nullable=False)  # No editable/eliminable si es True
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
 
     # Relationships
     empresa_usuario = relationship("EmpresaUsuario", back_populates="transaction_categories")
@@ -884,7 +909,7 @@ class Transaction(Base):
     metodo_pago = Column(Enum(PaymentMethod, name='payment_method', values_callable=lambda obj: [e.value for e in obj]), nullable=False)
     referencia = Column(String(255), nullable=True)  # Nro de comprobante, transferencia, etc.
     
-    fecha = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    fecha = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     usuario_id = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
     
     # Relaciones opcionales con entidades del sistema
@@ -902,7 +927,7 @@ class Transaction(Base):
     notas = Column(Text, nullable=True)
     es_automatica = Column(Boolean, default=False, nullable=False)  # True si fue generada por checkout/stripe
     metadata_json = Column(JSONB, nullable=True)  # {breakdown: [...], invoice_details, etc}
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
 
     # Relationships
     empresa_usuario = relationship("EmpresaUsuario", back_populates="transactions")
@@ -929,7 +954,7 @@ class CashClosing(Base):
     usuario_id = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
     
     fecha_apertura = Column(DateTime(timezone=True), nullable=False)
-    fecha_cierre = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    fecha_cierre = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     
     # Montos calculados por el sistema
     ingresos_sistema = Column(Numeric(12, 2), nullable=False, default=0)
@@ -941,7 +966,7 @@ class CashClosing(Base):
     diferencia = Column(Numeric(12, 2), nullable=False)  # efectivo_declarado - saldo_sistema
     
     notas = Column(Text, nullable=True)
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
 
     # Relationships
     empresa_usuario = relationship("EmpresaUsuario", back_populates="cash_closings")

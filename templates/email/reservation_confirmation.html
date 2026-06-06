@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><title>Confirmación de reserva</title></head>
+<body style="font-family: Arial, sans-serif; background:#f4f4f4; margin:0; padding:0;">
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr><td align="center" style="padding:40px 0;">
+      <table width="580" cellpadding="0" cellspacing="0" style="background:#ffffff; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+        <tr><td style="background:#059669; border-radius:8px 8px 0 0; padding:30px; text-align:center;">
+          <h1 style="color:#ffffff; margin:0; font-size:22px;">{{ hotel_nombre }}</h1>
+          <p style="color:#d1fae5; margin:8px 0 0;">✅ Reserva Confirmada</p>
+        </td></tr>
+        <tr><td style="padding:40px 50px;">
+          <h2 style="color:#111827; font-size:20px;">¡Tu reserva está confirmada!</h2>
+          <p style="color:#6b7280; font-size:15px; line-height:1.6;">Hola <strong>{{ huesped_nombre }}</strong>, te confirmamos tu reserva en {{ hotel_nombre }}.</p>
+          <table width="100%" style="background:#f9fafb; border-radius:6px; padding:20px; margin:20px 0;">
+            <tr><td style="padding:6px 0; color:#374151; font-size:14px;"><strong>Nº Reserva:</strong></td><td style="color:#1a56db; font-weight:bold;">#{{ reservation_id }}</td></tr>
+            <tr><td style="padding:6px 0; color:#374151; font-size:14px;"><strong>Check-in:</strong></td><td style="color:#374151;">{{ fecha_checkin }}</td></tr>
+            <tr><td style="padding:6px 0; color:#374151; font-size:14px;"><strong>Check-out:</strong></td><td style="color:#374151;">{{ fecha_checkout }}</td></tr>
+            <tr><td style="padding:6px 0; color:#374151; font-size:14px;"><strong>Habitación:</strong></td><td style="color:#374151;">{{ tipo_habitacion }}</td></tr>
+          </table>
+          <p style="color:#6b7280; font-size:14px;">El horario de check-in es a partir de las <strong>14:00 hs</strong>.</p>
+          <hr style="border:none; border-top:1px solid #e5e7eb; margin:30px 0;">
+          <p style="color:#9ca3af; font-size:12px; text-align:center;">© {{ year }} {{ hotel_nombre }}</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
