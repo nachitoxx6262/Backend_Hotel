@@ -3,6 +3,7 @@ Schemas Pydantic para el sistema de caja - Ingresos y Egresos
 """
 from typing import Optional
 from datetime import datetime
+from utils.datetime_utils import utcnow
 from decimal import Decimal
 from pydantic import BaseModel, Field, validator
 from enum import Enum
@@ -65,7 +66,7 @@ class TransactionBase(BaseModel):
     monto: Decimal = Field(..., gt=0, max_digits=12, decimal_places=2)
     metodo_pago: PaymentMethodEnum
     referencia: Optional[str] = Field(None, max_length=255)
-    fecha: datetime = Field(default_factory=datetime.utcnow)
+    fecha: datetime = Field(default_factory=utcnow)
     notas: Optional[str] = None
 
 

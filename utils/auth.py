@@ -4,6 +4,7 @@ Utilidades para autenticación JWT y manejo de contraseñas
 import os
 import secrets
 from datetime import datetime, timedelta
+from utils.datetime_utils import utcnow
 from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -83,13 +84,13 @@ def create_access_token(
         to_encode.update(extra_data)
     
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     
     to_encode.update({
         "exp": expire,
-        "iat": datetime.utcnow(),
+        "iat": utcnow(),
         "type": "access"
     })
     
@@ -113,11 +114,11 @@ def create_refresh_token(
         "es_super_admin": es_super_admin,
     }
     
-    expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    expire = utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     
     to_encode.update({
         "exp": expire,
-        "iat": datetime.utcnow(),
+        "iat": utcnow(),
         "type": "refresh"
     })
     
@@ -161,7 +162,7 @@ def verify_token(token: str, token_type: str = "access") -> dict:
         if exp is None:
             raise credentials_exception
         
-        if datetime.utcfromtimestamp(exp) < datetime.utcnow():
+        if datetime.utcfromtimestamp(exp) < utcnow():
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token expirado",

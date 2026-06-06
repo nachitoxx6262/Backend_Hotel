@@ -3,6 +3,7 @@ Dependencias de autenticación y autorización
 """
 from typing import Optional, List
 from datetime import datetime, timedelta
+from utils.datetime_utils import utcnow
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import text
@@ -87,8 +88,8 @@ async def get_current_user(
             )
     
     # Verificar si el usuario está bloqueado
-    if user.bloqueado_hasta and user.bloqueado_hasta > datetime.utcnow():
-        tiempo_restante = (user.bloqueado_hasta - datetime.utcnow()).seconds // 60
+    if user.bloqueado_hasta and user.bloqueado_hasta > utcnow():
+        tiempo_restante = (user.bloqueado_hasta - utcnow()).seconds // 60
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"Usuario bloqueado temporalmente. Intente en {tiempo_restante} minutos"
@@ -420,7 +421,7 @@ async def validate_trial_status(
         return True  # No es trial, es suscripción pagada
     
     # Verificar si el trial ha expirado
-    if tenant.fecha_fin_demo and datetime.utcnow() > tenant.fecha_fin_demo:
+    if tenant.fecha_fin_demo and utcnow() > tenant.fecha_fin_demo:
         return False
     
     return True
