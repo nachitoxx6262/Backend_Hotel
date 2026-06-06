@@ -15,6 +15,7 @@ import os
 import hmac
 import hashlib
 import json
+import time
 import logging
 from datetime import datetime
 from decimal import Decimal
@@ -208,17 +209,41 @@ async def mercadopago_webhook(
     except Exception:
         raise HTTPException(status_code=400, detail="Payload inválido")
 
-    # Verificar firma si hay secret configurado
-    if MP_WEBHOOK_SECRET:
-        signature = request.headers.get("x-signature", "")
-        expected = hmac.new(
-            MP_WEBHOOK_SECRET.encode(),
-            body,
-            hashlib.sha256,
-        ).hexdigest()
-        if not hmac.compare_digest(signature, expected):
-            log_event("mercadopago", "webhook", "Firma inválida", f"signature={signature[:20]}")
-            raise HTTPException(status_code=401, detail="Firma inválida")
+    # Verificación de firma del webhook — OBLIGATORIA.
+    # MP firma con el header x-signature: "ts=<ts>,v1=<hmac>", calculado sobre el
+    # manifest "id:<data.id>;request-id:<x-request-id>;ts:<ts>;".
+    # Sin secret no se puede verificar -> se rechaza (fail-closed).
+    if not MP_WEBHOOK_SECRET:
+        log_event("mercadopago", "webhook", "Rechazado: falta MERCADO_PAGO_WEBHOOK_SECRET", "")
+        raise HTTPException(status_code=503, detail="Webhook no configurado (falta secret)")
+
+    x_signature = request.headers.get("x-signature", "")
+    x_request_id = request.headers.get("x-request-id", "")
+    sig_parts = dict(p.split("=", 1) for p in x_signature.split(",") if "=" in p)
+    ts = sig_parts.get("ts", "").strip()
+    v1 = sig_parts.get("v1", "").strip()
+    # data.id viene como query param (?data.id=...) o en el body
+    data_id = str(
+        request.query_params.get("data.id")
+        or payload.get("data", {}).get("id", "")
+    )
+    if not (ts and v1 and data_id):
+        raise HTTPException(status_code=401, detail="Firma ausente o incompleta")
+
+    # Ventana anti-replay de 5 min (ts en segundos o ms).
+    try:
+        ts_int = int(ts)
+        ts_sec = ts_int / 1000 if ts_int > 1e11 else ts_int
+        if abs(time.time() - ts_sec) > 300:
+            raise HTTPException(status_code=401, detail="Firma expirada")
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Timestamp de firma inválido")
+
+    manifest = f"id:{data_id};request-id:{x_request_id};ts:{ts};"
+    expected = hmac.new(MP_WEBHOOK_SECRET.encode(), manifest.encode(), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected, v1):
+        log_event("mercadopago", "webhook", "Firma inválida", f"data_id={data_id}")
+        raise HTTPException(status_code=401, detail="Firma inválida")
 
     topic = payload.get("type") or payload.get("topic", "")
     log_event("mercadopago", "webhook", f"Notificación recibida tipo={topic}", str(payload)[:200])

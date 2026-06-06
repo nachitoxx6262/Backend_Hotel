@@ -286,15 +286,22 @@ def update_hotel_settings(
         if settings_data.smtp_password is not None:
             import os
             fernet_key = os.getenv("FERNET_KEY", "")
-            if fernet_key:
-                try:
-                    from cryptography.fernet import Fernet
-                    f = Fernet(fernet_key.encode())
-                    settings.smtp_password_encrypted = f.encrypt(settings_data.smtp_password.encode()).decode()
-                except Exception:
-                    settings.smtp_password_encrypted = settings_data.smtp_password
-            else:
-                settings.smtp_password_encrypted = settings_data.smtp_password
+            # Nunca persistir la contraseña SMTP en texto plano: si no se puede
+            # cifrar (sin FERNET_KEY o clave inválida), se rechaza el guardado.
+            if not fernet_key:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Servidor sin FERNET_KEY configurada — no se puede guardar la contraseña SMTP de forma segura.",
+                )
+            try:
+                from cryptography.fernet import Fernet
+                f = Fernet(fernet_key.encode())
+                settings.smtp_password_encrypted = f.encrypt(settings_data.smtp_password.encode()).decode()
+            except Exception:
+                raise HTTPException(
+                    status_code=500,
+                    detail="FERNET_KEY inválida — no se pudo cifrar la contraseña SMTP.",
+                )
 
         # Feature flags
         if settings_data.housekeeping_enabled is not None:

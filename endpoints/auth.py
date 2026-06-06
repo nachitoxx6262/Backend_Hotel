@@ -970,7 +970,10 @@ async def forgot_password(
         usuario.reset_token_expires = expires
         db.commit()
 
-        frontend_url = str(request.base_url).rstrip("/").replace(":8000", ":5173")
+        # No derivar la URL del frontend del request (Host header es manipulable
+        # -> password reset poisoning). Usar un valor configurado server-side.
+        import os
+        frontend_url = os.getenv("FRONTEND_URL", "https://hotel.cuneusdata.com").rstrip("/")
         reset_url = f"{frontend_url}/reset-password?token={token}"
 
         settings = None
