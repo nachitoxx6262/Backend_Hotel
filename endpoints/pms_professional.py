@@ -19,7 +19,7 @@ from models.core import (
     Reservation, ReservationRoom, ReservationGuest, Room, RoomType,
     Stay, StayRoomOccupancy, StayCharge, StayPayment,
     DailyRate, RatePlan, AuditEvent, Cliente, ClienteCorporativo,
-    HousekeepingTask
+    HousekeepingTask, HotelSettings
 )
 from models import Usuario
 from utils.logging_utils import log_event
@@ -271,10 +271,18 @@ def _get_is_high_priority(db: Session, room_id: int, target_date: date, tenant_i
     return incoming is not None
 
 def _auto_generate_daily_tasks(db: Session, target_date: date, tenant_id: int):
-    """Lógica interna para generar tareas diarias faltantes para habitaciones ocupadas"""
-    now = utcnow()
-    # Solo generar si ya pasamos la hora configurada (o si se fuerza, pero aquí automatizamos)
-    # if now.hour < HOUSEKEEPING_DAILY_GEN_HOUR: return
+    """Genera tareas de limpieza faltantes para habitaciones ocupadas, respetando el flag
+    housekeeping_enabled y la política de stayover del hotel:
+      - 'diaria'        -> limpieza todas las mañanas mientras esté ocupada
+      - 'solo_checkout' -> no se limpia hasta el checkout (no genera tarea diaria)
+      - 'cada_n_dias'   -> limpieza cada N noches transcurridas
+    El checkout siempre genera su tarea (más abajo), sin importar la política.
+    """
+    settings = db.query(HotelSettings).filter(HotelSettings.empresa_usuario_id == tenant_id).first()
+    if settings and not settings.housekeeping_enabled:
+        return  # módulo de limpieza desactivado: no se generan tareas
+    policy = (getattr(settings, "stayover_policy", None) or "diaria")
+    cada_n = (getattr(settings, "stayover_cada_n_dias", None) or 3)
 
     occ_rooms = (
         db.query(StayRoomOccupancy.room_id, Stay.id.label("stay_id"), Stay.reservation_id)
@@ -300,6 +308,16 @@ def _auto_generate_daily_tasks(db: Session, target_date: date, tenant_id: int):
             if stay_obj and room_obj:
                 upsert_checkout_task(db, stay_obj, room_obj)
             continue
+
+        # Habitación ocupada (sin checkout hoy): aplicar política de stayover
+        if policy == "solo_checkout":
+            continue
+        if policy == "cada_n_dias":
+            if not res:
+                continue
+            noches = (target_date - res.fecha_checkin).days
+            if noches <= 0 or (noches % cada_n) != 0:
+                continue
 
         existing = (
             db.query(HousekeepingTask)
