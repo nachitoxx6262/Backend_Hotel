@@ -289,6 +289,8 @@ class ReservacionDetail(BaseModel):
     fecha_fin: datetime
     estado: str
     monto: float
+    pagado: float = 0       # total pagado de la(s) estadía(s) de la reserva
+    pendiente: float = 0    # saldo pendiente (monto - pagado)
 
 
 class EmpresaDetallesResponse(BaseModel):
@@ -404,8 +406,9 @@ def get_empresa_detalles(
             first_room = res.rooms[0].room if res.rooms[0].room else None
             habitacion_numero = getattr(first_room, "numero", None)
         
-        # Calcular monto sumando cargos de las stays vinculadas a la reserva
+        # Calcular monto, pagado y pendiente sumando cargos y pagos de las stays de la reserva
         monto_total = 0
+        pagado_total = 0
         stay_id_principal = None
         stays_reserva = db.query(Stay).filter(
             Stay.reservation_id == res.id,
@@ -415,7 +418,10 @@ def get_empresa_detalles(
             if stay_id_principal is None:
                 stay_id_principal = stay.id  # Usar la primera estadía encontrada
             monto_total += sum(float(c.monto_total or 0) for c in stay.charges)
-        
+            pagado_total += sum(float(p.monto or 0) for p in stay.payments if not p.es_reverso)
+
+        pendiente_total = round(monto_total - pagado_total, 2)
+
         reservaciones_list.append(ReservacionDetail(
             id=res.id,
             stay_id=stay_id_principal,
@@ -424,7 +430,9 @@ def get_empresa_detalles(
             fecha_inicio=res.fecha_checkin,
             fecha_fin=res.fecha_checkout,
             estado=res.estado,
-            monto=monto_total
+            monto=monto_total,
+            pagado=round(pagado_total, 2),
+            pendiente=pendiente_total
         ))
 
     return EmpresaDetallesResponse(

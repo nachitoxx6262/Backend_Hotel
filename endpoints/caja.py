@@ -286,6 +286,7 @@ async def get_transactions(
     tipo: Optional[TransactionTypeEnum] = None,
     category_id: Optional[int] = None,
     metodo_pago: Optional[PaymentMethodEnum] = None,
+    search: Optional[str] = None,
     incluir_anuladas: bool = False,
     limit: int = Query(100, le=1000),
     offset: int = 0,
@@ -294,7 +295,9 @@ async def get_transactions(
 ):
     """
     Lista transacciones con filtros opcionales y paginación.
-    Retorna {items: [...], total: N} para paginación correcta en el frontend.
+    Retorna {items, total, offset, limit, totales:{ingresos,egresos}}. La búsqueda y los
+    totales se calculan en el servidor sobre TODO el dataset filtrado (no solo la página),
+    para que paginación y cifras del resumen sean correctas.
     """
     try:
         if not current_user.empresa_usuario_id:
@@ -322,6 +325,26 @@ async def get_transactions(
 
         if metodo_pago:
             query = query.filter(Transaction.metodo_pago == metodo_pago.value)
+
+        if search and search.strip():
+            s = f"%{search.strip()}%"
+            query = query.filter(or_(
+                Transaction.referencia.ilike(s),
+                Transaction.notas.ilike(s),
+                Transaction.category.has(TransactionCategory.nombre.ilike(s)),
+                Transaction.usuario.has(Usuario.username.ilike(s)),
+                Transaction.cliente.has(or_(Cliente.nombre.ilike(s), Cliente.apellido.ilike(s))),
+            ))
+
+        # Totales sobre TODO el dataset filtrado (excluyendo anuladas), no solo la página.
+        # Se derivan de `query` ANTES de aplicarle el filtro de anuladas o la paginación.
+        totales_q = query.filter(Transaction.anulada == False)
+        total_ingresos = totales_q.filter(
+            Transaction.tipo == TransactionType.INGRESO.value
+        ).with_entities(func.coalesce(func.sum(Transaction.monto), 0)).scalar() or Decimal("0.00")
+        total_egresos = totales_q.filter(
+            Transaction.tipo == TransactionType.EGRESO.value
+        ).with_entities(func.coalesce(func.sum(Transaction.monto), 0)).scalar() or Decimal("0.00")
 
         if not incluir_anuladas:
             query = query.filter(Transaction.anulada == False)
@@ -363,7 +386,13 @@ async def get_transactions(
             }
             items.append(TransactionResponse(**trans_dict))
 
-        return {"items": items, "total": total, "offset": offset, "limit": limit}
+        return {
+            "items": items,
+            "total": total,
+            "offset": offset,
+            "limit": limit,
+            "totales": {"ingresos": total_ingresos, "egresos": total_egresos},
+        }
 
     except HTTPException:
         raise
