@@ -18,11 +18,15 @@ class TransactionTypeEnum(str, Enum):
 
 
 class PaymentMethodEnum(str, Enum):
-    """Métodos de pago"""
+    """Métodos de pago. Debe mantenerse en sincronía con models.core.PaymentMethod;
+    si falta un valor, TransactionResponse falla al serializar (500 al listar caja)."""
     EFECTIVO = "efectivo"
     TRANSFERENCIA = "transferencia"
     TARJETA = "tarjeta"
+    TARJETA_CREDITO = "tarjeta_credito"
+    TARJETA_DEBITO = "tarjeta_debito"
     CHEQUE = "cheque"
+    QR = "qr"
     OTRO = "otro"
 
 
