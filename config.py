@@ -20,6 +20,10 @@ RETRY_DELAY_SECONDS = 300  # 5 minutes
 # Feature Flags
 ENABLE_STRIPE_TESTING = os.getenv("ENABLE_STRIPE_TESTING", "false").lower() == "true"
 
+# Housekeeping: token secreto para el cron de generación de tareas (endpoint interno).
+# Si está vacío, el endpoint de cron responde 503 (deshabilitado).
+HOUSEKEEPING_CRON_TOKEN = os.getenv("HOUSEKEEPING_CRON_TOKEN", "")
+
 # Import stripe if available
 try:
     import stripe

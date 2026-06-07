@@ -8,7 +8,7 @@ from utils.datetime_utils import utcnow
 from typing import List, Optional
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Path, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Path, status, Header
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy import and_, or_, func
@@ -407,6 +407,36 @@ def generate_daily_tasks_endpoint(
         raise HTTPException(401, "Usuario no autenticado o sin tenant asociado")
     _auto_generate_daily_tasks(db, target_date, tenant_id)
     return {"message": "Tareas generadas", "date": target_date.isoformat()}
+
+
+@router.post("/housekeeping/cron/generate-daily")
+def cron_generate_daily(
+    x_cron_token: Optional[str] = Header(None),
+    db: Session = Depends(get_db),
+):
+    """Endpoint interno para el cron del SO: genera las tareas de limpieza del día para TODOS
+    los hoteles con el módulo activo. Protegido por token secreto (header X-Cron-Token), no por
+    usuario, para poder llamarlo desde crontab sin JWT. Idempotente."""
+    from config import HOUSEKEEPING_CRON_TOKEN
+    if not HOUSEKEEPING_CRON_TOKEN:
+        raise HTTPException(status_code=503, detail="Cron de housekeeping no configurado")
+    if x_cron_token != HOUSEKEEPING_CRON_TOKEN:
+        raise HTTPException(status_code=403, detail="Token de cron inválido")
+
+    target_date = utcnow().date()
+    tenants = db.query(HotelSettings.empresa_usuario_id).filter(
+        HotelSettings.housekeeping_enabled == True
+    ).all()
+    procesados = 0
+    for (tid,) in tenants:
+        try:
+            _auto_generate_daily_tasks(db, target_date, tid)  # hace su propio commit
+            procesados += 1
+        except Exception as e:
+            db.rollback()
+            log_event("housekeeping", "cron", "Error generando tareas", f"tenant={tid}, error={str(e)}")
+    log_event("housekeeping", "cron", "Generación diaria ejecutada", f"hoteles={procesados}, fecha={target_date}")
+    return {"status": "ok", "tenants_processed": procesados, "date": target_date.isoformat()}
 
 
 @router.get("/housekeeping/board")
