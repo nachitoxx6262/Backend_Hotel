@@ -1,7 +1,7 @@
 """
 Endpoints de Caja - Sistema de Ingresos y Egresos
 """
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from utils.datetime_utils import utcnow
 from typing import List, Optional
 from decimal import Decimal
@@ -496,9 +496,10 @@ async def annul_transaction(
     db: Session = Depends(conexion.get_db)
 ):
     """
-    Anula una transacción existente.
-    Crea automáticamente una transacción de ajuste (movimiento opuesto).
-    Solo administradores y gerentes.
+    Anula una transacción existente (modelo "void").
+    La transacción anulada queda excluida de resúmenes, cierres y exportaciones
+    (todos filtran anulada == False), por lo que el saldo se corrige sin necesidad
+    de un movimiento de ajuste opuesto. Solo administradores y gerentes.
     """
     try:
         # Buscar transacción
@@ -506,74 +507,36 @@ async def annul_transaction(
             Transaction.id == transaction_id,
             Transaction.empresa_usuario_id == current_user.empresa_usuario_id
         ).first()
-        
+
         if not transaction:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Transacción no encontrada"
             )
-        
+
         if transaction.anulada:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="La transacción ya está anulada"
             )
-        
-        # Crear transacción de ajuste (opuesta)
-        tipo_opuesto = TransactionType.EGRESO if transaction.tipo == TransactionType.INGRESO else TransactionType.INGRESO
-        
-        # Buscar categoría "Ajuste" o crear una genérica
-        categoria_ajuste = db.query(TransactionCategory).filter(
-            TransactionCategory.empresa_usuario_id == current_user.empresa_usuario_id,
-            TransactionCategory.nombre == "Anulación/Ajuste",
-            TransactionCategory.tipo == tipo_opuesto.value if isinstance(tipo_opuesto, TransactionType) else tipo_opuesto
-        ).first()
-        
-        if not categoria_ajuste:
-            # Crear categoría de ajuste
-            categoria_ajuste = TransactionCategory(
-                empresa_usuario_id=current_user.empresa_usuario_id,
-                nombre="Anulación/Ajuste",
-                tipo=tipo_opuesto.value if hasattr(tipo_opuesto, 'value') else tipo_opuesto,
-                descripcion="Categoría automática para anulaciones",
-                activo=True,
-                es_sistema=True
-            )
-            db.add(categoria_ajuste)
-            db.flush()
-        
-        # Crear movimiento de ajuste
-        ajuste_transaction = Transaction(
-            empresa_usuario_id=current_user.empresa_usuario_id,
-            tipo=tipo_opuesto.value if hasattr(tipo_opuesto, 'value') else tipo_opuesto,
-            category_id=categoria_ajuste.id,
-            monto=transaction.monto,
-            metodo_pago=transaction.metodo_pago,
-            referencia=f"Anulación de transacción #{transaction.id}",
-            fecha=utcnow(),
-            usuario_id=current_user.id,
-            notas=f"Movimiento de ajuste por anulación. Motivo: {annul_data.motivo_anulacion}",
-            es_automatica=True
-        )
-        
-        db.add(ajuste_transaction)
-        db.flush()
-        
-        # Marcar transacción original como anulada
+
+        # Marcar transacción original como anulada.
+        # No se crea un movimiento de ajuste opuesto: como los resúmenes/cierres/
+        # exportaciones excluyen las anuladas, crear el ajuste contaría el monto dos
+        # veces (la original se excluye Y el ajuste se suma) y descuadraría la caja.
         transaction.anulada = True
         transaction.anulada_por_id = current_user.id
         transaction.anulada_fecha = utcnow()
         transaction.motivo_anulacion = annul_data.motivo_anulacion
-        transaction.transaction_anulacion_id = ajuste_transaction.id
-        
+
         db.commit()
         db.refresh(transaction)
-        
+
         log_event(
             "caja",
             current_user.username,
             f"Transacción anulada",
-            f"id={transaction.id}, ajuste_id={ajuste_transaction.id}"
+            f"id={transaction.id}"
         )
         
         # Enriquecer respuesta
@@ -815,6 +778,8 @@ async def create_cash_closing(
     """
     Crea un cierre de caja para el turno del usuario.
     Calcula automáticamente ingresos/egresos y diferencia con efectivo declarado.
+    Solo contabiliza el efectivo del propio cajero (usuario que cierra), no el de
+    todo el hotel, y evita cierres solapados que recontarían el mismo efectivo.
     """
     try:
         if not current_user.empresa_usuario_id:
@@ -822,12 +787,42 @@ async def create_cash_closing(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Usuario no pertenece a ningún hotel"
             )
-        
-        # Calcular totales del sistema para el período
+
+        # Normalizar fecha de apertura a UTC naive para que sea comparable con las
+        # fechas almacenadas (utcnow() guarda datetimes naive en UTC).
+        fecha_apertura = closing_data.fecha_apertura
+        if fecha_apertura.tzinfo is not None:
+            fecha_apertura = fecha_apertura.astimezone(timezone.utc).replace(tzinfo=None)
+
+        fecha_cierre = utcnow()
+        if fecha_apertura > fecha_cierre:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="La fecha de apertura no puede ser posterior a la hora actual"
+            )
+
+        # Evitar cierres solapados: la apertura debe ser posterior al último cierre
+        # del mismo cajero, de lo contrario se recontaría efectivo ya arqueado.
+        last_closing = db.query(CashClosing).filter(
+            CashClosing.empresa_usuario_id == current_user.empresa_usuario_id,
+            CashClosing.usuario_id == current_user.id
+        ).order_by(CashClosing.fecha_cierre.desc()).first()
+
+        if last_closing and fecha_apertura < last_closing.fecha_cierre:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "El período se solapa con un cierre anterior. La apertura debe ser "
+                    f"posterior al último cierre ({last_closing.fecha_cierre})."
+                )
+            )
+
+        # Calcular totales del sistema para el período (solo efectivo del propio cajero)
         transactions = db.query(Transaction).filter(
             Transaction.empresa_usuario_id == current_user.empresa_usuario_id,
-            Transaction.fecha >= closing_data.fecha_apertura,
-            Transaction.fecha <= utcnow(),
+            Transaction.usuario_id == current_user.id,
+            Transaction.fecha >= fecha_apertura,
+            Transaction.fecha <= fecha_cierre,
             Transaction.anulada == False,
             Transaction.metodo_pago == PaymentMethod.EFECTIVO  # Solo efectivo
         ).all()
@@ -847,8 +842,8 @@ async def create_cash_closing(
         new_closing = CashClosing(
             empresa_usuario_id=current_user.empresa_usuario_id,
             usuario_id=current_user.id,
-            fecha_apertura=closing_data.fecha_apertura,
-            fecha_cierre=utcnow(),
+            fecha_apertura=fecha_apertura,
+            fecha_cierre=fecha_cierre,
             ingresos_sistema=ingresos_sistema,
             egresos_sistema=egresos_sistema,
             saldo_sistema=saldo_sistema,
@@ -1117,9 +1112,10 @@ async def get_stay_transactions(
                 "subscription_id": t.subscription_id,
                 "cliente_id": t.cliente_id,
                 "anulada": t.anulada,
-                "fecha_anulacion": t.fecha_anulacion,
-                "usuario_anulacion_id": t.usuario_anulacion_id,
+                "anulada_por_id": t.anulada_por_id,
+                "anulada_fecha": t.anulada_fecha,
                 "motivo_anulacion": t.motivo_anulacion,
+                "transaction_anulacion_id": t.transaction_anulacion_id,
                 "es_automatica": t.es_automatica,
                 "created_at": t.created_at,
                 "notas": t.notas,

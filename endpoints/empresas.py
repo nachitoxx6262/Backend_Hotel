@@ -7,11 +7,12 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
+from sqlalchemy.exc import IntegrityError
 from pydantic import BaseModel, Field, field_serializer, EmailStr
 
 from database.conexion import get_db
 from models.core import ClienteCorporativo, Reservation, Stay, StayCharge, Room, RoomType
-from utils.dependencies import get_current_user
+from utils.dependencies import get_current_user, require_admin_or_manager
 
 router = APIRouter(prefix="/empresas", tags=["Empresas"])
 
@@ -100,7 +101,7 @@ def list_deleted_empresas(
 def create_empresa(
     data: EmpresaCreate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_admin_or_manager)
 ):
     """Crear nueva empresa"""
     if not current_user or not current_user.empresa_usuario_id:
@@ -131,7 +132,11 @@ def create_empresa(
     )
 
     db.add(empresa)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Ya existe una empresa registrada con este CUIT")
     db.refresh(empresa)
     return empresa
 
@@ -141,7 +146,7 @@ def update_empresa(
     empresa_id: int = Path(..., gt=0),
     data: EmpresaUpdate = ...,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_admin_or_manager)
 ):
     """Actualizar empresa"""
     if not current_user or not current_user.empresa_usuario_id:
@@ -187,7 +192,11 @@ def update_empresa(
     if data.activo is not None:
         empresa.activo = data.activo
 
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Ya existe una empresa registrada con este CUIT")
     db.refresh(empresa)
     return empresa
 
@@ -196,7 +205,7 @@ def update_empresa(
 def delete_empresa(
     empresa_id: int = Path(..., gt=0),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_admin_or_manager)
 ):
     """Eliminar (soft delete) empresa"""
     if not current_user or not current_user.empresa_usuario_id:
@@ -219,7 +228,7 @@ def delete_empresa(
 def restore_empresa(
     empresa_id: int = Path(..., gt=0),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_admin_or_manager)
 ):
     """Restaurar empresa eliminada"""
     if not current_user or not current_user.empresa_usuario_id:

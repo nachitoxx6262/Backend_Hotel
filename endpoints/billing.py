@@ -24,7 +24,7 @@ from schemas.billing import (
 from utils.dependencies import get_current_user, require_admin_or_manager
 from utils.tenant_middleware import check_trial_expiration, is_trial_write_blocked
 from utils.logging_utils import log_event
-from config import STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET, get_stripe_client, is_stripe_configured
+from config import STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET, get_stripe_client, is_stripe_configured, ENABLE_STRIPE_TESTING
 
 
 router = APIRouter(prefix="/billing", tags=["Billing"])
@@ -174,42 +174,6 @@ async def get_subscription_status(
 
 
 
-@router.get("/payment-history")
-async def get_payment_history(
-    limit: int = 10,
-    current_user: Usuario = Depends(get_current_user),
-    db: Session = Depends(conexion.get_db)
-):
-    """Historial de pagos de la suscripción del tenant (últimos `limit`)."""
-    try:
-        if current_user.es_super_admin or not current_user.empresa_usuario_id:
-            return {"items": []}
-        subscription = db.query(Subscription).filter_by(
-            empresa_usuario_id=current_user.empresa_usuario_id
-        ).first()
-        if not subscription:
-            return {"items": []}
-        limit = max(1, min(limit, 100))
-        pagos = db.query(PaymentAttempt).filter_by(
-            subscription_id=subscription.id
-        ).order_by(PaymentAttempt.created_at.desc()).limit(limit).all()
-        return {
-            "items": [
-                {
-                    "id": p.id,
-                    "monto": float(p.monto),
-                    "estado": p.estado.value if p.estado else None,
-                    "proveedor": p.proveedor.value if p.proveedor else None,
-                    "created_at": p.created_at.isoformat() if p.created_at else None,
-                }
-                for p in pagos
-            ]
-        }
-    except Exception as e:
-        log_event("billing", current_user.username, "Error al obtener historial de pagos", f"error={str(e)}")
-        return {"items": []}
-
-
 # ========== POST ENDPOINTS ==========
 
 @router.post("/upgrade", response_model=UpgradeResponse)
@@ -265,7 +229,7 @@ async def upgrade_plan(
         
         # Actualizar subscription
         subscription.plan_id = nuevo_plan.id
-        subscription.estado = SubscriptionStatus.ACTIVE
+        subscription.estado = SubscriptionStatus.ACTIVO
         subscription.fecha_proxima_renovacion = utcnow() + timedelta(days=30)
         
         db.commit()
@@ -352,7 +316,7 @@ async def cancel_subscription(
                 empresa.fecha_fin_demo = ahora + timedelta(days=10)
                 
                 subscription.plan_id = plan_demo.id
-                subscription.estado = SubscriptionStatus.ACTIVE
+                subscription.estado = SubscriptionStatus.ACTIVO
                 subscription.fecha_proxima_renovacion = ahora + timedelta(days=10)
             
             db.commit()
@@ -630,9 +594,19 @@ async def stripe_webhook(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Invalid signature"
                 )
-        else:
-            # En modo demo, parse manual
+        elif ENABLE_STRIPE_TESTING:
+            # Solo para pruebas locales explícitas (ENABLE_STRIPE_TESTING=true):
+            # parse manual sin verificación de firma.
             event = json.loads(payload)
+        else:
+            # Stripe no configurado y testing deshabilitado: no se puede verificar la
+            # autenticidad del webhook. Rechazar para evitar que un POST forjado active
+            # planes gratis o modifique suscripciones de cualquier empresa.
+            log_event("billing", "webhook", "Webhook rechazado (Stripe no configurado)", "")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Webhook no disponible: proveedor de pagos no configurado"
+            )
         
         # ========== PROCESAR EVENTOS ==========
         
@@ -689,7 +663,23 @@ async def _handle_payment_succeeded(intent: Dict[str, Any], db: Session):
                 f"intent_id={intent['id']}"
             )
             return
-        
+
+        # Idempotencia: Stripe reintenta los webhooks. Si este intent ya se procesó
+        # con éxito, no volver a crear PaymentAttempt ni transacción de caja (evita
+        # doble cobro / doble ingreso).
+        already_processed = db.query(PaymentAttempt).filter_by(
+            external_id=intent["id"],
+            estado=PaymentStatus.EXITOSO
+        ).first()
+        if already_processed:
+            log_event(
+                "billing",
+                "webhook",
+                "Payment intent ya procesado (idempotencia)",
+                f"intent_id={intent['id']}"
+            )
+            return
+
         # Obtener plan y subscription
         plan = db.query(Plan).filter_by(
             nombre=PlanType(plan_type)

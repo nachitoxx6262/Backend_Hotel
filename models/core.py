@@ -192,7 +192,7 @@ class ClienteCorporativo(Base):
     """Empresas clientes que reservan en el hotel (ej: Coca Cola, Mercedes)"""
     __tablename__ = "cliente_corporativo"
     __table_args__ = (
-        UniqueConstraint("cuit", name="uq_cliente_corporativo_cuit"),
+        UniqueConstraint("empresa_usuario_id", "cuit", name="uq_cliente_corporativo_cuit_empresa"),
         Index("idx_cliente_corporativo_nombre", "nombre"),
         Index("idx_cliente_corporativo_empresa_usuario", "empresa_usuario_id"),
     )
@@ -224,7 +224,7 @@ class ClienteCorporativo(Base):
 class Cliente(Base):
     __tablename__ = "clientes"
     __table_args__ = (
-        UniqueConstraint("tipo_documento", "numero_documento", name="uq_doc"),
+        UniqueConstraint("empresa_usuario_id", "tipo_documento", "numero_documento", name="uq_doc_empresa"),
         Index("idx_cliente_email", "email"),
         Index("idx_cliente_telefono", "telefono"),
         Index("idx_cliente_empresa", "empresa_usuario_id"),

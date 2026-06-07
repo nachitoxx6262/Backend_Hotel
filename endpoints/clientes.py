@@ -2,6 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
+from sqlalchemy.exc import IntegrityError
 from pydantic import BaseModel, EmailStr
 from datetime import datetime, date
 
@@ -149,7 +150,11 @@ def create_cliente(cliente: ClienteCreate, db: Session = Depends(get_db), curren
 
     db_cliente = Cliente(**cliente.dict(), empresa_usuario_id=tenant_id)
     db.add(db_cliente)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Ya existe un cliente con ese documento")
     db.refresh(db_cliente)
     return db_cliente
 

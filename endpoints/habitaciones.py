@@ -6,12 +6,13 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, or_, func
+from sqlalchemy.exc import IntegrityError
 from pydantic import BaseModel, Field, field_validator
 
 from database import conexion
-from models.core import Room, RoomType, Reservation, ReservationRoom
+from models.core import Room, RoomType, Reservation, ReservationRoom, Stay, StayRoomOccupancy
 from utils.logging_utils import log_event
-from utils.dependencies import get_current_user
+from utils.dependencies import get_current_user, require_admin_or_manager
 
 router = APIRouter(prefix="/api/rooms", tags=["rooms"])
 
@@ -146,7 +147,7 @@ async def list_room_types(
         ).scalar()
         result.append({
             "id": tipo.id, "nombre": tipo.nombre, "descripcion": tipo.descripcion,
-            "capacidad": tipo.capacidad, "precio_base": float(tipo.precio_base) if tipo.precio_base else None,
+            "capacidad": tipo.capacidad, "precio_base": float(tipo.precio_base) if tipo.precio_base is not None else None,
             "amenidades": tipo.amenidades or [], "activo": tipo.activo, "cantidad_habitaciones": cantidad or 0
         })
     return result
@@ -155,7 +156,7 @@ async def list_room_types(
 async def create_room_type(
     room_type: RoomTypeCreate,
     db: Session = Depends(conexion.get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_admin_or_manager)
 ):
     if not current_user or not current_user.empresa_usuario_id:
         raise HTTPException(status_code=401, detail="No autenticado o sin tenant asociado")
@@ -163,10 +164,14 @@ async def create_room_type(
     tenant_id = current_user.empresa_usuario_id
     nueva = RoomType(**room_type.dict(), empresa_usuario_id=tenant_id)
     db.add(nueva)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail=f"Ya existe un tipo de habitación con el nombre '{room_type.nombre}'")
     db.refresh(nueva)
     result = {**room_type.dict(), "id": nueva.id, "cantidad_habitaciones": 0}
-    if result.get('precio_base'):
+    if result.get('precio_base') is not None:
         result['precio_base'] = float(result['precio_base'])
     return result
 
@@ -175,7 +180,7 @@ async def update_room_type(
     type_id: int,
     room_type: RoomTypeUpdate,
     db: Session = Depends(conexion.get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_admin_or_manager)
 ):
     if not current_user or not current_user.empresa_usuario_id:
         raise HTTPException(status_code=401, detail="No autenticado o sin tenant asociado")
@@ -192,10 +197,14 @@ async def update_room_type(
     update_data = room_type.dict(exclude_unset=True)
     for field, value in update_data.items():
         setattr(tipo, field, value)
-    
-    db.commit()
+
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Ya existe un tipo de habitación con ese nombre")
     db.refresh(tipo)
-    
+
     cantidad = db.query(func.count(Room.id)).filter(
         and_(
             Room.room_type_id == tipo.id,
@@ -206,7 +215,7 @@ async def update_room_type(
     
     return {
         "id": tipo.id, "nombre": tipo.nombre, "descripcion": tipo.descripcion,
-        "capacidad": tipo.capacidad, "precio_base": float(tipo.precio_base) if tipo.precio_base else None,
+        "capacidad": tipo.capacidad, "precio_base": float(tipo.precio_base) if tipo.precio_base is not None else None,
         "amenidades": tipo.amenidades or [], "activo": tipo.activo, "cantidad_habitaciones": cantidad or 0
     }
 
@@ -214,7 +223,7 @@ async def update_room_type(
 async def delete_room_type(
     type_id: int,
     db: Session = Depends(conexion.get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_admin_or_manager)
 ):
     if not current_user or not current_user.empresa_usuario_id:
         raise HTTPException(status_code=401, detail="No autenticado o sin tenant asociado")
@@ -248,17 +257,23 @@ async def delete_room_type(
 async def list_rooms(
     db: Session = Depends(conexion.get_db),
     activas_solo: bool = Query(True),
+    room_type_id: Optional[int] = Query(None),
+    estado: Optional[str] = Query(None),
     current_user = Depends(get_current_user)
 ):
     if not current_user or not current_user.empresa_usuario_id:
         raise HTTPException(status_code=401, detail="No autenticado o sin tenant asociado")
-    
+
     tenant_id = current_user.empresa_usuario_id
     query = db.query(Room).options(joinedload(Room.tipo)).filter(
         Room.empresa_usuario_id == tenant_id
     )
     if activas_solo:
         query = query.filter(Room.activo == True)
+    if room_type_id:
+        query = query.filter(Room.room_type_id == room_type_id)
+    if estado:
+        query = query.filter(Room.estado_operativo == estado)
     habitaciones = query.all()
     result = []
     for hab in habitaciones:
@@ -278,7 +293,7 @@ async def update_room(
     room_id: int,
     room: RoomUpdate,
     db: Session = Depends(conexion.get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_admin_or_manager)
 ):
     if not current_user or not current_user.empresa_usuario_id:
         raise HTTPException(status_code=401, detail="No autenticado o sin tenant asociado")
@@ -306,7 +321,11 @@ async def update_room(
     for field, value in update_data.items():
         setattr(db_room, field, value)
 
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Ya existe una habitación con ese número")
     db.refresh(db_room)
     db.refresh(db_room.tipo)
 
@@ -330,7 +349,7 @@ async def update_room(
 async def delete_room(
     room_id: int,
     db: Session = Depends(conexion.get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_admin_or_manager)
 ):
     if not current_user or not current_user.empresa_usuario_id:
         raise HTTPException(status_code=401, detail="No autenticado o sin tenant asociado")
@@ -343,16 +362,46 @@ async def delete_room(
     if not db_room:
         raise HTTPException(status_code=404, detail="Habitación no encontrada o no pertenece a tu empresa")
 
+    # No permitir eliminar una habitación actualmente ocupada (ocupación real abierta:
+    # StayRoomOccupancy.hasta IS NULL con una estadía no cerrada).
+    ocupacion_activa = db.query(StayRoomOccupancy.id).join(
+        Stay, Stay.id == StayRoomOccupancy.stay_id
+    ).filter(
+        StayRoomOccupancy.room_id == room_id,
+        StayRoomOccupancy.hasta.is_(None),
+        Stay.estado != "cerrada"
+    ).first()
+    if ocupacion_activa or db_room.estado_operativo == "ocupada":
+        raise HTTPException(
+            status_code=409,
+            detail="No se puede eliminar: la habitación está ocupada actualmente"
+        )
+
+    # No permitir eliminar si tiene reservas activas o futuras (no canceladas/cerradas).
+    reserva_activa = db.query(ReservationRoom.id).join(
+        Reservation, Reservation.id == ReservationRoom.reservation_id
+    ).filter(
+        ReservationRoom.room_id == room_id,
+        Reservation.empresa_usuario_id == tenant_id,
+        Reservation.estado.in_(["confirmada", "ocupada"])
+    ).first()
+    if reserva_activa:
+        raise HTTPException(
+            status_code=409,
+            detail="No se puede eliminar: la habitación tiene reservas activas o futuras"
+        )
+
     # Soft delete
     db_room.activo = False
     db.commit()
+    log_event("rooms", current_user.username, "Habitación eliminada", f"room_id={room_id}, numero={db_room.numero}")
     return {"message": "Habitación desactivada exitosamente"}
 
 @router.post("", response_model=RoomRead, status_code=status.HTTP_201_CREATED)
 async def create_room(
     room: RoomCreate,
     db: Session = Depends(conexion.get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_admin_or_manager)
 ):
     if not current_user or not current_user.empresa_usuario_id:
         raise HTTPException(status_code=401, detail="No autenticado o sin tenant asociado")
@@ -369,7 +418,11 @@ async def create_room(
     
     nueva = Room(**room.dict(), empresa_usuario_id=tenant_id)
     db.add(nueva)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail=f"Ya existe una habitación con el número {room.numero}")
     db.refresh(nueva)
     db.refresh(nueva.tipo)
     return {
