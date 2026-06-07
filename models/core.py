@@ -712,28 +712,41 @@ class HKIncident(Base):
 
 class HKLostItem(Base):
     __tablename__ = "hk_lost_items"
-    __table_args__ = (Index("idx_hklost_cycle", "cycle_id"),)
+    __table_args__ = (
+        Index("idx_hklost_cycle", "cycle_id"),
+        Index("idx_hklost_empresa", "empresa_usuario_id"),
+        Index("idx_hklost_room", "room_id"),
+    )
 
     id = Column(Integer, primary_key=True)
-    cycle_id = Column(Integer, ForeignKey("hk_cycles.id", ondelete="CASCADE"), nullable=False)
+    # cycle_id queda por compatibilidad pero ya no es obligatorio: un objeto olvidado se
+    # registra standalone por habitación + tenant.
+    cycle_id = Column(Integer, ForeignKey("hk_cycles.id", ondelete="CASCADE"), nullable=True)
+    empresa_usuario_id = Column(Integer, ForeignKey("empresa_usuarios.id", ondelete="CASCADE"), nullable=True)
+    room_id = Column(Integer, ForeignKey("rooms.id", ondelete="SET NULL"), nullable=True)
 
     descripcion = Column(Text, nullable=False)
     lugar = Column(String(150), nullable=True)
+    # guardado | entregado | descartado
+    estado = Column(String(20), nullable=False, default="guardado")
     entregado_a = Column(String(120), nullable=True)
     fecha_hallazgo = Column(DateTime(timezone=True), default=utcnow)
 
     created_by = Column(String(100), nullable=True)
 
     cycle = relationship("HKCycle", back_populates="lost_items")
+    room = relationship("Room")
 
 class MaintenanceTicket(Base):
     __tablename__ = "maintenance_tickets"
     __table_args__ = (
         Index("idx_mt_room", "room_id"),
         Index("idx_mt_estado", "estado"),
+        Index("idx_mt_empresa", "empresa_usuario_id"),
     )
 
     id = Column(Integer, primary_key=True)
+    empresa_usuario_id = Column(Integer, ForeignKey("empresa_usuarios.id", ondelete="CASCADE"), nullable=True)
     room_id = Column(Integer, ForeignKey("rooms.id", ondelete="RESTRICT"), nullable=False)
 
     # abierto | en_progreso | resuelto | cancelado
