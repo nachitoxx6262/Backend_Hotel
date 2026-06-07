@@ -60,7 +60,7 @@ app.add_middleware(TenantContextMiddleware)
 app.add_middleware(PostgreSQLRLSMiddleware)
 
 # ========== ROUTERS ==========
-from endpoints import roles, auth, hotel_calendar, pms_professional, habitaciones, clientes, settings, pricing, empresas, estadisticas, billing, admin, caja, ical_export, mercadopago as mp_router, maintenance
+from endpoints import roles, auth, hotel_calendar, pms_professional, habitaciones, clientes, settings, pricing, empresas, estadisticas, billing, admin, caja, ical_export, mercadopago as mp_router, maintenance, housekeeping_config
 app.include_router(auth.router)
 app.include_router(billing.router)
 app.include_router(caja.router)
@@ -77,6 +77,7 @@ app.include_router(admin.router)
 app.include_router(ical_export.router)
 app.include_router(mp_router.router)
 app.include_router(maintenance.router)
+app.include_router(housekeeping_config.router)
 
 
 @app.get("/")

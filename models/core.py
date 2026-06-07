@@ -600,14 +600,40 @@ class StayPayment(Base):
 
 class HKTemplate(Base):
     __tablename__ = "hk_templates"
-    __table_args__ = (Index("idx_hkt_name", "nombre"),)
+    __table_args__ = (
+        Index("idx_hkt_name", "nombre"),
+        Index("idx_hkt_empresa", "empresa_usuario_id"),
+        UniqueConstraint("empresa_usuario_id", "nombre", name="uq_hk_template_empresa_nombre"),
+    )
 
     id = Column(Integer, primary_key=True)
-    nombre = Column(String(100), nullable=False, unique=True)
+    empresa_usuario_id = Column(Integer, ForeignKey("empresa_usuarios.id", ondelete="CASCADE"), nullable=True)
+    nombre = Column(String(100), nullable=False)
+    # checkout | stayover | eventual
+    tipo = Column(String(20), nullable=False, default="eventual")
     checklist = Column(JSON, nullable=False, default=list)  # [{"nombre":"Baño", "orden":1}, ...]
     minibar_default = Column(JSON, nullable=True)
 
     activo = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+
+
+class HKRecurringRule(Base):
+    """Regla de limpieza recurrente (ej: 'cambiar cortinas cada 15 días')."""
+    __tablename__ = "hk_recurring_rules"
+    __table_args__ = (Index("idx_hkrr_empresa", "empresa_usuario_id"),)
+
+    id = Column(Integer, primary_key=True)
+    empresa_usuario_id = Column(Integer, ForeignKey("empresa_usuarios.id", ondelete="CASCADE"), nullable=False)
+    nombre = Column(String(120), nullable=False)
+    cada_n_dias = Column(Integer, nullable=False, default=15)
+    # todas | tipo
+    scope = Column(String(20), nullable=False, default="todas")
+    room_type_id = Column(Integer, ForeignKey("room_types.id", ondelete="CASCADE"), nullable=True)
+    template_id = Column(Integer, ForeignKey("hk_templates.id", ondelete="SET NULL"), nullable=True)
+    prioridad = Column(String(10), nullable=False, default="media")
+    activo = Column(Boolean, default=True, nullable=False)
+    ultima_generacion = Column(Date, nullable=True)
     created_at = Column(DateTime(timezone=True), default=utcnow)
 
 
