@@ -485,39 +485,48 @@ def get_deudores(
     deudores = []
     
     # Deudores Personas (Clientes)
+    # Cargos y pagos se agregan en subconsultas INDEPENDIENTES. Unir StayCharge y
+    # StayPayment en una sola query genera un producto cartesiano (ambos son
+    # one-to-many sobre Stay) que multiplica las sumas e infla la deuda.
+    cargos_cli_sq = db.query(
+        Reservation.cliente_id.label("cliente_id"),
+        func.coalesce(func.sum(StayCharge.monto_total), 0).label("total_cargos"),
+    ).join(
+        Stay, Stay.reservation_id == Reservation.id
+    ).join(
+        StayCharge, StayCharge.stay_id == Stay.id
+    ).filter(
+        Reservation.cliente_id.isnot(None)
+    )
+    if dias:
+        fecha_desde = (datetime.now() - timedelta(days=dias)).date()
+        cargos_cli_sq = cargos_cli_sq.filter(func.date(StayCharge.created_at) >= fecha_desde)
+    cargos_cli_sq = cargos_cli_sq.group_by(Reservation.cliente_id).subquery()
+
+    pagos_cli_sq = db.query(
+        Reservation.cliente_id.label("cliente_id"),
+        func.coalesce(func.sum(StayPayment.monto), 0).label("total_pagado"),
+    ).join(
+        Stay, Stay.reservation_id == Reservation.id
+    ).join(
+        StayPayment, (StayPayment.stay_id == Stay.id) & (StayPayment.es_reverso == False)
+    ).filter(
+        Reservation.cliente_id.isnot(None)
+    ).group_by(Reservation.cliente_id).subquery()
+
     clientes_deudores = db.query(
         Cliente.id,
         func.concat(Cliente.nombre, ' ', Cliente.apellido).label("nombre"),
-        func.coalesce(func.sum(StayCharge.monto_total), 0).label("total_cargos"),
-        func.coalesce(func.sum(StayPayment.monto), 0).label("total_pagado"),
+        func.coalesce(cargos_cli_sq.c.total_cargos, 0).label("total_cargos"),
+        func.coalesce(pagos_cli_sq.c.total_pagado, 0).label("total_pagado"),
+    ).select_from(Cliente).join(
+        cargos_cli_sq, cargos_cli_sq.c.cliente_id == Cliente.id  # debe tener cargos para ser deudor
+    ).outerjoin(
+        pagos_cli_sq, pagos_cli_sq.c.cliente_id == Cliente.id  # puede no tener pagos
     ).filter(
         Cliente.empresa_usuario_id == tenant_id
-    ).outerjoin(
-        Reservation, Reservation.cliente_id == Cliente.id
-    ).outerjoin(
-        Stay, Stay.reservation_id == Reservation.id
-    ).outerjoin(
-        StayCharge, StayCharge.stay_id == Stay.id
-    ).outerjoin(
-        StayPayment, (StayPayment.stay_id == Stay.id) & (StayPayment.es_reverso == False)
-    )
-    
-    if dias:
-        fecha_desde = (datetime.now() - timedelta(days=dias)).date()
-        clientes_deudores = clientes_deudores.filter(
-            func.date(StayCharge.created_at) >= fecha_desde
-        )
-    
-    clientes_deudores = clientes_deudores.group_by(
-        Cliente.id, Cliente.nombre, Cliente.apellido
-    ).having(
-        func.coalesce(func.sum(StayCharge.monto_total), 0) > 
-        func.coalesce(func.sum(StayPayment.monto), 0)
-    ).order_by(
-        (func.coalesce(func.sum(StayCharge.monto_total), 0) - 
-         func.coalesce(func.sum(StayPayment.monto), 0)).desc()
     ).all()
-    
+
     for cliente in clientes_deudores:
         saldo = float(cliente.total_cargos or 0) - float(cliente.total_pagado or 0)
         if saldo > 0:
@@ -531,39 +540,47 @@ def get_deudores(
             })
     
     # Deudores Empresas
+    # Mismo patrón: subconsultas independientes para cargos y pagos (evita el
+    # producto cartesiano que multiplicaría las sumas).
+    cargos_emp_sq = db.query(
+        Reservation.empresa_id.label("empresa_id"),
+        func.coalesce(func.sum(StayCharge.monto_total), 0).label("total_cargos"),
+    ).join(
+        Stay, Stay.reservation_id == Reservation.id
+    ).join(
+        StayCharge, StayCharge.stay_id == Stay.id
+    ).filter(
+        Reservation.empresa_id.isnot(None)
+    )
+    if dias:
+        fecha_desde = (datetime.now() - timedelta(days=dias)).date()
+        cargos_emp_sq = cargos_emp_sq.filter(func.date(StayCharge.created_at) >= fecha_desde)
+    cargos_emp_sq = cargos_emp_sq.group_by(Reservation.empresa_id).subquery()
+
+    pagos_emp_sq = db.query(
+        Reservation.empresa_id.label("empresa_id"),
+        func.coalesce(func.sum(StayPayment.monto), 0).label("total_pagado"),
+    ).join(
+        Stay, Stay.reservation_id == Reservation.id
+    ).join(
+        StayPayment, (StayPayment.stay_id == Stay.id) & (StayPayment.es_reverso == False)
+    ).filter(
+        Reservation.empresa_id.isnot(None)
+    ).group_by(Reservation.empresa_id).subquery()
+
     empresas_deudores = db.query(
         ClienteCorporativo.id,
         ClienteCorporativo.nombre,
-        func.coalesce(func.sum(StayCharge.monto_total), 0).label("total_cargos"),
-        func.coalesce(func.sum(StayPayment.monto), 0).label("total_pagado"),
+        func.coalesce(cargos_emp_sq.c.total_cargos, 0).label("total_cargos"),
+        func.coalesce(pagos_emp_sq.c.total_pagado, 0).label("total_pagado"),
+    ).select_from(ClienteCorporativo).join(
+        cargos_emp_sq, cargos_emp_sq.c.empresa_id == ClienteCorporativo.id
+    ).outerjoin(
+        pagos_emp_sq, pagos_emp_sq.c.empresa_id == ClienteCorporativo.id
     ).filter(
         ClienteCorporativo.empresa_usuario_id == tenant_id
-    ).outerjoin(
-        Reservation, Reservation.empresa_id == ClienteCorporativo.id
-    ).outerjoin(
-        Stay, Stay.reservation_id == Reservation.id
-    ).outerjoin(
-        StayCharge, StayCharge.stay_id == Stay.id
-    ).outerjoin(
-        StayPayment, (StayPayment.stay_id == Stay.id) & (StayPayment.es_reverso == False)
-    )
-    
-    if dias:
-        fecha_desde = (datetime.now() - timedelta(days=dias)).date()
-        empresas_deudores = empresas_deudores.filter(
-            func.date(StayCharge.created_at) >= fecha_desde
-        )
-    
-    empresas_deudores = empresas_deudores.group_by(
-        ClienteCorporativo.id, ClienteCorporativo.nombre
-    ).having(
-        func.coalesce(func.sum(StayCharge.monto_total), 0) > 
-        func.coalesce(func.sum(StayPayment.monto), 0)
-    ).order_by(
-        (func.coalesce(func.sum(StayCharge.monto_total), 0) - 
-         func.coalesce(func.sum(StayPayment.monto), 0)).desc()
     ).all()
-    
+
     for empresa in empresas_deudores:
         saldo = float(empresa.total_cargos or 0) - float(empresa.total_pagado or 0)
         if saldo > 0:
@@ -600,12 +617,21 @@ def registrar_pago_deudor(
     current_user = Depends(get_current_user)
 ):
     """Registrar pago para un cliente o empresa deudor"""
-    
-    # Buscar la estadía más reciente sin cerrar del deudor
+
+    tenant_id = current_user.empresa_usuario_id
+    if not tenant_id:
+        raise HTTPException(403, "Usuario sin tenant asociado")
+
+    # Validar monto en el servidor (la validación del front es evadible)
+    if data.monto is None or data.monto <= 0:
+        raise HTTPException(400, "El monto del pago debe ser mayor a cero")
+
+    # Buscar la estadía más reciente sin cerrar del deudor (acotada al tenant)
     if data.deudor_tipo == "Cliente":
         stay = db.query(Stay).join(
             Reservation, Reservation.id == Stay.reservation_id
         ).filter(
+            Reservation.empresa_usuario_id == tenant_id,
             Reservation.cliente_id == data.deudor_id,
             Stay.estado.in_(["activa", "llegada"])
         ).order_by(Stay.id.desc()).first()
@@ -613,45 +639,49 @@ def registrar_pago_deudor(
         stay = db.query(Stay).join(
             Reservation, Reservation.id == Stay.reservation_id
         ).filter(
+            Reservation.empresa_usuario_id == tenant_id,
             Reservation.empresa_id == data.deudor_id,
             Stay.estado.in_(["activa", "llegada"])
         ).order_by(Stay.id.desc()).first()
-    
+
     if not stay:
-        # Si no hay estadía activa, buscar la última cerrada
+        # Si no hay estadía activa, buscar la última cerrada (acotada al tenant)
         if data.deudor_tipo == "Cliente":
             stay = db.query(Stay).join(
                 Reservation, Reservation.id == Stay.reservation_id
             ).filter(
+                Reservation.empresa_usuario_id == tenant_id,
                 Reservation.cliente_id == data.deudor_id
             ).order_by(Stay.id.desc()).first()
         else:  # Empresa
             stay = db.query(Stay).join(
                 Reservation, Reservation.id == Stay.reservation_id
             ).filter(
+                Reservation.empresa_usuario_id == tenant_id,
                 Reservation.empresa_id == data.deudor_id
             ).order_by(Stay.id.desc()).first()
-    
+
     if not stay:
         raise HTTPException(404, f"No se encontraron estadías para este {data.deudor_tipo}")
-    
+
     # Registrar el pago
     payment = StayPayment(
         stay_id=stay.id,
         monto=Decimal(str(data.monto)),
         metodo=data.metodo,
         referencia=data.referencia,
-        usuario=current_user.get("username", "sistema") if isinstance(current_user, dict) else "sistema",
+        notas=data.notas,
+        usuario=current_user.username,
         es_reverso=False
     )
     db.add(payment)
-    
+
     # Auditoría
     audit = AuditEvent(
         entity_type="stay",
         entity_id=stay.id,
         action="PAYMENT_FROM_DEUDORES",
-        usuario=current_user.get("username", "sistema") if isinstance(current_user, dict) else "sistema",
+        usuario=current_user.username,
         descripcion=f"Pago {data.metodo} ${data.monto} - {data.deudor_tipo}:{data.deudor_id}",
         payload={
             "ref": data.referencia,

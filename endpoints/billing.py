@@ -24,7 +24,7 @@ from schemas.billing import (
 from utils.dependencies import get_current_user, require_admin_or_manager
 from utils.tenant_middleware import check_trial_expiration, is_trial_write_blocked
 from utils.logging_utils import log_event
-from config import STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET, get_stripe_client, is_stripe_configured
+from config import STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET, get_stripe_client, is_stripe_configured, ENABLE_STRIPE_TESTING
 
 
 router = APIRouter(prefix="/billing", tags=["Billing"])
@@ -122,8 +122,10 @@ async def get_subscription_status(
         hab_limite = plan.max_habitaciones if plan.max_habitaciones and plan.max_habitaciones > 0 else 999
         usr_limite = plan.max_usuarios if plan.max_usuarios and plan.max_usuarios > 0 else 999
         
-        hab_porcentaje = (habitaciones_count / hab_limite * 100) if hab_limite > 0 else 0
-        usr_porcentaje = (usuarios_count / usr_limite * 100) if usr_limite > 0 else 0
+        # Tope a 100: el uso puede superar el límite del plan (p.ej. más habitaciones que
+        # las permitidas), pero el schema exige le=100 y lo contrario rompe /billing/status con 500.
+        hab_porcentaje = min((habitaciones_count / hab_limite * 100) if hab_limite > 0 else 0, 100)
+        usr_porcentaje = min((usuarios_count / usr_limite * 100) if usr_limite > 0 else 0, 100)
         
         # Trial info — check_trial_expiration espera el EmpresaUsuario (tiene plan_tipo/fecha_fin_demo),
         # no el Subscription. Pasar 'empresa' evita AttributeError -> 500.
@@ -172,42 +174,6 @@ async def get_subscription_status(
             detail="Error al obtener información de suscripción"
         )
 
-
-
-@router.get("/payment-history")
-async def get_payment_history(
-    limit: int = 10,
-    current_user: Usuario = Depends(get_current_user),
-    db: Session = Depends(conexion.get_db)
-):
-    """Historial de pagos de la suscripción del tenant (últimos `limit`)."""
-    try:
-        if current_user.es_super_admin or not current_user.empresa_usuario_id:
-            return {"items": []}
-        subscription = db.query(Subscription).filter_by(
-            empresa_usuario_id=current_user.empresa_usuario_id
-        ).first()
-        if not subscription:
-            return {"items": []}
-        limit = max(1, min(limit, 100))
-        pagos = db.query(PaymentAttempt).filter_by(
-            subscription_id=subscription.id
-        ).order_by(PaymentAttempt.created_at.desc()).limit(limit).all()
-        return {
-            "items": [
-                {
-                    "id": p.id,
-                    "monto": float(p.monto),
-                    "estado": p.estado.value if p.estado else None,
-                    "proveedor": p.proveedor.value if p.proveedor else None,
-                    "created_at": p.created_at.isoformat() if p.created_at else None,
-                }
-                for p in pagos
-            ]
-        }
-    except Exception as e:
-        log_event("billing", current_user.username, "Error al obtener historial de pagos", f"error={str(e)}")
-        return {"items": []}
 
 
 # ========== POST ENDPOINTS ==========
@@ -265,7 +231,7 @@ async def upgrade_plan(
         
         # Actualizar subscription
         subscription.plan_id = nuevo_plan.id
-        subscription.estado = SubscriptionStatus.ACTIVE
+        subscription.estado = SubscriptionStatus.ACTIVO
         subscription.fecha_proxima_renovacion = utcnow() + timedelta(days=30)
         
         db.commit()
@@ -352,7 +318,7 @@ async def cancel_subscription(
                 empresa.fecha_fin_demo = ahora + timedelta(days=10)
                 
                 subscription.plan_id = plan_demo.id
-                subscription.estado = SubscriptionStatus.ACTIVE
+                subscription.estado = SubscriptionStatus.ACTIVO
                 subscription.fecha_proxima_renovacion = ahora + timedelta(days=10)
             
             db.commit()
@@ -511,7 +477,13 @@ async def create_payment_intent(
             activa=True,
             deleted=False
         ).first()
-        
+
+        if not empresa:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Empresa no encontrada o inactiva"
+            )
+
         subscription = db.query(Subscription).filter_by(
             empresa_usuario_id=empresa.id
         ).first()
@@ -522,8 +494,9 @@ async def create_payment_intent(
                 detail="Suscripción no encontrada"
             )
         
-        # Calcular monto a cobrar (en centavos)
-        amount_cents = int(nuevo_plan.precio_mensual * 100)
+        # Calcular monto a cobrar (en centavos). round() evita perder 1 centavo por
+        # truncamiento de float (p.ej. 19.99 -> 1998 en vez de 1999).
+        amount_cents = int(round(nuevo_plan.precio_mensual * 100))
         
         # Si no hay Stripe configurado, retornar intent demo
         if not is_stripe_configured():
@@ -630,9 +603,19 @@ async def stripe_webhook(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Invalid signature"
                 )
-        else:
-            # En modo demo, parse manual
+        elif ENABLE_STRIPE_TESTING:
+            # Solo para pruebas locales explícitas (ENABLE_STRIPE_TESTING=true):
+            # parse manual sin verificación de firma.
             event = json.loads(payload)
+        else:
+            # Stripe no configurado y testing deshabilitado: no se puede verificar la
+            # autenticidad del webhook. Rechazar para evitar que un POST forjado active
+            # planes gratis o modifique suscripciones de cualquier empresa.
+            log_event("billing", "webhook", "Webhook rechazado (Stripe no configurado)", "")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Webhook no disponible: proveedor de pagos no configurado"
+            )
         
         # ========== PROCESAR EVENTOS ==========
         
@@ -689,7 +672,23 @@ async def _handle_payment_succeeded(intent: Dict[str, Any], db: Session):
                 f"intent_id={intent['id']}"
             )
             return
-        
+
+        # Idempotencia: Stripe reintenta los webhooks. Si este intent ya se procesó
+        # con éxito, no volver a crear PaymentAttempt ni transacción de caja (evita
+        # doble cobro / doble ingreso).
+        already_processed = db.query(PaymentAttempt).filter_by(
+            external_id=intent["id"],
+            estado=PaymentStatus.EXITOSO
+        ).first()
+        if already_processed:
+            log_event(
+                "billing",
+                "webhook",
+                "Payment intent ya procesado (idempotencia)",
+                f"intent_id={intent['id']}"
+            )
+            return
+
         # Obtener plan y subscription
         plan = db.query(Plan).filter_by(
             nombre=PlanType(plan_type)
@@ -716,7 +715,7 @@ async def _handle_payment_succeeded(intent: Dict[str, Any], db: Session):
         # Crear PaymentAttempt record
         payment = PaymentAttempt(
             subscription_id=subscription.id,
-            monto=intent["amount"] / 100,
+            monto=Decimal(intent["amount"]) / 100,
             estado=PaymentStatus.EXITOSO,
             proveedor=PaymentProvider.STRIPE,
             external_id=intent["id"],
@@ -756,7 +755,7 @@ async def _handle_payment_succeeded(intent: Dict[str, Any], db: Session):
             empresa_usuario_id=empresa_usuario_id,
             tipo="ingreso",  # Usar string directo
             category_id=categoria_suscripcion.id,
-            monto=Decimal(str(intent["amount"] / 100)),
+            monto=Decimal(intent["amount"]) / 100,
             metodo_pago="tarjeta",  # Stripe siempre es tarjeta - usar string directo
             referencia=f"Stripe Payment Intent: {intent['id']}",
             fecha=utcnow(),
@@ -817,7 +816,7 @@ async def _handle_payment_failed(intent: Dict[str, Any], db: Session):
         # Crear PaymentAttempt record (fallido)
         payment = PaymentAttempt(
             subscription_id=subscription.id,
-            monto=intent["amount"] / 100,
+            monto=Decimal(intent["amount"]) / 100,
             estado=PaymentStatus.FALLIDO,
             proveedor=PaymentProvider.STRIPE,
             external_id=intent["id"],

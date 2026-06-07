@@ -1,7 +1,7 @@
 """
 Endpoints de Caja - Sistema de Ingresos y Egresos
 """
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from utils.datetime_utils import utcnow
 from typing import List, Optional
 from decimal import Decimal
@@ -33,6 +33,15 @@ from utils.logging_utils import log_event
 
 
 router = APIRouter(prefix="/caja", tags=["Caja"])
+
+
+def _fin_de_dia_si_es_medianoche(dt):
+    """Si el datetime llega exactamente a medianoche (filtro por fecha sin hora, p.ej.
+    un <input type="date"> que manda 'YYYY-MM-DD'), extenderlo al final del día para que
+    el rango 'hasta' sea INCLUSIVO. Sin esto, 'hasta hoy' excluiría todo el día de hoy."""
+    if dt is not None and dt.hour == 0 and dt.minute == 0 and dt.second == 0 and dt.microsecond == 0:
+        return dt.replace(hour=23, minute=59, second=59, microsecond=999999)
+    return dt
 
 
 # ============================================================================
@@ -211,6 +220,61 @@ async def update_category(
         )
 
 
+@router.delete("/categorias/{category_id}")
+async def delete_category(
+    category_id: int,
+    current_user: Usuario = Depends(require_admin_or_manager),
+    db: Session = Depends(conexion.get_db)
+):
+    """
+    Elimina una categoría.
+    No se pueden eliminar categorías del sistema ni categorías con transacciones asociadas.
+    """
+    try:
+        category = db.query(TransactionCategory).filter(
+            TransactionCategory.id == category_id,
+            TransactionCategory.empresa_usuario_id == current_user.empresa_usuario_id
+        ).first()
+
+        if not category:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Categoría no encontrada"
+            )
+
+        if category.es_sistema:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No se puede eliminar una categoría del sistema"
+            )
+
+        # Bloquear si tiene transacciones asociadas (FK + integridad histórica)
+        en_uso = db.query(Transaction.id).filter(
+            Transaction.category_id == category_id
+        ).first()
+        if en_uso:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Esta categoría tiene transacciones asociadas y no se puede eliminar"
+            )
+
+        db.delete(category)
+        db.commit()
+
+        log_event("caja", current_user.username, "Categoría eliminada", f"id={category_id}")
+        return {"message": "Categoría eliminada exitosamente"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        log_event("caja", current_user.username, "Error al eliminar categoría", f"error={str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error al eliminar categoría"
+        )
+
+
 # ============================================================================
 # TRANSACCIONES (INGRESOS Y EGRESOS)
 # ============================================================================
@@ -222,6 +286,7 @@ async def get_transactions(
     tipo: Optional[TransactionTypeEnum] = None,
     category_id: Optional[int] = None,
     metodo_pago: Optional[PaymentMethodEnum] = None,
+    search: Optional[str] = None,
     incluir_anuladas: bool = False,
     limit: int = Query(100, le=1000),
     offset: int = 0,
@@ -230,7 +295,9 @@ async def get_transactions(
 ):
     """
     Lista transacciones con filtros opcionales y paginación.
-    Retorna {items: [...], total: N} para paginación correcta en el frontend.
+    Retorna {items, total, offset, limit, totales:{ingresos,egresos}}. La búsqueda y los
+    totales se calculan en el servidor sobre TODO el dataset filtrado (no solo la página),
+    para que paginación y cifras del resumen sean correctas.
     """
     try:
         if not current_user.empresa_usuario_id:
@@ -248,7 +315,7 @@ async def get_transactions(
             query = query.filter(Transaction.fecha >= fecha_desde)
 
         if fecha_hasta:
-            query = query.filter(Transaction.fecha <= fecha_hasta)
+            query = query.filter(Transaction.fecha <= _fin_de_dia_si_es_medianoche(fecha_hasta))
 
         if tipo:
             query = query.filter(Transaction.tipo == tipo.value)
@@ -258,6 +325,26 @@ async def get_transactions(
 
         if metodo_pago:
             query = query.filter(Transaction.metodo_pago == metodo_pago.value)
+
+        if search and search.strip():
+            s = f"%{search.strip()}%"
+            query = query.filter(or_(
+                Transaction.referencia.ilike(s),
+                Transaction.notas.ilike(s),
+                Transaction.category.has(TransactionCategory.nombre.ilike(s)),
+                Transaction.usuario.has(Usuario.username.ilike(s)),
+                Transaction.cliente.has(or_(Cliente.nombre.ilike(s), Cliente.apellido.ilike(s))),
+            ))
+
+        # Totales sobre TODO el dataset filtrado (excluyendo anuladas), no solo la página.
+        # Se derivan de `query` ANTES de aplicarle el filtro de anuladas o la paginación.
+        totales_q = query.filter(Transaction.anulada == False)
+        total_ingresos = totales_q.filter(
+            Transaction.tipo == TransactionType.INGRESO.value
+        ).with_entities(func.coalesce(func.sum(Transaction.monto), 0)).scalar() or Decimal("0.00")
+        total_egresos = totales_q.filter(
+            Transaction.tipo == TransactionType.EGRESO.value
+        ).with_entities(func.coalesce(func.sum(Transaction.monto), 0)).scalar() or Decimal("0.00")
 
         if not incluir_anuladas:
             query = query.filter(Transaction.anulada == False)
@@ -299,7 +386,13 @@ async def get_transactions(
             }
             items.append(TransactionResponse(**trans_dict))
 
-        return {"items": items, "total": total, "offset": offset, "limit": limit}
+        return {
+            "items": items,
+            "total": total,
+            "offset": offset,
+            "limit": limit,
+            "totales": {"ingresos": total_ingresos, "egresos": total_egresos},
+        }
 
     except HTTPException:
         raise
@@ -496,9 +589,10 @@ async def annul_transaction(
     db: Session = Depends(conexion.get_db)
 ):
     """
-    Anula una transacción existente.
-    Crea automáticamente una transacción de ajuste (movimiento opuesto).
-    Solo administradores y gerentes.
+    Anula una transacción existente (modelo "void").
+    La transacción anulada queda excluida de resúmenes, cierres y exportaciones
+    (todos filtran anulada == False), por lo que el saldo se corrige sin necesidad
+    de un movimiento de ajuste opuesto. Solo administradores y gerentes.
     """
     try:
         # Buscar transacción
@@ -506,74 +600,36 @@ async def annul_transaction(
             Transaction.id == transaction_id,
             Transaction.empresa_usuario_id == current_user.empresa_usuario_id
         ).first()
-        
+
         if not transaction:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Transacción no encontrada"
             )
-        
+
         if transaction.anulada:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="La transacción ya está anulada"
             )
-        
-        # Crear transacción de ajuste (opuesta)
-        tipo_opuesto = TransactionType.EGRESO if transaction.tipo == TransactionType.INGRESO else TransactionType.INGRESO
-        
-        # Buscar categoría "Ajuste" o crear una genérica
-        categoria_ajuste = db.query(TransactionCategory).filter(
-            TransactionCategory.empresa_usuario_id == current_user.empresa_usuario_id,
-            TransactionCategory.nombre == "Anulación/Ajuste",
-            TransactionCategory.tipo == tipo_opuesto.value if isinstance(tipo_opuesto, TransactionType) else tipo_opuesto
-        ).first()
-        
-        if not categoria_ajuste:
-            # Crear categoría de ajuste
-            categoria_ajuste = TransactionCategory(
-                empresa_usuario_id=current_user.empresa_usuario_id,
-                nombre="Anulación/Ajuste",
-                tipo=tipo_opuesto.value if hasattr(tipo_opuesto, 'value') else tipo_opuesto,
-                descripcion="Categoría automática para anulaciones",
-                activo=True,
-                es_sistema=True
-            )
-            db.add(categoria_ajuste)
-            db.flush()
-        
-        # Crear movimiento de ajuste
-        ajuste_transaction = Transaction(
-            empresa_usuario_id=current_user.empresa_usuario_id,
-            tipo=tipo_opuesto.value if hasattr(tipo_opuesto, 'value') else tipo_opuesto,
-            category_id=categoria_ajuste.id,
-            monto=transaction.monto,
-            metodo_pago=transaction.metodo_pago,
-            referencia=f"Anulación de transacción #{transaction.id}",
-            fecha=utcnow(),
-            usuario_id=current_user.id,
-            notas=f"Movimiento de ajuste por anulación. Motivo: {annul_data.motivo_anulacion}",
-            es_automatica=True
-        )
-        
-        db.add(ajuste_transaction)
-        db.flush()
-        
-        # Marcar transacción original como anulada
+
+        # Marcar transacción original como anulada.
+        # No se crea un movimiento de ajuste opuesto: como los resúmenes/cierres/
+        # exportaciones excluyen las anuladas, crear el ajuste contaría el monto dos
+        # veces (la original se excluye Y el ajuste se suma) y descuadraría la caja.
         transaction.anulada = True
         transaction.anulada_por_id = current_user.id
         transaction.anulada_fecha = utcnow()
         transaction.motivo_anulacion = annul_data.motivo_anulacion
-        transaction.transaction_anulacion_id = ajuste_transaction.id
-        
+
         db.commit()
         db.refresh(transaction)
-        
+
         log_event(
             "caja",
             current_user.username,
             f"Transacción anulada",
-            f"id={transaction.id}, ajuste_id={ajuste_transaction.id}"
+            f"id={transaction.id}"
         )
         
         # Enriquecer respuesta
@@ -641,11 +697,13 @@ async def get_caja_summary(
         
         # Si no se especifica rango, usar día actual
         if not fecha_desde:
-            fecha_desde = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            fecha_desde = utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
         
         if not fecha_hasta:
-            fecha_hasta = datetime.now().replace(hour=23, minute=59, second=59, microsecond=999999)
-        
+            fecha_hasta = utcnow().replace(hour=23, minute=59, second=59, microsecond=999999)
+        else:
+            fecha_hasta = _fin_de_dia_si_es_medianoche(fecha_hasta)
+
         # Query base
         transactions = db.query(Transaction).filter(
             Transaction.empresa_usuario_id == current_user.empresa_usuario_id,
@@ -749,11 +807,13 @@ async def get_summary_by_category(
         
         # Si no se especifica rango, usar día actual
         if not fecha_desde:
-            fecha_desde = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            fecha_desde = utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
         
         if not fecha_hasta:
-            fecha_hasta = datetime.now().replace(hour=23, minute=59, second=59, microsecond=999999)
-        
+            fecha_hasta = utcnow().replace(hour=23, minute=59, second=59, microsecond=999999)
+        else:
+            fecha_hasta = _fin_de_dia_si_es_medianoche(fecha_hasta)
+
         # Query con agrupación
         query = db.query(
             TransactionCategory.id.label("category_id"),
@@ -815,6 +875,8 @@ async def create_cash_closing(
     """
     Crea un cierre de caja para el turno del usuario.
     Calcula automáticamente ingresos/egresos y diferencia con efectivo declarado.
+    Solo contabiliza el efectivo del propio cajero (usuario que cierra), no el de
+    todo el hotel, y evita cierres solapados que recontarían el mismo efectivo.
     """
     try:
         if not current_user.empresa_usuario_id:
@@ -822,12 +884,42 @@ async def create_cash_closing(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Usuario no pertenece a ningún hotel"
             )
-        
-        # Calcular totales del sistema para el período
+
+        # Normalizar fecha de apertura a UTC naive para que sea comparable con las
+        # fechas almacenadas (utcnow() guarda datetimes naive en UTC).
+        fecha_apertura = closing_data.fecha_apertura
+        if fecha_apertura.tzinfo is not None:
+            fecha_apertura = fecha_apertura.astimezone(timezone.utc).replace(tzinfo=None)
+
+        fecha_cierre = utcnow()
+        if fecha_apertura > fecha_cierre:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="La fecha de apertura no puede ser posterior a la hora actual"
+            )
+
+        # Evitar cierres solapados: la apertura debe ser posterior al último cierre
+        # del mismo cajero, de lo contrario se recontaría efectivo ya arqueado.
+        last_closing = db.query(CashClosing).filter(
+            CashClosing.empresa_usuario_id == current_user.empresa_usuario_id,
+            CashClosing.usuario_id == current_user.id
+        ).order_by(CashClosing.fecha_cierre.desc()).first()
+
+        if last_closing and fecha_apertura < last_closing.fecha_cierre:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "El período se solapa con un cierre anterior. La apertura debe ser "
+                    f"posterior al último cierre ({last_closing.fecha_cierre})."
+                )
+            )
+
+        # Calcular totales del sistema para el período (solo efectivo del propio cajero)
         transactions = db.query(Transaction).filter(
             Transaction.empresa_usuario_id == current_user.empresa_usuario_id,
-            Transaction.fecha >= closing_data.fecha_apertura,
-            Transaction.fecha <= utcnow(),
+            Transaction.usuario_id == current_user.id,
+            Transaction.fecha >= fecha_apertura,
+            Transaction.fecha <= fecha_cierre,
             Transaction.anulada == False,
             Transaction.metodo_pago == PaymentMethod.EFECTIVO  # Solo efectivo
         ).all()
@@ -847,8 +939,8 @@ async def create_cash_closing(
         new_closing = CashClosing(
             empresa_usuario_id=current_user.empresa_usuario_id,
             usuario_id=current_user.id,
-            fecha_apertura=closing_data.fecha_apertura,
-            fecha_cierre=utcnow(),
+            fecha_apertura=fecha_apertura,
+            fecha_cierre=fecha_cierre,
             ingresos_sistema=ingresos_sistema,
             egresos_sistema=egresos_sistema,
             saldo_sistema=saldo_sistema,
@@ -962,11 +1054,13 @@ async def export_transactions_csv(
         
         # Si no se especifica rango, usar mes actual
         if not fecha_desde:
-            fecha_desde = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            fecha_desde = utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         
         if not fecha_hasta:
-            fecha_hasta = datetime.now()
-        
+            fecha_hasta = utcnow()
+        else:
+            fecha_hasta = _fin_de_dia_si_es_medianoche(fecha_hasta)
+
         query = db.query(Transaction).filter(
             Transaction.empresa_usuario_id == current_user.empresa_usuario_id,
             Transaction.fecha >= fecha_desde,
@@ -1117,9 +1211,10 @@ async def get_stay_transactions(
                 "subscription_id": t.subscription_id,
                 "cliente_id": t.cliente_id,
                 "anulada": t.anulada,
-                "fecha_anulacion": t.fecha_anulacion,
-                "usuario_anulacion_id": t.usuario_anulacion_id,
+                "anulada_por_id": t.anulada_por_id,
+                "anulada_fecha": t.anulada_fecha,
                 "motivo_anulacion": t.motivo_anulacion,
+                "transaction_anulacion_id": t.transaction_anulacion_id,
                 "es_automatica": t.es_automatica,
                 "created_at": t.created_at,
                 "notas": t.notas,
