@@ -65,6 +65,7 @@ class CreatePreferenceRequest(BaseModel):
     monto: float = Field(..., gt=0, description="Monto a cobrar en ARS")
     descripcion: str = Field(default="Suscripción Hotel PMS", max_length=255)
     external_reference: Optional[str] = Field(None, description="Referencia interna (ej. subscription_id)")
+    plan_type: Optional[str] = Field(None, description="Plan destino al aprobarse el pago: basico | premium")
 
 
 class PreferenceResponse(BaseModel):
@@ -115,12 +116,29 @@ def create_preference(
     empresa = db.query(EmpresaUsuario).filter_by(id=current_user.empresa_usuario_id).first()
     hotel_nombre = empresa.nombre_hotel if empresa else "Hotel PMS"
 
+    # Plan destino (opcional): si viene, el monto lo fija el server (precio del plan) y se
+    # guarda en el intento para que el webhook active ese plan al aprobarse el pago.
+    from models.core import Plan, PlanType
+    target_plan = None
+    monto_final = Decimal(str(data.monto))
+    attempt_meta = {}
+    if data.plan_type:
+        pt = data.plan_type.lower().strip()
+        if pt not in (PlanType.BASICO.value, PlanType.PREMIUM.value):
+            raise HTTPException(status_code=400, detail="plan_type inválido. Use basico o premium")
+        target_plan = db.query(Plan).filter(Plan.nombre == pt, Plan.activo == True).first()
+        if not target_plan:
+            raise HTTPException(status_code=404, detail="Plan destino no encontrado")
+        monto_final = Decimal(str(target_plan.precio_mensual or 0))
+        attempt_meta = {"target_plan_type": pt}
+
     # Crear intento de pago en la DB antes de llamar a MP
     attempt = PaymentAttempt(
         subscription_id=subscription.id,
-        monto=Decimal(str(data.monto)),
+        monto=monto_final,
         estado=PaymentStatus.PENDIENTE,
         proveedor=PaymentProvider.MERCADO_PAGO,
+        response_json=attempt_meta or None,
     )
     db.add(attempt)
     db.commit()
@@ -136,7 +154,7 @@ def create_preference(
             {
                 "title": f"{hotel_nombre} — {data.descripcion}",
                 "quantity": 1,
-                "unit_price": float(data.monto),
+                "unit_price": float(monto_final),
                 "currency_id": "ARS",
             }
         ],
@@ -166,9 +184,13 @@ def create_preference(
         init_point = response.get("init_point", "")
         sandbox_init_point = response.get("sandbox_init_point", "")
 
-        # Guardar external_id en el intento de pago
+        # Guardar external_id en el intento de pago (preservando el plan destino si lo había)
         attempt.external_id = preference_id
-        attempt.response_json = {"preference_id": preference_id, "status": "preference_created"}
+        attempt.response_json = {
+            **(attempt_meta or {}),
+            "preference_id": preference_id,
+            "status": "preference_created",
+        }
         db.commit()
 
         log_event("mercadopago", current_user.username, "Preferencia creada",
@@ -294,29 +316,48 @@ async def mercadopago_webhook(
         }
         nuevo_estado = estado_map.get(mp_status, PaymentStatus.PENDIENTE)
 
+        # Recuperar el plan destino guardado al crear la preferencia (si lo había), antes
+        # de sobrescribir response_json con los datos del pago.
+        prev_meta = attempt.response_json if isinstance(attempt.response_json, dict) else {}
+        target_plan_type = prev_meta.get("target_plan_type")
+
         attempt.estado = nuevo_estado
         attempt.external_id = payment_id
         attempt.response_json = {
             "mp_status": mp_status,
             "mp_payment_id": payment_id,
             "transaction_amount": transaction_amount,
+            "target_plan_type": target_plan_type,
         }
 
-        # Si el pago fue exitoso, registrar en la suscripción
+        # Si el pago fue exitoso, activar/renovar la suscripción vía servicio central
+        # (mantiene sincronizado el espejo plan_tipo/fecha_fin_demo en la empresa).
+        # Si la preferencia llevaba plan destino, se activa ESE plan (upgrade real);
+        # si no, se renueva el plan actual.
         if nuevo_estado == PaymentStatus.EXITOSO:
-            from datetime import timedelta
+            from utils.subscription_service import apply_plan_change, DEFAULT_BILLING_DAYS
+            from models.core import Plan
             subscription = db.query(Subscription).filter_by(
                 id=attempt.subscription_id
             ).first()
             if subscription:
-                subscription.estado = "activo"
-                if subscription.fecha_proxima_renovacion:
-                    subscription.fecha_proxima_renovacion += timedelta(days=30)
-                else:
-                    subscription.fecha_proxima_renovacion = utcnow() + timedelta(days=30)
+                empresa = db.query(EmpresaUsuario).filter_by(
+                    id=subscription.empresa_usuario_id
+                ).first()
+                plan_a_aplicar = None
+                if target_plan_type:
+                    plan_a_aplicar = db.query(Plan).filter(Plan.nombre == target_plan_type).first()
+                if plan_a_aplicar is None:
+                    plan_a_aplicar = subscription.plan
+                if empresa and plan_a_aplicar:
+                    apply_plan_change(
+                        db, empresa, subscription, plan_a_aplicar,
+                        proveedor=PaymentProvider.MERCADO_PAGO,
+                        periodo_dias=DEFAULT_BILLING_DAYS,
+                    )
 
             log_event("mercadopago", "webhook", "Pago aprobado",
-                      f"payment_id={payment_id} monto={transaction_amount}")
+                      f"payment_id={payment_id} monto={transaction_amount} plan={target_plan_type or 'actual'}")
 
         db.commit()
         return {"status": "processed", "mp_status": mp_status, "estado": nuevo_estado.value}

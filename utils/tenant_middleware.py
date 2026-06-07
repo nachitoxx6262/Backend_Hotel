@@ -249,16 +249,131 @@ def check_trial_expiration(empresa_usuario) -> dict:
 def is_trial_write_blocked(empresa_usuario) -> bool:
     """
     Verifica si el trial está en período de bloqueo de escrituras (día 10+)
-    
+
     El bloqueo de escrituras comienza después de que el trial expira
     Los usuarios pueden seguir LEYENDO pero no pueden hacer cambios
     """
     from models.core import PlanType
-    
+
     if empresa_usuario.plan_tipo != PlanType.DEMO:
         return False  # Suscripciones pagadas no tienen bloqueo
-    
+
     trial_info = check_trial_expiration(empresa_usuario)
-    
+
     # Bloquear si el trial ha expirado
     return trial_info["status"] == "expired"
+
+
+# ========== ENFORCEMENT DE SUSCRIPCIÓN (Fase B) ==========
+
+from starlette.middleware.base import BaseHTTPMiddleware
+
+# Métodos que modifican estado y por lo tanto se bloquean si la suscripción no es writable.
+_WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+
+# Prefijos exentos del bloqueo:
+# - /auth: login/registro/refresh.
+# - /billing y /mercadopago: un tenant VENCIDO DEBE poder ver planes y PAGAR para reactivarse.
+# - infra/docs.
+# (Las rutas de super-admin /admin no se listan: el super-admin se exime por rol.)
+_ENFORCE_EXEMPT_PREFIXES = (
+    "/auth",
+    "/billing",
+    "/mercadopago",
+    "/health",
+    "/docs",
+    "/redoc",
+    "/openapi",
+)
+
+
+def _enforce_is_exempt(path: str) -> bool:
+    if path == "/":
+        return True
+    return any(path.startswith(p) for p in _ENFORCE_EXEMPT_PREFIXES)
+
+
+class SubscriptionEnforcementMiddleware(BaseHTTPMiddleware):
+    """
+    Bloquea operaciones de escritura cuando la suscripción del tenant no permite escribir
+    (trial vencido, suscripción vencida/cancelada/bloqueada) devolviendo 402 Payment Required.
+
+    La verdad del estado la calcula `subscription_service.resolve_access` (Subscription como
+    única fuente). El bloqueo es SOLO para escrituras: las lecturas (GET) siempre pasan.
+
+    Es autocontenido (decodifica el JWT y abre su propia sesión) para no depender del orden
+    de los otros middlewares ni de Depends.
+    """
+
+    async def dispatch(self, request, call_next):
+        # Solo escrituras.
+        if request.method not in _WRITE_METHODS:
+            return await call_next(request)
+
+        # Rutas exentas (auth, pagos, billing, infra).
+        if _enforce_is_exempt(request.url.path):
+            return await call_next(request)
+
+        # Sin token válido -> dejar pasar; el endpoint responderá 401 por su cuenta.
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            return await call_next(request)
+
+        try:
+            payload = verify_token(auth_header[7:], token_type="access")
+            token_payload = TokenPayload(payload)
+        except Exception:
+            return await call_next(request)
+
+        # Super-admin y usuarios sin tenant (admin global) no tienen suscripción que aplicar.
+        if token_payload.is_super_admin() or not token_payload.empresa_usuario_id:
+            return await call_next(request)
+
+        from database.conexion import SessionLocal
+        from models.core import EmpresaUsuario, Subscription
+        from utils.subscription_service import resolve_access
+
+        db = SessionLocal()
+        try:
+            empresa = db.query(EmpresaUsuario).filter_by(
+                id=token_payload.empresa_usuario_id, deleted=False
+            ).first()
+            if not empresa:
+                # Empresa inexistente/eliminada: que lo maneje el endpoint.
+                return await call_next(request)
+
+            subscription = db.query(Subscription).filter_by(
+                empresa_usuario_id=empresa.id
+            ).first()
+
+            access = resolve_access(empresa, subscription)
+            if not access.writable:
+                expires_at = None
+                if access.periodo_fin is not None:
+                    try:
+                        expires_at = access.periodo_fin.isoformat()
+                    except Exception:
+                        expires_at = None
+                return JSONResponse(
+                    status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                    content={
+                        "detail": {
+                            "error": "subscription_blocked",
+                            "estado": access.estado,
+                            "is_trial": access.is_trial,
+                            "message": (
+                                "Tu período de prueba finalizó. Suscribite a un plan para seguir trabajando."
+                                if access.is_trial
+                                else "Tu suscripción no está activa. Regularizá el pago para seguir trabajando."
+                            ),
+                            "expires_at": expires_at,
+                            "call_to_action": "Elegí un plan y pagá para reactivar tu cuenta.",
+                            "upgrade_url": "/app/billing",
+                            "read_only": True,
+                        }
+                    },
+                )
+        finally:
+            db.close()
+
+        return await call_next(request)

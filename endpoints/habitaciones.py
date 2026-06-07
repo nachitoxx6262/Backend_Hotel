@@ -407,7 +407,13 @@ async def create_room(
         raise HTTPException(status_code=401, detail="No autenticado o sin tenant asociado")
     
     tenant_id = current_user.empresa_usuario_id
-    
+
+    # Límite de habitaciones del plan
+    from models.core import Subscription
+    from utils.subscription_service import check_resource_limit
+    subscription = db.query(Subscription).filter_by(empresa_usuario_id=tenant_id).first()
+    check_resource_limit(db, tenant_id, subscription, "habitaciones")
+
     # Validar que el tipo de habitación pertenece al tenant
     room_type = db.query(RoomType).filter(
         RoomType.id == room.room_type_id,
@@ -415,7 +421,7 @@ async def create_room(
     ).first()
     if not room_type:
         raise HTTPException(status_code=404, detail="Tipo de habitación no encontrado o no pertenece a tu empresa")
-    
+
     nueva = Room(**room.dict(), empresa_usuario_id=tenant_id)
     db.add(nueva)
     try:

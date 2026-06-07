@@ -594,12 +594,21 @@ def invitar_usuario(
     Crea un usuario con contraseña temporal
     """
     try:
+        # Límite de usuarios del plan (este endpoint cae bajo /auth, exento del 402 global,
+        # así que validamos el tope acá explícitamente).
+        from models.core import Subscription
+        from utils.subscription_service import check_resource_limit
+        subscription = db.query(Subscription).filter_by(
+            empresa_usuario_id=current_user.empresa_usuario_id
+        ).first()
+        check_resource_limit(db, current_user.empresa_usuario_id, subscription, "usuarios")
+
         # Validar que el email no exista
         existe_email = db.query(Usuario).filter(
             Usuario.email == payload.email,
             Usuario.deleted.is_(False)
         ).first()
-        
+
         if existe_email:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -814,18 +823,16 @@ def register_empresa_usuario(
         db.add(nueva_empresa)
         db.flush()  # Necesario para obtener el ID
         
-        # 2. Obtener o crear el Plan solicitado (default: demo)
-        plan_nombre = (empresa_data.selected_plan or "demo").lower().strip()
-        # Solo permite planes válidos; si es desconocido, cae a demo
-        if plan_nombre not in ("demo", "basico", "premium"):
-            plan_nombre = "demo"
-
+        # 2. El alta SIEMPRE arranca en TRIAL (plan demo). No se permite auto-asignarse
+        #    un plan pago al registrarse: el upgrade a basico/premium se hace luego
+        #    pagando (MercadoPago / transferencia / efectivo). `selected_plan` queda
+        #    como "plan deseado" sólo a fines informativos (no cambia el plan real).
         plan_seleccionado = db.query(Plan).filter(
-            Plan.nombre == plan_nombre
+            Plan.nombre == "demo"
         ).first()
 
         if not plan_seleccionado:
-            # Fallback: crear plan demo si no existe ningún plan con ese nombre
+            # Fallback: crear plan demo si no existe
             plan_seleccionado = Plan(
                 nombre="demo",
                 descripcion="Plan de demostración - 10 días gratis",
@@ -837,12 +844,12 @@ def register_empresa_usuario(
             db.add(plan_seleccionado)
             db.flush()
 
-        # 3. Crear Subscription linking EmpresaUsuario → Plan
+        # 3. Crear Subscription linking EmpresaUsuario → Plan demo (trial)
         subscription = Subscription(
             empresa_usuario_id=nueva_empresa.id,
             plan_id=plan_seleccionado.id,
             estado="activo",
-            fecha_proxima_renovacion=fecha_fin_demo  # Fin del período de prueba
+            fecha_proxima_renovacion=fecha_fin_demo  # Fin del período de prueba = fin de trial
         )
         
         db.add(subscription)

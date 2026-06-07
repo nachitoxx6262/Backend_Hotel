@@ -19,10 +19,13 @@ from models.core import EmpresaUsuario, Plan, Subscription, PlanType, Subscripti
 from schemas.billing import (
     PlanResponse, BillingStatusResponse, SubscriptionInfo, UsageInfo, TrialInfo,
     UpgradePlanRequest, UpgradeResponse, CancelSubscriptionRequest, CancelSubscriptionResponse,
-    PaymentIntentRequest, PaymentIntentResponse, PlanType as SchemaPlanType
+    PaymentIntentRequest, PaymentIntentResponse, PlanType as SchemaPlanType,
+    ReportOfflinePaymentRequest, PaymentInstructionsResponse
 )
+import os
 from utils.dependencies import get_current_user, require_admin_or_manager
 from utils.tenant_middleware import check_trial_expiration, is_trial_write_blocked
+from utils.subscription_service import resolve_access, apply_plan_change, DEFAULT_BILLING_DAYS
 from utils.logging_utils import log_event
 from config import STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET, get_stripe_client, is_stripe_configured, ENABLE_STRIPE_TESTING
 
@@ -127,23 +130,25 @@ async def get_subscription_status(
         hab_porcentaje = min((habitaciones_count / hab_limite * 100) if hab_limite > 0 else 0, 100)
         usr_porcentaje = min((usuarios_count / usr_limite * 100) if usr_limite > 0 else 0, 100)
         
-        # Trial info — check_trial_expiration espera el EmpresaUsuario (tiene plan_tipo/fecha_fin_demo),
-        # no el Subscription. Pasar 'empresa' evita AttributeError -> 500.
-        trial_info_dict = check_trial_expiration(empresa)
+        # Estado efectivo desde el servicio central (Subscription como verdad). Esto
+        # deriva en vivo el vencimiento (VENCIDO) aunque no haya cron, y mantiene el
+        # estado mostrado coherente con el real.
+        access = resolve_access(empresa, subscription)
+
         trial_info = TrialInfo(
-            is_active=trial_info_dict["is_active"],
-            days_remaining=trial_info_dict["days_remaining"],
-            expires_at=trial_info_dict.get("expires_at"),
-            status=trial_info_dict["status"]
+            is_active=access.writable,
+            days_remaining=access.days_remaining or 0,
+            expires_at=access.periodo_fin if access.is_trial else None,
+            status=access.frontend_status
         )
-        
+
         return BillingStatusResponse(
             current_plan=SubscriptionInfo(
                 id=subscription.id,
                 plan=_map_plan_to_response(plan),
-                estado=subscription.estado,
+                estado=access.estado,
                 fecha_inicio=subscription.created_at,
-                fecha_proximo_pago=subscription.fecha_proxima_renovacion
+                fecha_proximo_pago=access.periodo_fin or subscription.fecha_proxima_renovacion
             ),
             trial_info=trial_info,
             usage=UsageInfo(
@@ -210,30 +215,42 @@ async def upgrade_plan(
                 detail=f"Plan {upgrade_data.new_plan_type} no existe"
             )
         
-        # Obtener subscription actual
+        # Obtener empresa (espejo) y subscription actual
+        empresa = db.query(EmpresaUsuario).filter_by(
+            id=current_user.empresa_usuario_id,
+            deleted=False
+        ).first()
+
+        if not empresa:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Empresa no encontrada"
+            )
+
         subscription = db.query(Subscription).filter_by(
             empresa_usuario_id=current_user.empresa_usuario_id
         ).first()
-        
+
         if not subscription:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Suscripción no encontrada"
             )
-        
+
         plan_actual = subscription.plan
-        
+
         if plan_actual.id == nuevo_plan.id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Ya tienes el plan {nuevo_plan.nombre}"
             )
-        
-        # Actualizar subscription
-        subscription.plan_id = nuevo_plan.id
-        subscription.estado = SubscriptionStatus.ACTIVO
-        subscription.fecha_proxima_renovacion = utcnow() + timedelta(days=30)
-        
+
+        # Cambio de plan vía servicio central: actualiza subscription + espejo en
+        # empresa (plan_tipo/fecha_fin_demo) de forma atómica, sin desincronizar.
+        apply_plan_change(
+            db, empresa, subscription, nuevo_plan,
+            periodo_dias=DEFAULT_BILLING_DAYS,
+        )
         db.commit()
         
         # Log evento
@@ -376,6 +393,115 @@ async def cancel_subscription(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error al procesar cancelación"
         )
+
+
+# ========== PAGOS OFFLINE (transferencia / efectivo) ==========
+
+@router.get("/payment-instructions", response_model=PaymentInstructionsResponse)
+async def get_payment_instructions(
+    current_user: Usuario = Depends(get_current_user),
+    db: Session = Depends(conexion.get_db)
+):
+    """
+    Datos para pagar por fuera de la app (transferencia/efectivo). Los configura el dueño
+    del SaaS por variables de entorno; si no hay datos de transferencia, sólo se ofrece
+    MercadoPago / contacto.
+    """
+    alias = os.getenv("PAYMENT_TRANSFER_ALIAS") or None
+    cbu = os.getenv("PAYMENT_TRANSFER_CBU") or None
+    return PaymentInstructionsResponse(
+        transferencia_disponible=bool(alias or cbu),
+        alias=alias,
+        cbu=cbu,
+        titular=os.getenv("PAYMENT_TRANSFER_TITULAR") or None,
+        banco=os.getenv("PAYMENT_TRANSFER_BANCO") or None,
+        nota=os.getenv("PAYMENT_TRANSFER_NOTA") or None,
+        mercadopago_disponible=bool(os.getenv("MERCADO_PAGO_ACCESS_TOKEN")),
+        contacto=os.getenv("PAYMENT_CONTACT") or None,
+    )
+
+
+@router.post("/report-offline-payment")
+async def report_offline_payment(
+    data: ReportOfflinePaymentRequest,
+    current_user: Usuario = Depends(get_current_user),
+    db: Session = Depends(conexion.get_db)
+):
+    """
+    El tenant autoinforma que pagó por transferencia/efectivo. Crea un PaymentAttempt
+    PENDIENTE con el plan destino guardado en response_json. NO cambia el plan: el dueño
+    debe confirmarlo desde /admin/payments/{id}/confirm.
+    """
+    try:
+        if current_user.es_super_admin or not current_user.empresa_usuario_id:
+            raise HTTPException(status_code=403, detail="No disponible para super admin")
+
+        metodo = (data.metodo or "").lower().strip()
+        if metodo not in ("transferencia", "efectivo"):
+            raise HTTPException(status_code=400, detail="metodo debe ser 'transferencia' o 'efectivo'")
+
+        target = PlanType[data.plan_type.name]
+        if target == PlanType.DEMO:
+            raise HTTPException(status_code=400, detail="El pago offline es para planes pagos (basico/premium)")
+
+        nuevo_plan = db.query(Plan).filter_by(nombre=target, activo=True).first()
+        if not nuevo_plan:
+            raise HTTPException(status_code=404, detail="Plan no encontrado")
+
+        subscription = db.query(Subscription).filter_by(
+            empresa_usuario_id=current_user.empresa_usuario_id
+        ).first()
+        if not subscription:
+            raise HTTPException(status_code=404, detail="Suscripción no encontrada")
+
+        # Evitar duplicados: si ya hay un aviso pendiente para el mismo plan, no crear otro.
+        ya_pendiente = db.query(PaymentAttempt).filter(
+            PaymentAttempt.subscription_id == subscription.id,
+            PaymentAttempt.estado == PaymentStatus.PENDIENTE,
+            PaymentAttempt.proveedor.in_([PaymentProvider.TRANSFERENCIA, PaymentProvider.EFECTIVO]),
+        ).first()
+        if ya_pendiente:
+            raise HTTPException(
+                status_code=409,
+                detail="Ya tenés un aviso de pago pendiente de confirmación. Esperá a que lo revisemos."
+            )
+
+        proveedor = PaymentProvider.TRANSFERENCIA if metodo == "transferencia" else PaymentProvider.EFECTIVO
+        monto = Decimal(str(data.monto)) if data.monto is not None else Decimal(str(nuevo_plan.precio_mensual or 0))
+
+        attempt = PaymentAttempt(
+            subscription_id=subscription.id,
+            monto=monto,
+            estado=PaymentStatus.PENDIENTE,
+            proveedor=proveedor,
+            response_json={
+                "target_plan_type": target.value,
+                "nota": data.nota,
+                "reported_by": current_user.username,
+                "reported_at": utcnow().isoformat(),
+            },
+        )
+        db.add(attempt)
+        db.commit()
+        db.refresh(attempt)
+
+        log_event(
+            "billing", current_user.username, "Pago offline informado",
+            f"plan={target.value} metodo={metodo} monto={monto} attempt_id={attempt.id}"
+        )
+
+        return {
+            "status": "pending_confirmation",
+            "attempt_id": attempt.id,
+            "message": "Recibimos tu aviso de pago. Lo confirmaremos a la brevedad y se activará tu plan.",
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        log_event("billing", current_user.username, "Error al informar pago offline", f"error={str(e)}")
+        raise HTTPException(status_code=500, detail="Error al registrar el aviso de pago")
 
 
 # ========== HELPER FUNCTIONS ==========
@@ -698,20 +824,25 @@ async def _handle_payment_succeeded(intent: Dict[str, Any], db: Session):
             empresa_usuario_id=empresa_usuario_id
         ).first()
         
-        if not subscription or not plan:
+        empresa = db.query(EmpresaUsuario).filter_by(id=empresa_usuario_id, deleted=False).first()
+
+        if not subscription or not plan or not empresa:
             log_event(
                 "billing",
                 "webhook",
-                "Subscription or plan not found",
+                "Subscription, plan o empresa no encontrados",
                 f"empresa_id={empresa_usuario_id}, plan_type={plan_type}"
             )
             return
-        
-        # Actualizar subscription
-        subscription.plan_id = plan.id
-        subscription.estado = SubscriptionStatus.ACTIVO
-        subscription.fecha_proxima_renovacion = utcnow() + timedelta(days=30)
-        
+
+        # Cambio de plan vía servicio central: subscription + espejo en empresa
+        # (plan_tipo/fecha_fin_demo) atómico. El pago se registra abajo con
+        # response_json detallado, por eso registrar_pago=False acá.
+        apply_plan_change(
+            db, empresa, subscription, plan,
+            proveedor=PaymentProvider.STRIPE, periodo_dias=DEFAULT_BILLING_DAYS,
+        )
+
         # Crear PaymentAttempt record
         payment = PaymentAttempt(
             subscription_id=subscription.id,
@@ -768,10 +899,9 @@ async def _handle_payment_succeeded(intent: Dict[str, Any], db: Session):
         db.commit()
         
         # Log
-        empresa = db.query(EmpresaUsuario).filter_by(id=empresa_usuario_id, deleted=False).first()
         log_event(
             "billing",
-            empresa.nombre if empresa else f"empresa_{empresa_usuario_id}",
+            empresa.nombre_hotel if empresa else f"empresa_{empresa_usuario_id}",
             "Payment succeeded - Subscription upgraded",
             f"plan={plan_type}, amount=${intent['amount']/100}, intent_id={intent['id']}"
         )
@@ -832,7 +962,7 @@ async def _handle_payment_failed(intent: Dict[str, Any], db: Session):
         empresa = db.query(EmpresaUsuario).filter_by(id=empresa_usuario_id, deleted=False).first()
         log_event(
             "billing",
-            empresa.nombre if empresa else f"empresa_{empresa_usuario_id}",
+            empresa.nombre_hotel if empresa else f"empresa_{empresa_usuario_id}",
             "Payment failed",
             f"plan={plan_type}, amount=${intent['amount']/100}, error={intent.get('last_payment_error', {}).get('message')}"
         )

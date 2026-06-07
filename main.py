@@ -7,7 +7,7 @@ import logging
 from database.conexion import Base, engine
 import models  # asegura que todos los modelos estén registrados
 from fastapi.middleware.cors import CORSMiddleware
-from utils.tenant_middleware import TenantContextMiddleware, PostgreSQLRLSMiddleware
+from utils.tenant_middleware import TenantContextMiddleware, PostgreSQLRLSMiddleware, SubscriptionEnforcementMiddleware
 from utils.rate_limiter import setup_rate_limiting
 
 logger = logging.getLogger(__name__)
@@ -58,6 +58,10 @@ app.add_middleware(TenantContextMiddleware)
 
 # Middleware para RLS de PostgreSQL
 app.add_middleware(PostgreSQLRLSMiddleware)
+
+# Enforcement de suscripción: bloquea escrituras (402) si el trial/suscripción no permite
+# escribir. Se agrega último => corre primero (outermost), antes de tocar la DB del endpoint.
+app.add_middleware(SubscriptionEnforcementMiddleware)
 
 # ========== ROUTERS ==========
 from endpoints import roles, auth, hotel_calendar, pms_professional, habitaciones, clientes, settings, pricing, empresas, estadisticas, billing, admin, caja, ical_export, mercadopago as mp_router, maintenance, housekeeping_config

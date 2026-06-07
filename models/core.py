@@ -50,6 +50,8 @@ class PaymentProvider(str, enum.Enum):
     DUMMY = "dummy"
     MERCADO_PAGO = "mercado_pago"
     STRIPE = "stripe"
+    EFECTIVO = "efectivo"
+    TRANSFERENCIA = "transferencia"
 
 
 # ============================================================================

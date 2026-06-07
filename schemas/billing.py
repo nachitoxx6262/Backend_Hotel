@@ -119,6 +119,26 @@ class PaymentIntentResponse(BaseModel):
     billing_period_days: int = 30
 
 
+class ReportOfflinePaymentRequest(BaseModel):
+    """El tenant autoinforma un pago offline (transferencia/efectivo) — queda PENDIENTE."""
+    plan_type: PlanType = Field(..., description="basico o premium")
+    metodo: str = Field(..., description="'transferencia' o 'efectivo'")
+    monto: Optional[float] = Field(None, ge=0, description="Monto pagado; default = precio del plan")
+    nota: Optional[str] = Field(None, max_length=500, description="Comprobante/observación opcional")
+
+
+class PaymentInstructionsResponse(BaseModel):
+    """Datos para pagar por fuera de la app (los configura el dueño por env)."""
+    transferencia_disponible: bool = False
+    alias: Optional[str] = None
+    cbu: Optional[str] = None
+    titular: Optional[str] = None
+    banco: Optional[str] = None
+    nota: Optional[str] = None
+    mercadopago_disponible: bool = False
+    contacto: Optional[str] = None
+
+
 class PaymentWebhookData(BaseModel):
     """Data del webhook de Stripe"""
     type: str  # payment_intent.succeeded, etc
