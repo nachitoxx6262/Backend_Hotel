@@ -35,6 +35,15 @@ from utils.logging_utils import log_event
 router = APIRouter(prefix="/caja", tags=["Caja"])
 
 
+def _fin_de_dia_si_es_medianoche(dt):
+    """Si el datetime llega exactamente a medianoche (filtro por fecha sin hora, p.ej.
+    un <input type="date"> que manda 'YYYY-MM-DD'), extenderlo al final del día para que
+    el rango 'hasta' sea INCLUSIVO. Sin esto, 'hasta hoy' excluiría todo el día de hoy."""
+    if dt is not None and dt.hour == 0 and dt.minute == 0 and dt.second == 0 and dt.microsecond == 0:
+        return dt.replace(hour=23, minute=59, second=59, microsecond=999999)
+    return dt
+
+
 # ============================================================================
 # CATEGORÍAS DE TRANSACCIONES
 # ============================================================================
@@ -211,6 +220,61 @@ async def update_category(
         )
 
 
+@router.delete("/categorias/{category_id}")
+async def delete_category(
+    category_id: int,
+    current_user: Usuario = Depends(require_admin_or_manager),
+    db: Session = Depends(conexion.get_db)
+):
+    """
+    Elimina una categoría.
+    No se pueden eliminar categorías del sistema ni categorías con transacciones asociadas.
+    """
+    try:
+        category = db.query(TransactionCategory).filter(
+            TransactionCategory.id == category_id,
+            TransactionCategory.empresa_usuario_id == current_user.empresa_usuario_id
+        ).first()
+
+        if not category:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Categoría no encontrada"
+            )
+
+        if category.es_sistema:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No se puede eliminar una categoría del sistema"
+            )
+
+        # Bloquear si tiene transacciones asociadas (FK + integridad histórica)
+        en_uso = db.query(Transaction.id).filter(
+            Transaction.category_id == category_id
+        ).first()
+        if en_uso:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Esta categoría tiene transacciones asociadas y no se puede eliminar"
+            )
+
+        db.delete(category)
+        db.commit()
+
+        log_event("caja", current_user.username, "Categoría eliminada", f"id={category_id}")
+        return {"message": "Categoría eliminada exitosamente"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        log_event("caja", current_user.username, "Error al eliminar categoría", f"error={str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error al eliminar categoría"
+        )
+
+
 # ============================================================================
 # TRANSACCIONES (INGRESOS Y EGRESOS)
 # ============================================================================
@@ -248,7 +312,7 @@ async def get_transactions(
             query = query.filter(Transaction.fecha >= fecha_desde)
 
         if fecha_hasta:
-            query = query.filter(Transaction.fecha <= fecha_hasta)
+            query = query.filter(Transaction.fecha <= _fin_de_dia_si_es_medianoche(fecha_hasta))
 
         if tipo:
             query = query.filter(Transaction.tipo == tipo.value)
@@ -604,11 +668,13 @@ async def get_caja_summary(
         
         # Si no se especifica rango, usar día actual
         if not fecha_desde:
-            fecha_desde = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            fecha_desde = utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
         
         if not fecha_hasta:
-            fecha_hasta = datetime.now().replace(hour=23, minute=59, second=59, microsecond=999999)
-        
+            fecha_hasta = utcnow().replace(hour=23, minute=59, second=59, microsecond=999999)
+        else:
+            fecha_hasta = _fin_de_dia_si_es_medianoche(fecha_hasta)
+
         # Query base
         transactions = db.query(Transaction).filter(
             Transaction.empresa_usuario_id == current_user.empresa_usuario_id,
@@ -712,11 +778,13 @@ async def get_summary_by_category(
         
         # Si no se especifica rango, usar día actual
         if not fecha_desde:
-            fecha_desde = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            fecha_desde = utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
         
         if not fecha_hasta:
-            fecha_hasta = datetime.now().replace(hour=23, minute=59, second=59, microsecond=999999)
-        
+            fecha_hasta = utcnow().replace(hour=23, minute=59, second=59, microsecond=999999)
+        else:
+            fecha_hasta = _fin_de_dia_si_es_medianoche(fecha_hasta)
+
         # Query con agrupación
         query = db.query(
             TransactionCategory.id.label("category_id"),
@@ -957,11 +1025,13 @@ async def export_transactions_csv(
         
         # Si no se especifica rango, usar mes actual
         if not fecha_desde:
-            fecha_desde = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            fecha_desde = utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         
         if not fecha_hasta:
-            fecha_hasta = datetime.now()
-        
+            fecha_hasta = utcnow()
+        else:
+            fecha_hasta = _fin_de_dia_si_es_medianoche(fecha_hasta)
+
         query = db.query(Transaction).filter(
             Transaction.empresa_usuario_id == current_user.empresa_usuario_id,
             Transaction.fecha >= fecha_desde,

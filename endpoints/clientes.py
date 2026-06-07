@@ -228,17 +228,29 @@ def delete_cliente_permanente(
     if not db_cliente:
         raise HTTPException(status_code=404, detail="Cliente no encontrado")
 
-    # Verificar que no tenga estancias — evita violar integridad referencial
-    tiene_stays = db.query(Stay).filter(Stay.cliente_id == cliente_id).first()
-    if tiene_stays:
+    # Verificar que no tenga reservas/estancias — evita violar integridad referencial.
+    # El vínculo cliente↔estancia es vía Reservation.cliente_id (Stay no tiene cliente_id),
+    # y es Reservation.cliente_id el FK que bloquea el borrado a nivel DB.
+    tiene_reservas = db.query(Reservation.id).filter(
+        Reservation.cliente_id == cliente_id,
+        Reservation.empresa_usuario_id == tenant_id
+    ).first()
+    if tiene_reservas:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="No se puede eliminar el cliente porque tiene estancias registradas. Puede archivarlo en su lugar."
+            detail="No se puede eliminar el cliente porque tiene reservas/estancias registradas. Puede archivarlo en su lugar."
         )
 
     log_event("clientes", current_user.username, "Cliente eliminado permanentemente", f"cliente_id={cliente_id}")
     db.delete(db_cliente)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No se puede eliminar el cliente porque tiene registros asociados."
+        )
 
 
 @router.put("/{cliente_id}/restaurar", response_model=ClienteRead)

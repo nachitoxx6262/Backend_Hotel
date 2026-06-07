@@ -122,8 +122,10 @@ async def get_subscription_status(
         hab_limite = plan.max_habitaciones if plan.max_habitaciones and plan.max_habitaciones > 0 else 999
         usr_limite = plan.max_usuarios if plan.max_usuarios and plan.max_usuarios > 0 else 999
         
-        hab_porcentaje = (habitaciones_count / hab_limite * 100) if hab_limite > 0 else 0
-        usr_porcentaje = (usuarios_count / usr_limite * 100) if usr_limite > 0 else 0
+        # Tope a 100: el uso puede superar el límite del plan (p.ej. más habitaciones que
+        # las permitidas), pero el schema exige le=100 y lo contrario rompe /billing/status con 500.
+        hab_porcentaje = min((habitaciones_count / hab_limite * 100) if hab_limite > 0 else 0, 100)
+        usr_porcentaje = min((usuarios_count / usr_limite * 100) if usr_limite > 0 else 0, 100)
         
         # Trial info — check_trial_expiration espera el EmpresaUsuario (tiene plan_tipo/fecha_fin_demo),
         # no el Subscription. Pasar 'empresa' evita AttributeError -> 500.
@@ -475,7 +477,13 @@ async def create_payment_intent(
             activa=True,
             deleted=False
         ).first()
-        
+
+        if not empresa:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Empresa no encontrada o inactiva"
+            )
+
         subscription = db.query(Subscription).filter_by(
             empresa_usuario_id=empresa.id
         ).first()
@@ -486,8 +494,9 @@ async def create_payment_intent(
                 detail="Suscripción no encontrada"
             )
         
-        # Calcular monto a cobrar (en centavos)
-        amount_cents = int(nuevo_plan.precio_mensual * 100)
+        # Calcular monto a cobrar (en centavos). round() evita perder 1 centavo por
+        # truncamiento de float (p.ej. 19.99 -> 1998 en vez de 1999).
+        amount_cents = int(round(nuevo_plan.precio_mensual * 100))
         
         # Si no hay Stripe configurado, retornar intent demo
         if not is_stripe_configured():
@@ -706,7 +715,7 @@ async def _handle_payment_succeeded(intent: Dict[str, Any], db: Session):
         # Crear PaymentAttempt record
         payment = PaymentAttempt(
             subscription_id=subscription.id,
-            monto=intent["amount"] / 100,
+            monto=Decimal(intent["amount"]) / 100,
             estado=PaymentStatus.EXITOSO,
             proveedor=PaymentProvider.STRIPE,
             external_id=intent["id"],
@@ -746,7 +755,7 @@ async def _handle_payment_succeeded(intent: Dict[str, Any], db: Session):
             empresa_usuario_id=empresa_usuario_id,
             tipo="ingreso",  # Usar string directo
             category_id=categoria_suscripcion.id,
-            monto=Decimal(str(intent["amount"] / 100)),
+            monto=Decimal(intent["amount"]) / 100,
             metodo_pago="tarjeta",  # Stripe siempre es tarjeta - usar string directo
             referencia=f"Stripe Payment Intent: {intent['id']}",
             fecha=utcnow(),
@@ -807,7 +816,7 @@ async def _handle_payment_failed(intent: Dict[str, Any], db: Session):
         # Crear PaymentAttempt record (fallido)
         payment = PaymentAttempt(
             subscription_id=subscription.id,
-            monto=intent["amount"] / 100,
+            monto=Decimal(intent["amount"]) / 100,
             estado=PaymentStatus.FALLIDO,
             proveedor=PaymentProvider.STRIPE,
             external_id=intent["id"],
