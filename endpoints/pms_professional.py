@@ -23,7 +23,7 @@ from models.core import (
 )
 from models import Usuario
 from utils.logging_utils import log_event
-from utils.dependencies import get_current_user
+from utils.dependencies import get_current_user, require_staff, require_admin_or_manager
 from utils.invoice_engine import compute_invoice
 
 
@@ -191,7 +191,7 @@ class ResolveAlertRequest(BaseModel):
 def create_housekeeping_task(
     req: HousekeepingTaskCreateRequest,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_admin_or_manager)
 ):
     """Crear una tarea agrupada (un registro) con lista de sub-tareas en meta.task_list."""
     tenant_id = current_user.empresa_usuario_id
@@ -349,7 +349,7 @@ def _auto_generate_daily_tasks(db: Session, target_date: date, tenant_id: int):
 def generate_daily_tasks_endpoint(
     date: Optional[str] = Query(None, description="YYYY-MM-DD"),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_admin_or_manager)
 ):
     target_date = utcnow().date() if not date else datetime.fromisoformat(date).date()
     tenant_id = current_user.empresa_usuario_id
@@ -365,7 +365,7 @@ def housekeeping_board(
     include_done: bool = Query(False),
     type: str = Query("all", description="All tasks, or specific type"),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_staff)
 ):
     target_date = utcnow().date() if not date else datetime.fromisoformat(date).date()
     tenant_id = current_user.empresa_usuario_id
@@ -481,7 +481,7 @@ def housekeeping_board(
 def housekeeping_start_task(
     task_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_staff)
 ):
     """Registra el inicio de una limpieza para métricas."""
     tenant_id = current_user.empresa_usuario_id
@@ -503,7 +503,7 @@ def housekeeping_start_task(
 def housekeeping_report_incident(
     req: IncidentReportRequest,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_staff)
 ):
     """Reportar incidencia vinculada a habitación y anclarla a la tarea."""
     tenant_id = current_user.empresa_usuario_id
@@ -551,7 +551,7 @@ def housekeeping_report_incident(
 def housekeeping_report_lost_item(
     req: LostItemReportRequest,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_staff)
 ):
     """Reportar objeto perdido y anclarlo a la tarea."""
     tenant_id = current_user.empresa_usuario_id
@@ -598,7 +598,7 @@ def housekeeping_report_lost_item(
 def resolve_alert(
     req: ResolveAlertRequest,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_admin_or_manager)
 ):
     """Marcar un incidente o lost_item como resuelto, manteniendo el historial."""
     tenant_id = current_user.empresa_usuario_id
@@ -651,7 +651,7 @@ def housekeeping_patch_task(
     task_id: int = Path(..., gt=0),
     req: HousekeepingTaskPatchRequest = ...,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_staff)
 ):
     """Patch housekeeping task. If status goes to done, mark room disponible and set done_at."""
     tenant_id = current_user.empresa_usuario_id
@@ -722,7 +722,7 @@ def housekeeping_claim_task(
     task_id: int = Path(..., gt=0),
     req: HousekeepingClaimRequest = ...,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_staff)
 ):
     tenant_id = current_user.empresa_usuario_id
     if not tenant_id:
@@ -754,7 +754,7 @@ def housekeeping_claim_task(
 def housekeeping_daily(
     date: Optional[str] = Query(None, description="YYYY-MM-DD"),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_staff)
 ):
     """
     Derived daily tasks for a given date.
@@ -834,7 +834,7 @@ class DailyCleanLogRequest(BaseModel):
 def housekeeping_daily_log(
     req: DailyCleanLogRequest,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_staff)
 ):
     """Register daily cleaning completion. Upserts a DailyCleanLog entry."""
     from models.core import DailyCleanLog
@@ -1763,7 +1763,8 @@ def invoice_preview(
 def checkout_stay(
     id: int = Path(..., gt=0),
     req: CheckoutRequest = ...,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(require_staff)
 ):
     """
     🚪 CHECK-OUT PROFESIONAL
@@ -1786,6 +1787,10 @@ def checkout_stay(
     ).filter(Stay.id == id).first()
 
     if not stay:
+        raise HTTPException(404, "Estadía no encontrada")
+
+    # Aislamiento multi-tenant: la estadía debe pertenecer al hotel del usuario
+    if not current_user.empresa_usuario_id or stay.empresa_usuario_id != current_user.empresa_usuario_id:
         raise HTTPException(404, "Estadía no encontrada")
 
     reservation = stay.reservation

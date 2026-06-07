@@ -3031,19 +3031,23 @@ def confirm_checkout(
     db.add(audit)
     
     # 8. Housekeeping + Estado de habitaciones
+    # El módulo de limpieza del hotel manda: si está activo, la habitación queda en
+    # "limpieza" y se genera la tarea de checkout; si no, va directo a "disponible".
+    hk_settings = db.query(HotelSettings).filter_by(empresa_usuario_id=tenant_id).first()
+    hk_enabled = bool(hk_settings.housekeeping_enabled) if hk_settings else False
     ahora = utcnow()
     for occ in stay.occupancies:
         if occ.room:
-            if req.housekeeping:
+            if hk_enabled:
                 # Marcar habitación como "limpieza" (pendiente de housekeeping)
                 occ.room.estado_operativo = "limpieza"
             else:
-                # Sin housekeeping: marcar como disponible
+                # Módulo de limpieza desactivado: marcar como disponible
                 occ.room.estado_operativo = "disponible"
             occ.room.updated_at = ahora
-    
-    # Generar tarea de housekeeping si está habilitada
-    if req.housekeeping:
+
+    # Generar tarea de housekeeping si el módulo está habilitado
+    if hk_enabled:
         try:
             generate_checkout_tasks(stay, db)
             db.flush()  # Forzar escritura para capturar UniqueViolation aquí
