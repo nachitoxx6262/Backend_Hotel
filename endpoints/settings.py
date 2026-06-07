@@ -60,6 +60,10 @@ class HotelSettingsUpdate(BaseModel):
     # Feature flags
     housekeeping_enabled: Optional[bool] = None
 
+    # Política de limpieza (stayover)
+    stayover_policy: Optional[str] = Field(None, pattern="^(diaria|solo_checkout|cada_n_dias)$")
+    stayover_cada_n_dias: Optional[int] = Field(None, ge=1, le=60)
+
     class Config:
         from_attributes = True
 
@@ -93,6 +97,10 @@ class HotelSettingsRead(BaseModel):
 
     # Feature flags
     housekeeping_enabled: bool = False
+
+    # Política de limpieza (stayover)
+    stayover_policy: str = "diaria"
+    stayover_cada_n_dias: int = 3
 
     created_at: str
     updated_at: str
@@ -306,6 +314,12 @@ def update_hotel_settings(
         # Feature flags
         if settings_data.housekeeping_enabled is not None:
             settings.housekeeping_enabled = settings_data.housekeeping_enabled
+
+        # Política de limpieza (stayover)
+        if settings_data.stayover_policy is not None:
+            settings.stayover_policy = settings_data.stayover_policy
+        if settings_data.stayover_cada_n_dias is not None:
+            settings.stayover_cada_n_dias = settings_data.stayover_cada_n_dias
 
         db.commit()
         db.refresh(settings)

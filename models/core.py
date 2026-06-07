@@ -836,6 +836,11 @@ class HotelSettings(Base):
     # Feature flags
     housekeeping_enabled = Column(Boolean, default=False, nullable=False)
 
+    # Política de limpieza de habitaciones OCUPADAS (stayover). El checkout siempre genera
+    # limpieza cuando el módulo está activo. Valores: 'diaria' | 'solo_checkout' | 'cada_n_dias'
+    stayover_policy = Column(String(20), default="diaria", nullable=False)
+    stayover_cada_n_dias = Column(Integer, default=3, nullable=False)
+
     created_at = Column(DateTime(timezone=True), default=utcnow)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 

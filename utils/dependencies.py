@@ -172,10 +172,10 @@ async def require_admin_or_manager(current_user: Usuario = Depends(get_current_a
     return current_user
 
 
-# Staff del hotel (admin, gerente, recepcionista)
+# Staff del hotel (admin, gerente, recepcionista, housekeeping)
 async def require_staff(current_user: Usuario = Depends(get_current_active_user)) -> Usuario:
-    """Requiere rol de staff (admin, gerente o recepcionista)"""
-    if current_user.rol not in ["admin", "gerente", "recepcionista"]:
+    """Requiere rol de staff (admin, gerente, recepcionista o housekeeping)"""
+    if current_user.rol not in ["admin", "gerente", "recepcionista", "housekeeping"]:
         log_event("auth", current_user.username, "Intento de acceso staff sin permisos", f"rol={current_user.rol}")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
