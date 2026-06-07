@@ -19,7 +19,7 @@ from models.core import (
     Reservation, ReservationRoom, ReservationGuest, Room, RoomType,
     Stay, StayRoomOccupancy, StayCharge, StayPayment,
     DailyRate, RatePlan, AuditEvent, Cliente, ClienteCorporativo,
-    HousekeepingTask, HotelSettings
+    HousekeepingTask, HotelSettings, HKRecurringRule, HKTemplate
 )
 from models import Usuario
 from utils.logging_utils import log_event
@@ -342,7 +342,57 @@ def _auto_generate_daily_tasks(db: Session, target_date: date, tenant_id: int):
                 meta={"source": "auto-generation"},
             )
             db.add(new_task)
+
+    # Limpiezas recurrentes/eventuales (ej: "cortinas cada 15 días")
+    _generate_recurring_tasks(db, target_date, tenant_id)
+
     db.commit()
+
+
+def _generate_recurring_tasks(db: Session, target_date: date, tenant_id: int):
+    """Genera tareas 'eventual' para las reglas recurrentes que vencen en target_date.
+    Idempotente vía el guard ultima_generacion (no re-corre hasta cada_n_dias después)."""
+    rules = db.query(HKRecurringRule).filter(
+        HKRecurringRule.empresa_usuario_id == tenant_id,
+        HKRecurringRule.activo == True,
+    ).all()
+    for rule in rules:
+        if rule.ultima_generacion is not None and (target_date - rule.ultima_generacion).days < rule.cada_n_dias:
+            continue  # todavía no vence
+
+        # Habitaciones en alcance
+        rq = db.query(Room).filter(Room.empresa_usuario_id == tenant_id, Room.activo == True)
+        if rule.scope == "tipo" and rule.room_type_id:
+            rq = rq.filter(Room.room_type_id == rule.room_type_id)
+        rooms = rq.all()
+
+        # Checklist desde plantilla (si tiene)
+        checklist = []
+        if rule.template_id:
+            tpl = db.query(HKTemplate).filter(
+                HKTemplate.id == rule.template_id, HKTemplate.empresa_usuario_id == tenant_id
+            ).first()
+            if tpl and tpl.checklist:
+                checklist = [
+                    {"nombre": (it.get("nombre") if isinstance(it, dict) else str(it)), "done": False}
+                    for it in tpl.checklist
+                ]
+
+        for room in rooms:
+            existing = db.query(HousekeepingTask).filter(
+                HousekeepingTask.room_id == room.id,
+                HousekeepingTask.task_date == target_date,
+                HousekeepingTask.task_type == "eventual",
+            ).first()
+            if existing:
+                continue
+            db.add(HousekeepingTask(
+                empresa_usuario_id=tenant_id, room_id=room.id, task_date=target_date,
+                task_type="eventual", status="pending", priority=rule.prioridad,
+                meta={"source": "recurring", "rule": rule.nombre, "checklist": checklist},
+            ))
+
+        rule.ultima_generacion = target_date
 
 
 @router.post("/housekeeping/generate-daily")
