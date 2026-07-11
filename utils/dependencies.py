@@ -459,8 +459,11 @@ async def set_tenant_context(
     
     if tenant_id:
         try:
-            # Setear app.current_tenant_id en PostgreSQL para RLS
-            db.execute(text(f"SET app.current_tenant_id = {tenant_id}"))
+            # Setear app.current_tenant_id en PostgreSQL para RLS (parametrizado)
+            db.execute(
+                text("SELECT set_config('app.current_tenant_id', :tid, false)"),
+                {"tid": str(tenant_id)},
+            )
             db.commit()
         except Exception as e:
             log_event(

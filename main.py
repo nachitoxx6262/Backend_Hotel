@@ -44,7 +44,16 @@ limiter = setup_rate_limiting(app)
 # IMPORTANTE: El orden importa - se ejecutan en orden inverso al agregado
 # CORS debe ser el último en agregarse para ser el primero en procesarse
 # Configurar CORS
-CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
+CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",") if o.strip()]
+
+# En producción, un wildcard '*' combinado con allow_credentials=True es una brecha:
+# permite que cualquier origen envíe requests autenticados. Rechazar el arranque.
+_IS_PROD = os.getenv("ENV", "development").lower() in ("production", "prod")
+if _IS_PROD and (not CORS_ORIGINS or "*" in CORS_ORIGINS):
+    raise RuntimeError(
+        "CORS_ORIGINS debe listar orígenes explícitos en producción "
+        "(no '*' con allow_credentials=True). Revisá la variable de entorno CORS_ORIGINS."
+    )
 
 app.add_middleware(
     CORSMiddleware,

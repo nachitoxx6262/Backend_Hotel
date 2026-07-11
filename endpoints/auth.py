@@ -752,7 +752,9 @@ def reset_password_usuario(
 # ========== ENDPOINTS MULTITENANT SaaS ==========
 
 @router.post("/register-empresa-usuario", response_model=MultiTenantLoginResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("5/hour")  # Máximo 5 registros de empresa por hora por IP (anti-spam de tenants)
 def register_empresa_usuario(
+    request: Request,
     empresa_data: RegisterEmpresaUsuarioRequest,
     db: Session = Depends(conexion.get_db)
 ):
