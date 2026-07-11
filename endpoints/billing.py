@@ -67,6 +67,35 @@ async def get_available_planes(
         )
 
 
+def _expire_abandoned_checkouts(db: Session, subscription_id: int, hours: int = 3) -> int:
+    """
+    Cierra (marca FALLIDO) los checkouts electrónicos que quedaron PENDIENTE y nunca se
+    confirmaron tras `hours` horas: son intentos que el usuario abandonó (apretó "Pagar con
+    Mercado Pago"/tarjeta y no completó). Antes se acumulaban en el historial como si fueran
+    deuda pendiente.
+
+    NO toca los pagos offline (transferencia/efectivo): esos quedan PENDIENTE a propósito
+    esperando la confirmación manual del admin. Solo un pago realmente aprobado (webhook) pasa
+    a EXITOSO. Devuelve cuántos cerró. Se llama de forma lazy al consultar estado/historial.
+    """
+    from datetime import datetime, timedelta, timezone
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+    stale = db.query(PaymentAttempt).filter(
+        PaymentAttempt.subscription_id == subscription_id,
+        PaymentAttempt.estado == PaymentStatus.PENDIENTE,
+        PaymentAttempt.proveedor.in_([PaymentProvider.MERCADO_PAGO, PaymentProvider.STRIPE]),
+        PaymentAttempt.created_at < cutoff,
+    ).all()
+    for a in stale:
+        a.estado = PaymentStatus.FALLIDO
+        meta = a.response_json if isinstance(a.response_json, dict) else {}
+        meta["cierre_automatico"] = "checkout_abandonado"
+        a.response_json = meta
+    if stale:
+        db.commit()
+    return len(stale)
+
+
 @router.get("/status", response_model=BillingStatusResponse)
 async def get_subscription_status(
     current_user: Usuario = Depends(get_current_user),
@@ -105,7 +134,10 @@ async def get_subscription_status(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Suscripción no encontrada"
             )
-        
+
+        # Cerrar checkouts electrónicos abandonados antes de reportar el estado
+        _expire_abandoned_checkouts(db, subscription.id)
+
         plan = subscription.plan
         
         # Obtener información de uso
@@ -1028,6 +1060,9 @@ def get_payment_history(
     ).first()
     if not subscription:
         raise HTTPException(status_code=404, detail="Suscripción no encontrada")
+
+    # Cerrar checkouts electrónicos abandonados para que no figuren como pendientes
+    _expire_abandoned_checkouts(db, subscription.id)
 
     query = db.query(PaymentAttempt).filter(
         PaymentAttempt.subscription_id == subscription.id
