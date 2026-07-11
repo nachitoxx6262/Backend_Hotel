@@ -137,10 +137,13 @@ def _get_nightly_rate_for_date(
     # Buscar DailyRate para la fecha
     try:
         from endpoints.pricing import get_daily_rate_for_date
-        daily_rate = get_daily_rate_for_date(room_type.id, fecha, db=db)
+        daily_rate = get_daily_rate_for_date(
+            room_type.id, fecha, db=db,
+            empresa_usuario_id=getattr(room_type, "empresa_usuario_id", None),
+        )
         if daily_rate and daily_rate.precio:
             return _safe_decimal(daily_rate.precio, Decimal("0"))
-    except:
+    except Exception:
         pass
     
     # Fallback a precio_base

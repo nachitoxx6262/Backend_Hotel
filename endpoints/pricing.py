@@ -17,7 +17,19 @@ from utils.logging_utils import log_event
 from utils.invoice_engine import compute_invoice
 from utils.dependencies import get_current_user
 
-router = APIRouter(prefix="/api/pricing", tags=["Hotel Pricing"])
+router = APIRouter(
+    prefix="/api/pricing",
+    tags=["Hotel Pricing"],
+    dependencies=[Depends(get_current_user)],
+)
+
+
+def _require_tenant(current_user) -> int:
+    """Devuelve el empresa_usuario_id del usuario o 403 si no tiene tenant."""
+    tenant_id = getattr(current_user, "empresa_usuario_id", None)
+    if not tenant_id:
+        raise HTTPException(status_code=403, detail="Sin tenant asociado")
+    return tenant_id
 
 
 # ========================================================================
@@ -60,16 +72,18 @@ class DailyRateSchema(BaseModel):
 @router.get("/rate-plans", response_model=List[RatePlanSchema])
 def get_rate_plans(
     activo: Optional[bool] = Query(None, description="Filtrar por estado activo"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user),
 ):
     """
-    Obtener todos los planes de tarifa
+    Obtener todos los planes de tarifa del tenant actual
     """
-    query = db.query(RatePlan)
-    
+    tenant_id = _require_tenant(current_user)
+    query = db.query(RatePlan).filter(RatePlan.empresa_usuario_id == tenant_id)
+
     if activo is not None:
         query = query.filter(RatePlan.activo == activo)
-    
+
     plans = query.all()
     return plans
 
@@ -77,47 +91,59 @@ def get_rate_plans(
 @router.post("/rate-plans", response_model=RatePlanSchema, status_code=status.HTTP_201_CREATED)
 def create_rate_plan(
     payload: RatePlanSchema,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user),
 ):
     """
-    Crear un nuevo plan de tarifa
+    Crear un nuevo plan de tarifa para el tenant actual
     """
+    tenant_id = _require_tenant(current_user)
+
     if not payload.nombre or not payload.nombre.strip():
         raise HTTPException(status_code=400, detail="Nombre del plan es requerido")
-    
-    # Verificar que no existe un plan con el mismo nombre
-    existing = db.query(RatePlan).filter(RatePlan.nombre == payload.nombre).first()
+
+    # Verificar que no existe un plan con el mismo nombre en este tenant
+    existing = db.query(RatePlan).filter(
+        RatePlan.empresa_usuario_id == tenant_id,
+        RatePlan.nombre == payload.nombre,
+    ).first()
     if existing:
         raise HTTPException(status_code=409, detail="Ya existe un plan con este nombre")
-    
+
     plan = RatePlan(
+        empresa_usuario_id=tenant_id,
         nombre=payload.nombre,
         descripcion=payload.descripcion,
         reglas=payload.reglas or {},
         activo=payload.activo
     )
-    
+
     db.add(plan)
     db.commit()
     db.refresh(plan)
-    
-    log_event("pricing", "sistema", "RatePlan creado", f"id={plan.id}, nombre={plan.nombre}")
-    
+
+    log_event("pricing", current_user.username, "RatePlan creado", f"id={plan.id}, nombre={plan.nombre}")
+
     return plan
 
 
 @router.get("/rate-plans/{plan_id}", response_model=RatePlanSchema)
 def get_rate_plan(
     plan_id: int = Path(..., gt=0),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user),
 ):
     """
-    Obtener un plan de tarifa específico
+    Obtener un plan de tarifa específico del tenant actual
     """
-    plan = db.query(RatePlan).filter(RatePlan.id == plan_id).first()
+    tenant_id = _require_tenant(current_user)
+    plan = db.query(RatePlan).filter(
+        RatePlan.id == plan_id,
+        RatePlan.empresa_usuario_id == tenant_id,
+    ).first()
     if not plan:
         raise HTTPException(status_code=404, detail="Plan no encontrado")
-    
+
     return plan
 
 
@@ -125,15 +151,20 @@ def get_rate_plan(
 def update_rate_plan(
     plan_id: int = Path(..., gt=0),
     payload: RatePlanSchema = ...,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user),
 ):
     """
-    Actualizar un plan de tarifa
+    Actualizar un plan de tarifa del tenant actual
     """
-    plan = db.query(RatePlan).filter(RatePlan.id == plan_id).first()
+    tenant_id = _require_tenant(current_user)
+    plan = db.query(RatePlan).filter(
+        RatePlan.id == plan_id,
+        RatePlan.empresa_usuario_id == tenant_id,
+    ).first()
     if not plan:
         raise HTTPException(status_code=404, detail="Plan no encontrado")
-    
+
     # Actualizar campos
     if payload.nombre:
         plan.nombre = payload.nombre
@@ -143,33 +174,38 @@ def update_rate_plan(
         plan.reglas = payload.reglas
     if payload.activo is not None:
         plan.activo = payload.activo
-    
+
     db.commit()
     db.refresh(plan)
-    
-    log_event("pricing", "sistema", "RatePlan actualizado", f"id={plan.id}")
-    
+
+    log_event("pricing", current_user.username, "RatePlan actualizado", f"id={plan.id}")
+
     return plan
 
 
 @router.delete("/rate-plans/{plan_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_rate_plan(
     plan_id: int = Path(..., gt=0),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user),
 ):
     """
-    Eliminar un plan de tarifa (soft delete - marcar como inactivo)
+    Eliminar un plan de tarifa del tenant actual (soft delete - marcar como inactivo)
     """
-    plan = db.query(RatePlan).filter(RatePlan.id == plan_id).first()
+    tenant_id = _require_tenant(current_user)
+    plan = db.query(RatePlan).filter(
+        RatePlan.id == plan_id,
+        RatePlan.empresa_usuario_id == tenant_id,
+    ).first()
     if not plan:
         raise HTTPException(status_code=404, detail="Plan no encontrado")
-    
+
     # Soft delete: marcar como inactivo
     plan.activo = False
     db.commit()
-    
-    log_event("pricing", "sistema", "RatePlan desactivado", f"id={plan.id}")
-    
+
+    log_event("pricing", current_user.username, "RatePlan desactivado", f"id={plan.id}")
+
     return None
 
 
@@ -183,36 +219,38 @@ def get_daily_rates(
     rate_plan_id: Optional[int] = Query(None, description="Filtrar por plan de tarifa"),
     from_date: Optional[str] = Query(None, description="Desde fecha (YYYY-MM-DD)"),
     to_date: Optional[str] = Query(None, description="Hasta fecha (YYYY-MM-DD)"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user),
 ):
     """
-    Obtener tarifas diarias con filtros opcionales
+    Obtener tarifas diarias del tenant actual con filtros opcionales
     """
+    tenant_id = _require_tenant(current_user)
     query = db.query(DailyRate).options(
         joinedload(DailyRate.room_type),
         joinedload(DailyRate.rate_plan)
-    )
-    
+    ).filter(DailyRate.empresa_usuario_id == tenant_id)
+
     if room_type_id:
         query = query.filter(DailyRate.room_type_id == room_type_id)
-    
+
     if rate_plan_id:
         query = query.filter(DailyRate.rate_plan_id == rate_plan_id)
-    
+
     if from_date:
         try:
             start_dt = datetime.fromisoformat(from_date.replace('Z', '+00:00'))
             query = query.filter(DailyRate.fecha >= start_dt)
-        except:
-            pass
-    
+        except ValueError:
+            raise HTTPException(status_code=422, detail=f"Fecha 'from_date' inválida: {from_date}")
+
     if to_date:
         try:
             end_dt = datetime.fromisoformat(to_date.replace('Z', '+00:00'))
             query = query.filter(DailyRate.fecha <= end_dt)
-        except:
-            pass
-    
+        except ValueError:
+            raise HTTPException(status_code=422, detail=f"Fecha 'to_date' inválida: {to_date}")
+
     rates = query.order_by(DailyRate.fecha.desc()).all()
     return rates
 
@@ -224,62 +262,80 @@ def create_daily_rate(
     current_user = Depends(get_current_user)
 ):
     """
-    Crear una nueva tarifa diaria
+    Crear una nueva tarifa diaria para el tenant actual
     """
-    # Validar room_type existe
-    room_type = db.query(RoomType).filter(RoomType.id == payload.room_type_id).first()
+    tenant_id = _require_tenant(current_user)
+
+    # Validar room_type existe Y pertenece al tenant
+    room_type = db.query(RoomType).filter(
+        RoomType.id == payload.room_type_id,
+        RoomType.empresa_usuario_id == tenant_id,
+    ).first()
     if not room_type:
         raise HTTPException(status_code=400, detail="Tipo de habitación no encontrado")
-    
-    # Validar rate_plan si se proporciona
+
+    # Validar rate_plan (si se proporciona) existe Y pertenece al tenant
     if payload.rate_plan_id:
-        plan = db.query(RatePlan).filter(RatePlan.id == payload.rate_plan_id).first()
+        plan = db.query(RatePlan).filter(
+            RatePlan.id == payload.rate_plan_id,
+            RatePlan.empresa_usuario_id == tenant_id,
+        ).first()
         if not plan:
             raise HTTPException(status_code=400, detail="Plan de tarifa no encontrado")
-    
-    # Verificar que no existe una tarifa duplicada
-    fecha_dt = datetime.fromisoformat(payload.fecha)
+
+    # Verificar que no existe una tarifa duplicada en este tenant
+    try:
+        fecha_dt = datetime.fromisoformat(payload.fecha)
+    except ValueError:
+        raise HTTPException(status_code=422, detail=f"Fecha inválida: {payload.fecha}")
+
     existing = db.query(DailyRate).filter(
         and_(
+            DailyRate.empresa_usuario_id == tenant_id,
             DailyRate.room_type_id == payload.room_type_id,
             DailyRate.fecha == fecha_dt,
             DailyRate.rate_plan_id == payload.rate_plan_id
         )
     ).first()
-    
+
     if existing:
         raise HTTPException(status_code=409, detail="Ya existe una tarifa para esta fecha y tipo de habitación")
-    
+
     rate = DailyRate(
         room_type_id=payload.room_type_id,
         rate_plan_id=payload.rate_plan_id,
         fecha=fecha_dt,
         precio=payload.precio,
-        empresa_usuario_id=current_user.empresa_usuario_id
+        empresa_usuario_id=tenant_id
     )
-    
+
     db.add(rate)
     db.commit()
     db.refresh(rate)
-    
-    log_event("pricing", "sistema", "DailyRate creado", 
+
+    log_event("pricing", current_user.username, "DailyRate creado",
               f"room_type={payload.room_type_id}, fecha={payload.fecha}, precio={payload.precio}")
-    
+
     return rate
 
 
 @router.get("/daily-rates/{rate_id}", response_model=DailyRateSchema)
 def get_daily_rate(
     rate_id: int = Path(..., gt=0),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user),
 ):
     """
-    Obtener una tarifa diaria específica
+    Obtener una tarifa diaria específica del tenant actual
     """
-    rate = db.query(DailyRate).filter(DailyRate.id == rate_id).first()
+    tenant_id = _require_tenant(current_user)
+    rate = db.query(DailyRate).filter(
+        DailyRate.id == rate_id,
+        DailyRate.empresa_usuario_id == tenant_id,
+    ).first()
     if not rate:
         raise HTTPException(status_code=404, detail="Tarifa no encontrada")
-    
+
     return rate
 
 
@@ -287,43 +343,53 @@ def get_daily_rate(
 def update_daily_rate(
     rate_id: int = Path(..., gt=0),
     payload: DailyRateSchema = ...,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user),
 ):
     """
-    Actualizar una tarifa diaria
+    Actualizar una tarifa diaria del tenant actual
     """
-    rate = db.query(DailyRate).filter(DailyRate.id == rate_id).first()
+    tenant_id = _require_tenant(current_user)
+    rate = db.query(DailyRate).filter(
+        DailyRate.id == rate_id,
+        DailyRate.empresa_usuario_id == tenant_id,
+    ).first()
     if not rate:
         raise HTTPException(status_code=404, detail="Tarifa no encontrada")
-    
+
     if payload.precio:
         rate.precio = payload.precio
-    
+
     db.commit()
     db.refresh(rate)
-    
-    log_event("pricing", "sistema", "DailyRate actualizado", f"id={rate.id}, precio={payload.precio}")
-    
+
+    log_event("pricing", current_user.username, "DailyRate actualizado", f"id={rate.id}, precio={payload.precio}")
+
     return rate
 
 
 @router.delete("/daily-rates/{rate_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_daily_rate(
     rate_id: int = Path(..., gt=0),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user),
 ):
     """
-    Eliminar una tarifa diaria
+    Eliminar una tarifa diaria del tenant actual
     """
-    rate = db.query(DailyRate).filter(DailyRate.id == rate_id).first()
+    tenant_id = _require_tenant(current_user)
+    rate = db.query(DailyRate).filter(
+        DailyRate.id == rate_id,
+        DailyRate.empresa_usuario_id == tenant_id,
+    ).first()
     if not rate:
         raise HTTPException(status_code=404, detail="Tarifa no encontrada")
-    
+
     db.delete(rate)
     db.commit()
-    
-    log_event("pricing", "sistema", "DailyRate eliminado", f"id={rate.id}")
-    
+
+    log_event("pricing", current_user.username, "DailyRate eliminado", f"id={rate.id}")
+
     return None
 
 
@@ -335,46 +401,54 @@ def get_daily_rate_for_date(
     room_type_id: int,
     fecha: date,
     rate_plan_id: Optional[int] = None,
-    db: Session = None
+    db: Session = None,
+    empresa_usuario_id: Optional[int] = None,
 ) -> Optional[DailyRate]:
     """
     Obtener la tarifa diaria para una fecha y tipo de habitación específicos
-    
+
     Precedencia:
     1. DailyRate específico para esa fecha + rate_plan (si aplica)
     2. DailyRate general para esa fecha (sin rate_plan)
     3. Tarifa base del RoomType
+
+    Si se pasa empresa_usuario_id, todas las búsquedas quedan acotadas a ese tenant.
     """
     if not db:
         return None
-    
+
     fecha_dt = datetime.combine(fecha, datetime.min.time())
-    
+
+    def _tenant_scoped(*conditions):
+        q = db.query(DailyRate).filter(and_(*conditions))
+        if empresa_usuario_id is not None:
+            q = q.filter(DailyRate.empresa_usuario_id == empresa_usuario_id)
+        return q
+
     # 1. Intentar obtener con plan específico
     if rate_plan_id:
-        rate = db.query(DailyRate).filter(
-            and_(
-                DailyRate.room_type_id == room_type_id,
-                DailyRate.fecha == fecha_dt,
-                DailyRate.rate_plan_id == rate_plan_id
-            )
+        rate = _tenant_scoped(
+            DailyRate.room_type_id == room_type_id,
+            DailyRate.fecha == fecha_dt,
+            DailyRate.rate_plan_id == rate_plan_id,
         ).first()
         if rate:
             return rate
-    
+
     # 2. Obtener sin plan
-    rate = db.query(DailyRate).filter(
-        and_(
-            DailyRate.room_type_id == room_type_id,
-            DailyRate.fecha == fecha_dt,
-            DailyRate.rate_plan_id.is_(None)
-        )
+    rate = _tenant_scoped(
+        DailyRate.room_type_id == room_type_id,
+        DailyRate.fecha == fecha_dt,
+        DailyRate.rate_plan_id.is_(None),
     ).first()
     if rate:
         return rate
 
     # 3. Fallback: construir una tarifa virtual con el precio_base del RoomType
-    room_type = db.query(RoomType).filter(RoomType.id == room_type_id).first()
+    rt_query = db.query(RoomType).filter(RoomType.id == room_type_id)
+    if empresa_usuario_id is not None:
+        rt_query = rt_query.filter(RoomType.empresa_usuario_id == empresa_usuario_id)
+    room_type = rt_query.first()
     if room_type and room_type.precio_base:
         virtual = DailyRate.__new__(DailyRate)
         virtual.id = None
@@ -450,8 +524,6 @@ async def bulk_upload_rates(
             precio = float(row["precio"])
             fecha_str = row["fecha"]
             rate_plan_id = int(row["rate_plan_id"]) if row.get("rate_plan_id") else None
-            disponible_str = row.get("disponible", "true").lower()
-            disponible = disponible_str not in ("false", "0", "no")
 
             # Validar precio positivo
             if precio <= 0:
@@ -471,8 +543,9 @@ async def bulk_upload_rates(
             if not rt:
                 raise ValueError(f"room_type_id={room_type_id} no existe en este tenant")
 
-            # Upsert
+            # Upsert (acotado al tenant)
             existing = db.query(DailyRate).filter(
+                DailyRate.empresa_usuario_id == tenant_id,
                 DailyRate.room_type_id == room_type_id,
                 DailyRate.fecha == fecha_dt,
                 DailyRate.rate_plan_id == rate_plan_id,
@@ -480,7 +553,6 @@ async def bulk_upload_rates(
 
             if existing:
                 existing.precio = precio
-                existing.disponible = disponible
                 updated += 1
             else:
                 new_rate = DailyRate(
@@ -488,7 +560,6 @@ async def bulk_upload_rates(
                     rate_plan_id=rate_plan_id,
                     fecha=fecha_dt,
                     precio=precio,
-                    disponible=disponible,
                     empresa_usuario_id=tenant_id,
                 )
                 db.add(new_rate)

@@ -310,9 +310,14 @@ class Room(Base):
 
 class RatePlan(Base):
     __tablename__ = "rate_plans"
-    __table_args__ = (Index("idx_rateplan_activo", "activo"),)
+    __table_args__ = (
+        UniqueConstraint("empresa_usuario_id", "nombre", name="uq_rateplan_empresa_nombre"),
+        Index("idx_rateplan_activo", "activo"),
+        Index("idx_rateplan_empresa", "empresa_usuario_id"),
+    )
 
     id = Column(Integer, primary_key=True)
+    empresa_usuario_id = Column(Integer, ForeignKey("empresa_usuarios.id", ondelete="CASCADE"), nullable=False)
     nombre = Column(String(80), nullable=False)
     descripcion = Column(Text, nullable=True)
 
@@ -321,6 +326,8 @@ class RatePlan(Base):
 
     activo = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(timezone=True), default=utcnow)
+
+    empresa_usuario = relationship("EmpresaUsuario")
 
 
 class DailyRate(Base):
