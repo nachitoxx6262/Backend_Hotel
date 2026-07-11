@@ -33,6 +33,7 @@ starlette==0.50.0
 typing-inspection==0.4.2
 typing_extensions==4.15.0
 uvicorn==0.38.0
+gunicorn==23.0.0
 slowapi==0.1.9
 redis==5.2.1
 pytz
