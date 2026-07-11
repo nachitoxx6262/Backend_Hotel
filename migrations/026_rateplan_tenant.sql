@@ -12,8 +12,12 @@ ALTER TABLE rate_plans ADD COLUMN IF NOT EXISTS empresa_usuario_id INTEGER;
 -- 2. Los rate_plans huérfanos (sin tenant) no se pueden atribuir de forma segura.
 --    La feature de pricing no está activa en producción, por lo que se eliminan
 --    los planes sin tenant en lugar de dejarlos accesibles a todos.
-DELETE FROM daily_rates dr
- WHERE dr.rate_plan_id IN (SELECT id FROM rate_plans WHERE empresa_usuario_id IS NULL);
+--    Los daily_rates ligados a esos planes SÍ tienen tenant propio: se preservan
+--    desvinculándolos del plan (rate_plan_id = NULL) en vez de borrarlos, para no
+--    perder datos de precios reales del hotel.
+UPDATE daily_rates
+   SET rate_plan_id = NULL
+ WHERE rate_plan_id IN (SELECT id FROM rate_plans WHERE empresa_usuario_id IS NULL);
 DELETE FROM rate_plans WHERE empresa_usuario_id IS NULL;
 
 -- 3. Volver la columna obligatoria
