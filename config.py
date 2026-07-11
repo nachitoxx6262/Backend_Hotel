@@ -9,12 +9,15 @@ STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "sk_test_dummy_key_for_develo
 STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY", "pk_test_dummy_key_for_development")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "whsec_test_dummy_secret")
 
-# En producción no se permite arrancar con la clave dummy de desarrollo.
+# Stripe es OPCIONAL (el gateway principal es MercadoPago). Si en producción no hay
+# clave real, el módulo Stripe queda deshabilitado (PAYMENT_SYSTEM_ENABLED=False) y
+# se avisa — no se bloquea el arranque.
 _IS_PROD = os.getenv("ENV", "development").lower() in ("production", "prod")
 if _IS_PROD and STRIPE_SECRET_KEY == "sk_test_dummy_key_for_development":
-    raise RuntimeError(
-        "STRIPE_SECRET_KEY no está configurada en producción (usa la clave dummy de dev). "
-        "Definí STRIPE_SECRET_KEY o desactivá el módulo de pagos."
+    import logging
+    logging.getLogger("uvicorn.error").warning(
+        "STRIPE_SECRET_KEY no configurada en producción: módulo de pagos Stripe DESHABILITADO. "
+        "Ignorá esto si usás MercadoPago."
     )
 
 # Payment Configuration
